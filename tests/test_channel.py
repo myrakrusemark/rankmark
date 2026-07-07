@@ -65,19 +65,20 @@ def test_random_bits_do_not_validate():
 
 def test_encode_step_low_entropy_is_carrier_null():
     logits = torch.tensor([10.0, 0.0, 0.0, 0.0])  # near-deterministic
-    token, used = encode_step(logits, next_bit=1, params=ChannelParams(tau=1.0))
-    assert token == 0
-    assert not used
+    choice = encode_step(logits, next_bit=1, params=ChannelParams(tau=1.0))
+    assert choice.token_id == 0
+    assert not choice.planted
+    assert choice.rank == 0
 
 
 def test_encode_step_plants_parity():
     logits = torch.tensor([1.0, 0.9, 0.8, 0.7])  # high entropy, 4-way close
     params = ChannelParams(tau=0.5)
-    token0, used0 = encode_step(logits, next_bit=0, params=params)
-    token1, used1 = encode_step(logits, next_bit=1, params=params)
-    assert used0 and used1
-    assert token0 == 0  # rank 0 carries bit 0
-    assert token1 == 1  # rank 1 carries bit 1
+    zero = encode_step(logits, next_bit=0, params=params)
+    one = encode_step(logits, next_bit=1, params=params)
+    assert zero.planted and one.planted
+    assert zero.token_id == 0  # rank 0 carries bit 0
+    assert one.token_id == 1  # rank 1 carries bit 1
 
 
 def test_sorted_ties_break_to_lower_token_id():

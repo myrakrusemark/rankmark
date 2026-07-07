@@ -100,6 +100,17 @@ def cmd_attribute(args) -> int:
     return 0
 
 
+def cmd_serve(args) -> int:
+    import uvicorn
+
+    from . import server
+
+    server.configure([m.strip() for m in args.pool.split(",")])
+    print(f"rankmark ui at http://127.0.0.1:{args.port}  (lenses: {args.pool})")
+    uvicorn.run(server.app, host="127.0.0.1", port=args.port, log_level="warning")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="rankmark", description=__doc__)
     parser.add_argument("--tau", type=float, default=2.0, help="entropy gate in nats")
@@ -128,6 +139,11 @@ def main() -> int:
     p.add_argument("--text")
     p.add_argument("--file")
     p.set_defaults(fn=cmd_attribute)
+
+    p = sub.add_parser("serve", help="run the local web UI")
+    p.add_argument("--pool", default="Qwen/Qwen2.5-3B,gpt2", help="lenses offered in the UI")
+    p.add_argument("--port", type=int, default=8765)
+    p.set_defaults(fn=cmd_serve)
 
     args = parser.parse_args()
     return args.fn(args)

@@ -39,6 +39,7 @@ def embed(
     payload: bytes,
     params: ChannelParams | None = None,
     max_new_tokens: int = 300,
+    on_token=None,
 ) -> EmbedResult:
     params = params or ChannelParams()
     frame = frame_bits(payload)
@@ -60,16 +61,18 @@ def embed(
         logits = scorer.step(tid)
 
     for _ in range(max_new_tokens):
-        token_id, used = encode_step(logits, next_bit, params)
-        if used:
+        choice = encode_step(logits, next_bit, params)
+        if choice.planted:
             planted += 1
             next_bit = next(bit_stream)
         else:
             nulls += 1
-        ids.append(token_id)
-        if token_id == eos:
+        ids.append(choice.token_id)
+        if on_token:
+            on_token(choice)
+        if choice.token_id == eos:
             break
-        logits = scorer.step(token_id)
+        logits = scorer.step(choice.token_id)
 
     bos_len = len(prompt_ctx) - len(lens.tokenizer(prompt, add_special_tokens=False).input_ids)
     full_ids = ids[bos_len:]  # strip BOS for text rendering

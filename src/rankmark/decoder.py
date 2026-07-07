@@ -29,12 +29,17 @@ class DecodeResult:
         return self.frames[0].payload if self.frames else None
 
 
+def gate_bits(obs: list[TokenObs], params: ChannelParams) -> tuple[list[TokenObs], list[int]]:
+    """Re-apply the entropy gate and read carrier parities."""
+    carriers = [o for o in obs if o.entropy >= params.tau]
+    return carriers, [o.rank % 2 for o in carriers]
+
+
 def decode(lens: Lens, text: str, params: ChannelParams | None = None) -> DecodeResult:
     params = params or ChannelParams()
     ids = lens.tokenizer(text, add_special_tokens=False).input_ids
     obs = scan(lens, ids)
-    carriers = [o for o in obs if o.entropy >= params.tau]
-    bits = [o.rank % 2 for o in carriers]
+    carriers, bits = gate_bits(obs, params)
     return DecodeResult(
         obs=obs,
         carrier_positions=[o.pos for o in carriers],

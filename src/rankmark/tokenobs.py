@@ -66,8 +66,8 @@ class StepScorer:
         return out.logits[0, -1].float()
 
 
-def scan(lens: Lens, token_ids: list[int]) -> list[TokenObs]:
-    """Re-read a sequence step by step and observe each realized token.
+def scan_iter(lens: Lens, token_ids: list[int]):
+    """Re-read a sequence step by step, yielding one TokenObs per position.
 
     Position 0 has no context to predict it, so observations start at 1
     (or at 0 when the tokenizer defines a BOS token we can prepend).
@@ -81,21 +81,21 @@ def scan(lens: Lens, token_ids: list[int]) -> list[TokenObs]:
 
     scorer = StepScorer(lens)
     step_logits = scorer.step(ids[0])
-    obs = []
     for i in range(1, len(ids)):
         tid = ids[i]
         rank = rank_of(step_logits, tid)
         logp = torch.log_softmax(step_logits, dim=-1)[tid]
-        obs.append(
-            TokenObs(
-                pos=i - offset,
-                token_id=tid,
-                rank=rank,
-                logprob=float(logp),
-                entropy=entropy_of(step_logits),
-                bucket=bucket_of(rank),
-            )
+        yield TokenObs(
+            pos=i - offset,
+            token_id=tid,
+            rank=rank,
+            logprob=float(logp),
+            entropy=entropy_of(step_logits),
+            bucket=bucket_of(rank),
         )
         if i < len(ids) - 1:
             step_logits = scorer.step(tid)
-    return obs
+
+
+def scan(lens: Lens, token_ids: list[int]) -> list[TokenObs]:
+    return list(scan_iter(lens, token_ids))

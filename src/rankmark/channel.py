@@ -90,15 +90,24 @@ def sorted_token_ids(logits: torch.Tensor) -> torch.Tensor:
     return torch.sort(logits, descending=True, stable=True).indices
 
 
-def encode_step(logits: torch.Tensor, next_bit: int, params: ChannelParams) -> tuple[int, bool]:
-    """Pick the next token. Returns (token_id, bit_was_planted).
+@dataclass
+class StepChoice:
+    token_id: int
+    planted: bool
+    rank: int  # rank actually emitted: 0 for nulls, the bit value otherwise
+    entropy: float
+
+
+def encode_step(logits: torch.Tensor, next_bit: int, params: ChannelParams) -> StepChoice:
+    """Pick the next token.
 
     Below the entropy gate: emit rank 0 as a carrier-null, plant nothing.
     Above it: emit the highest-probability token whose rank parity equals
     next_bit — rank 0 for a 0 bit, rank 1 for a 1 bit.
     """
     logits = logits.float()
-    if entropy_of(logits) < params.tau:
-        return int(logits.argmax()), False
+    entropy = entropy_of(logits)
+    if entropy < params.tau:
+        return StepChoice(int(logits.argmax()), False, 0, entropy)
     order = sorted_token_ids(logits)
-    return int(order[next_bit]), True
+    return StepChoice(int(order[next_bit]), True, next_bit, entropy)

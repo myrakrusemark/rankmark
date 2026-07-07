@@ -1,0 +1,163 @@
+"""Local web UI: stream embed/decode over the real channel.
+
+Every endpoint calls the same code the CLI uses — the page renders what
+decoder.py computed, it never recomputes ranks or checksums itself.
+Responses stream NDJSON, one event per scored token, so the heatmap
+paints live at model speed.
+"""
+
+import json
+import queue
+import threading
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
+
+from .channel import ChannelParams, parse_frames
+from .decoder import gate_bits
+from .encoder import embed
+from .models import Lens, load_lens
+from .tokenobs import scan_iter
+
+app = FastAPI(title="rankmark")
+STATIC = Path(__file__).parent / "static"
+
+_available: list[str] = ["Qwen/Qwen2.5-3B", "gpt2"]
+_lenses: dict[str, Lens] = {}
+_load_lock = threading.Lock()
+
+
+def configure(models: list[str]) -> None:
+    global _available
+    _available = models
+
+
+def get_lens(name: str) -> Lens:
+    if name not in _available:
+        raise HTTPException(400, f"unknown lens {name!r}; serving {_available}")
+    with _load_lock:
+        if name not in _lenses:
+            _lenses[name] = load_lens(name)
+    return _lenses[name]
+
+
+class DecodeRequest(BaseModel):
+    text: str
+    model: str
+    tau: float = 2.0
+
+
+class EmbedRequest(BaseModel):
+    prompt: str
+    payload: str  # hex
+    model: str
+    tau: float = 2.0
+    max_tokens: int = 500
+
+
+def ndjson(events) -> StreamingResponse:
+    return StreamingResponse(
+        (json.dumps(e) + "\n" for e in events), media_type="application/x-ndjson"
+    )
+
+
+@app.get("/")
+def index() -> FileResponse:
+    return FileResponse(STATIC / "index.html")
+
+
+@app.get("/api/models")
+def api_models() -> dict:
+    return {"models": _available, "loaded": sorted(_lenses)}
+
+
+@app.post("/api/decode")
+def api_decode(req: DecodeRequest) -> StreamingResponse:
+    lens = get_lens(req.model)
+    params = ChannelParams(tau=req.tau)
+
+    def events():
+        ids = lens.tokenizer(req.text, add_special_tokens=False).input_ids
+        yield {"type": "start", "lens": req.model, "tokens": len(ids)}
+        obs = []
+        for o in scan_iter(lens, ids):
+            obs.append(o)
+            yield {
+                "type": "token",
+                "pos": o.pos,
+                "piece": lens.tokenizer.decode([o.token_id]),
+                "rank": o.rank,
+                "bucket": o.bucket,
+                "entropy": round(o.entropy, 3),
+                "carrier": o.entropy >= params.tau,
+                "bit": o.rank % 2,
+            }
+        carriers, bits = gate_bits(obs, params)
+        frames = parse_frames(bits)
+        yield {
+            "type": "done",
+            "lens": req.model,
+            "carriers": len(carriers),
+            "total": len(obs),
+            "frames": len(frames),
+            "valid": bool(frames),
+            "payload": frames[0].payload.hex() if frames else None,
+        }
+
+    return ndjson(events())
+
+
+@app.post("/api/embed")
+def api_embed(req: EmbedRequest) -> StreamingResponse:
+    lens = get_lens(req.model)
+    params = ChannelParams(tau=req.tau)
+    try:
+        payload = bytes.fromhex(req.payload)
+    except ValueError:
+        raise HTTPException(400, "payload must be hex bytes, e.g. a7") from None
+
+    def events():
+        q: queue.Queue = queue.Queue()
+
+        def on_token(choice):
+            q.put(
+                {
+                    "type": "token",
+                    "piece": lens.tokenizer.decode([choice.token_id]),
+                    "rank": choice.rank,
+                    "bucket": 0,
+                    "entropy": round(choice.entropy, 3),
+                    "carrier": choice.planted,
+                    "bit": choice.rank % 2,
+                }
+            )
+
+        def run():
+            try:
+                result = embed(
+                    lens, req.prompt, payload, params,
+                    max_new_tokens=req.max_tokens, on_token=on_token,
+                )
+                q.put(
+                    {
+                        "type": "done",
+                        "lens": req.model,
+                        "text": result.text,
+                        "bits_planted": result.bits_planted,
+                        "frames_planted": round(result.frames_planted, 2),
+                        "carrier_nulls": result.carrier_nulls,
+                        "retokenizes_cleanly": result.retokenizes_cleanly,
+                    }
+                )
+            except Exception as exc:  # surfaced to the page, not swallowed
+                q.put({"type": "error", "message": str(exc)})
+            q.put(None)
+
+        threading.Thread(target=run, daemon=True).start()
+        yield {"type": "start", "lens": req.model, "prompt": req.prompt}
+        while (event := q.get()) is not None:
+            yield event
+
+    return ndjson(events())
