@@ -29,7 +29,7 @@ def cmd_embed(args) -> int:
 
     print(result.text)
     print(
-        f"\n--- planted {result.bits_planted} bits ({result.frames_planted:.1f} frames), "
+        f"\n--- planted {result.bits_planted} bits ({result.frames_planted:.2f} frames), "
         f"{result.carrier_nulls} carrier-nulls, "
         f"retokenizes cleanly: {result.retokenizes_cleanly} ---",
         file=sys.stderr,

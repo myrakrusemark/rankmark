@@ -3,10 +3,9 @@
 import itertools
 from dataclasses import dataclass, field
 
-import torch
-
 from .channel import ChannelParams, encode_step, frame_bits
 from .models import Lens
+from .tokenobs import StepScorer
 
 
 @dataclass
@@ -47,27 +46,30 @@ def embed(
     next_bit = next(bit_stream)
 
     prompt_ctx = context_ids(lens, prompt)
+    if not prompt_ctx:
+        raise ValueError("prompt tokenized to nothing and tokenizer has no BOS")
     ids = list(prompt_ctx)
     eos = lens.tokenizer.eos_token_id
     planted = 0
     nulls = 0
 
-    past = None
-    step_input = torch.tensor([ids], device=lens.device)
-    with torch.no_grad():
-        for _ in range(max_new_tokens):
-            out = lens.model(step_input, past_key_values=past, use_cache=True)
-            past = out.past_key_values
-            token_id, used = encode_step(out.logits[0, -1], next_bit, params)
-            if used:
-                planted += 1
-                next_bit = next(bit_stream)
-            else:
-                nulls += 1
-            ids.append(token_id)
-            if token_id == eos:
-                break
-            step_input = torch.tensor([[token_id]], device=lens.device)
+    # Feed the prompt token by token too: the decoder will rebuild this cache
+    # the same way, and encode/decode must share the exact numerical path.
+    scorer = StepScorer(lens)
+    for tid in prompt_ctx:
+        logits = scorer.step(tid)
+
+    for _ in range(max_new_tokens):
+        token_id, used = encode_step(logits, next_bit, params)
+        if used:
+            planted += 1
+            next_bit = next(bit_stream)
+        else:
+            nulls += 1
+        ids.append(token_id)
+        if token_id == eos:
+            break
+        logits = scorer.step(token_id)
 
     bos_len = len(prompt_ctx) - len(lens.tokenizer(prompt, add_special_tokens=False).input_ids)
     full_ids = ids[bos_len:]  # strip BOS for text rendering

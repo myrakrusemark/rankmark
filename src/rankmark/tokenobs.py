@@ -44,8 +44,30 @@ def entropy_of(logits: torch.Tensor) -> float:
     return float(-(logp.exp() * logp).sum())
 
 
+class StepScorer:
+    """Feed tokens one at a time; step() returns the logits for the NEXT position.
+
+    This is the only way rankmark ever computes logits. Encoder and decoder
+    must share the exact numerical path — a batched teacher-forcing pass
+    reorders bf16 reductions enough to flip near-tie ranks and entropy-gate
+    decisions relative to cached incremental generation (~20% bit error
+    observed on Qwen2.5-3B before this invariant existed).
+    """
+
+    def __init__(self, lens: Lens):
+        self.lens = lens
+        self._past = None
+
+    def step(self, token_id: int) -> torch.Tensor:
+        inp = torch.tensor([[token_id]], device=self.lens.device)
+        with torch.no_grad():
+            out = self.lens.model(inp, past_key_values=self._past, use_cache=True)
+        self._past = out.past_key_values
+        return out.logits[0, -1].float()
+
+
 def scan(lens: Lens, token_ids: list[int]) -> list[TokenObs]:
-    """Teacher-force the sequence and observe each realized token.
+    """Re-read a sequence step by step and observe each realized token.
 
     Position 0 has no context to predict it, so observations start at 1
     (or at 0 when the tokenizer defines a BOS token we can prepend).
@@ -57,13 +79,10 @@ def scan(lens: Lens, token_ids: list[int]) -> list[TokenObs]:
         ids = list(token_ids)
     offset = len(ids) - len(token_ids)  # 1 when BOS was prepended, else 0
 
-    input_ids = torch.tensor([ids], device=lens.device)
-    with torch.no_grad():
-        logits = lens.model(input_ids).logits[0]
-
+    scorer = StepScorer(lens)
+    step_logits = scorer.step(ids[0])
     obs = []
     for i in range(1, len(ids)):
-        step_logits = logits[i - 1].float()
         tid = ids[i]
         rank = rank_of(step_logits, tid)
         logp = torch.log_softmax(step_logits, dim=-1)[tid]
@@ -77,4 +96,6 @@ def scan(lens: Lens, token_ids: list[int]) -> list[TokenObs]:
                 bucket=bucket_of(rank),
             )
         )
+        if i < len(ids) - 1:
+            step_logits = scorer.step(tid)
     return obs
