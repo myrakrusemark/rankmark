@@ -45,6 +45,9 @@
   #attr div{display:flex;gap:10px;padding:6px 8px;border-radius:6px;align-items:baseline}
   .hint{font-size:12px;color:var(--muted);margin:10px 0 0}
   .num{width:70px}
+  #tip{position:fixed;display:none;pointer-events:none;z-index:10;background:var(--card);
+    border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;
+    font-family:ui-monospace,monospace;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -148,9 +151,21 @@ function addToken(e){
   const s = document.createElement("span");
   s.className = `tok b${e.bucket}` + (e.carrier ? " car" : "");
   s.textContent = e.piece;
-  s.title = `rank ${e.rank} · H ${e.entropy} nats` + (e.carrier ? ` · bit ${e.bit}` : " · carrier-null");
+  s.dataset.info = `rank ${e.rank} · H ${e.entropy} nats` + (e.carrier ? ` · bit ${e.bit}` : " · carrier-null");
   $("stream").appendChild(s);
 }
+
+// instant tooltip — native title popups are slow and missing in some embedded browsers
+const tip = document.createElement("div"); tip.id = "tip"; document.body.appendChild(tip);
+$("stream").addEventListener("mouseover", e => {
+  const t = e.target.closest(".tok");
+  if(t && t.dataset.info){ tip.textContent = t.dataset.info; tip.style.display = "block"; }
+});
+$("stream").addEventListener("mousemove", e => {
+  tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8) + "px";
+  tip.style.top = (e.clientY + 16) + "px";
+});
+$("stream").addEventListener("mouseout", () => { tip.style.display = "none"; });
 
 async function streamPost(url, body, onEvent){
   const resp = await fetch(BASE + url, {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)});
