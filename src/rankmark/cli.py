@@ -9,6 +9,7 @@ from pathlib import Path
 from .channel import ChannelParams
 from .decoder import decode
 from .encoder import embed
+from .framing import PROFILES
 from .heatmap import render_html, render_terminal
 from .models import load_lens
 
@@ -23,7 +24,8 @@ def read_text(args) -> str:
 
 def cmd_embed(args) -> int:
     lens = load_lens(args.model, args.dtype)
-    params = ChannelParams(tau=args.tau)
+    params = ChannelParams(tau=args.tau, framing=args.framing, profile=args.profile,
+                          window=args.window)
     payload = bytes.fromhex(args.payload)
     result = embed(lens, args.prompt, payload, params, max_new_tokens=args.max_tokens)
 
@@ -66,7 +68,8 @@ def report(name: str, result, payload_hex: str | None) -> dict:
 def cmd_decode(args) -> int:
     text = read_text(args)
     lens = load_lens(args.model, args.dtype)
-    params = ChannelParams(tau=args.tau)
+    params = ChannelParams(tau=args.tau, framing=args.framing, profile=args.profile,
+                          window=args.window)
     result = decode(lens, text, params)
 
     if args.heatmap:
@@ -80,7 +83,8 @@ def cmd_decode(args) -> int:
 
 def cmd_attribute(args) -> int:
     text = read_text(args)
-    params = ChannelParams(tau=args.tau)
+    params = ChannelParams(tau=args.tau, framing=args.framing, profile=args.profile,
+                          window=args.window)
     verdicts = []
     for name in args.pool.split(","):
         lens = load_lens(name.strip(), args.dtype)
@@ -115,6 +119,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="rankmark", description=__doc__)
     parser.add_argument("--tau", type=float, default=2.0, help="entropy gate in nats")
     parser.add_argument("--dtype", choices=["float32", "bfloat16"], default=None)
+    parser.add_argument("--framing", choices=["v1", "v2"], default="v2",
+                        help="v2 = sync+ECC+gate frames (Phase 2); v1 = legacy MAGIC/CRC16")
+    parser.add_argument("--profile", type=int, default=1, choices=sorted(PROFILES),
+                        help="v2 profile: " + ", ".join(
+                            f"{i}={p.name}" for i, p in sorted(PROFILES.items())))
+    parser.add_argument("--window", type=int, default=None,
+                        help="bound rank context to N tokens (survives head-truncation; "
+                             "slower). default: full prefix")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("embed", help="generate text with an embedded payload")

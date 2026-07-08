@@ -1,0 +1,102 @@
+"""Pure-logic tests for v2 framing: sync scan, header, gate, milestone window."""
+
+import random
+
+from rankmark.ecc import bits_to_llrs
+from rankmark.framing import (
+    DEFAULT_PROFILE,
+    PROFILES,
+    build_frame,
+    frame_len_bits,
+    llr_of,
+    parse_frames_hard,
+    parse_frames_soft,
+    tag_of,
+)
+
+PAYLOAD = b"\xa7"
+TAG = tag_of("gpt2")
+
+
+def find(frames, profile):
+    return [f for f in frames if f.profile == profile]
+
+
+def test_frame_round_trip_every_profile():
+    for pid, profile in PROFILES.items():
+        bits = build_frame(PAYLOAD, pid, TAG)
+        assert len(bits) == frame_len_bits(len(PAYLOAD), pid)
+        frames = find(parse_frames_hard(bits, TAG), profile.name)
+        assert frames and frames[0].payload == PAYLOAD
+        assert frames[0].offset == 0
+        assert frames[0].tag_ok
+
+
+def test_frame_found_at_arbitrary_offset():
+    rng = random.Random(7)
+    noise = [rng.randint(0, 1) for _ in range(97)]
+    bits = noise + build_frame(b"\xa7\x42", DEFAULT_PROFILE, TAG)
+    frames = find(parse_frames_hard(bits, TAG), "standard")
+    assert any(f.payload == b"\xa7\x42" and f.offset == 97 for f in frames)
+
+
+def test_repeated_stream_truncated_from_the_middle():
+    """Copy-paste-from-the-middle: cut mid-frame, the next repetition still lands."""
+    frame = build_frame(PAYLOAD, DEFAULT_PROFILE, TAG)
+    stream = frame * 4
+    cut = stream[len(frame) // 2 : len(frame) * 3]
+    frames = find(parse_frames_hard(cut, TAG), "standard")
+    assert frames and all(f.payload == PAYLOAD for f in frames)
+
+
+def test_milestone_any_150_bit_window_yields_a_frame():
+    """Phase-2 gate: lean frames repeat densely enough that ANY ~150-carrier
+    span of the stream contains at least one whole frame."""
+    frame = build_frame(PAYLOAD, 0, TAG)
+    assert len(frame) <= 75, "lean frame too big for the 150-bit guarantee"
+    stream = frame * 40
+    for start in range(len(frame)):  # every alignment
+        window = stream[start : start + 150]
+        frames = find(parse_frames_hard(window, TAG), "lean")
+        assert frames and frames[0].payload == PAYLOAD, f"window at {start} failed"
+
+
+def test_standard_survives_scattered_bit_flips():
+    frame = build_frame(b"\xa7\x01\xff", DEFAULT_PROFILE, TAG)
+    rng = random.Random(11)
+    llrs = bits_to_llrs(frame)
+    body_start = len(PROFILES[DEFAULT_PROFILE].sync) + 9 * PROFILES[DEFAULT_PROFILE].header_rep
+    for pos in rng.sample(range(body_start, len(llrs)), 6):
+        llrs[pos] = -llrs[pos]
+    frames = find(parse_frames_soft(llrs, TAG), "standard")
+    assert frames and frames[0].payload == b"\xa7\x01\xff"
+
+
+def test_wrong_lens_random_bits_never_validate():
+    rng = random.Random(13)
+    llrs = [rng.choice((4.0, -4.0)) for _ in range(6000)]
+    gated = [f for f in parse_frames_soft(llrs, TAG) if f.profile != "gateless"]
+    assert gated == []
+
+
+def test_gateless_ablation_false_detects_on_noise():
+    """BREW's warning, reproduced: with no checksum, RS happily 'corrects'
+    random noise into spurious payloads. The gate earns its place."""
+    rng = random.Random(17)
+    llrs = [rng.choice((4.0, -4.0)) for _ in range(20000)]
+    spurious = [f for f in parse_frames_soft(llrs) if f.profile == "gateless"]
+    assert spurious, "expected RS-only decoding to hallucinate at least one frame"
+
+
+def test_tag_mismatch_is_flagged():
+    other = next(t for t in range(8) if t != TAG)
+    bits = build_frame(PAYLOAD, DEFAULT_PROFILE, other)
+    frames = find(parse_frames_hard(bits, TAG), "standard")
+    assert frames and not frames[0].tag_ok
+
+
+def test_llr_sign_carries_parity_and_damage_is_quiet():
+    assert llr_of(0, 3.0, 2.0) > 0  # rank 0 -> bit 0
+    assert llr_of(1, 3.0, 2.0) < 0  # rank 1 -> bit 1
+    assert abs(llr_of(847, 3.0, 2.0)) < abs(llr_of(1, 3.0, 2.0))  # edits arrive quiet
+    assert abs(llr_of(0, 2.05, 2.0)) < abs(llr_of(0, 3.0, 2.0))  # near-gate is fragile

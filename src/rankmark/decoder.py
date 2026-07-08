@@ -3,11 +3,17 @@
 No stored per-text state — encoder and decoder share only the algorithm and
 tau. If the lens doesn't match the generator, the gate desyncs and the CRC
 fails: that failure is the attribution signal.
+
+v2 framing decodes softly: every carrier contributes an LLR whose magnitude
+says how much that bit can be trusted (edits knock tokens off rank 0/1, so
+damaged positions arrive quiet instead of loud and wrong). v1 keeps the
+Phase-1 hard MAGIC/CRC16 path.
 """
 
 from dataclasses import dataclass, field
 
 from .channel import ChannelParams, Frame, parse_frames
+from .framing import DecodedFrame, llr_of, parse_frames_soft, tag_of
 from .models import Lens
 from .tokenobs import TokenObs, scan
 
@@ -17,7 +23,8 @@ class DecodeResult:
     obs: list[TokenObs]
     carrier_positions: list[int]
     bits: list[int]
-    frames: list[Frame]
+    frames: list[Frame | DecodedFrame]
+    llrs: list[float] = field(default_factory=list)
     fingerprint: dict = field(default_factory=dict)
 
     @property
@@ -38,12 +45,19 @@ def gate_bits(obs: list[TokenObs], params: ChannelParams) -> tuple[list[TokenObs
 def decode(lens: Lens, text: str, params: ChannelParams | None = None) -> DecodeResult:
     params = params or ChannelParams()
     ids = lens.tokenizer(text, add_special_tokens=False).input_ids
-    obs = scan(lens, ids)
+    obs = scan(lens, ids, params.window)
     carriers, bits = gate_bits(obs, params)
+    if params.framing == "v2":
+        llrs = [llr_of(o.rank, o.entropy, params.tau) for o in carriers]
+        frames = [f for f in parse_frames_soft(llrs, tag_of(lens.name)) if f.tag_ok]
+    else:
+        llrs = []
+        frames = parse_frames(bits)
     return DecodeResult(
         obs=obs,
         carrier_positions=[o.pos for o in carriers],
         bits=bits,
-        frames=parse_frames(bits),
+        frames=frames,
+        llrs=llrs,
         fingerprint=lens.fingerprint,
     )

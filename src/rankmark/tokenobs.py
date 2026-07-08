@@ -66,11 +66,32 @@ class StepScorer:
         return out.logits[0, -1].float()
 
 
-def scan_iter(lens: Lens, token_ids: list[int]):
+def window_logits(lens: Lens, ctx_ids: list[int]) -> torch.Tensor:
+    """Next-token logits from one fresh forward pass over a bounded window.
+
+    No KV cache: encoder and decoder call this with the same token window
+    and get bit-identical logits, which is the whole point — a position
+    more than `window` tokens past any cut sees the same context whether
+    or not the head of the text was truncated away.
+    """
+    inp = torch.tensor([ctx_ids], device=lens.device)
+    with torch.no_grad():
+        out = lens.model(inp)
+    return out.logits[0, -1].float()
+
+
+def scan_iter(lens: Lens, token_ids: list[int], window: int | None = None):
     """Re-read a sequence step by step, yielding one TokenObs per position.
 
     Position 0 has no context to predict it, so observations start at 1
     (or at 0 when the tokenizer defines a BOS token we can prepend).
+
+    With `window` set, each position is scored from at most that many
+    context tokens (see window_logits) — full-context ranks otherwise.
+    Full-context ranks depend on the entire prefix, so truncating the
+    head of a text disturbs them all the way to the end (~25% carrier
+    parity flips measured on gpt2); windowed ranks are immune beyond
+    `window` tokens from the cut.
     """
     bos = lens.tokenizer.bos_token_id
     if bos is not None and (not token_ids or token_ids[0] != bos):
@@ -79,9 +100,12 @@ def scan_iter(lens: Lens, token_ids: list[int]):
         ids = list(token_ids)
     offset = len(ids) - len(token_ids)  # 1 when BOS was prepended, else 0
 
-    scorer = StepScorer(lens)
-    step_logits = scorer.step(ids[0])
+    scorer = None if window else StepScorer(lens)
+    if scorer:
+        step_logits = scorer.step(ids[0])
     for i in range(1, len(ids)):
+        if window:
+            step_logits = window_logits(lens, ids[max(0, i - window) : i])
         tid = ids[i]
         rank = rank_of(step_logits, tid)
         logp = torch.log_softmax(step_logits, dim=-1)[tid]
@@ -93,9 +117,9 @@ def scan_iter(lens: Lens, token_ids: list[int]):
             entropy=entropy_of(step_logits),
             bucket=bucket_of(rank),
         )
-        if i < len(ids) - 1:
+        if scorer and i < len(ids) - 1:
             step_logits = scorer.step(tid)
 
 
-def scan(lens: Lens, token_ids: list[int]) -> list[TokenObs]:
-    return list(scan_iter(lens, token_ids))
+def scan(lens: Lens, token_ids: list[int], window: int | None = None) -> list[TokenObs]:
+    return list(scan_iter(lens, token_ids, window))

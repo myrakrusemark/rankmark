@@ -22,6 +22,11 @@ MIN_FRAME_BITS = MAGIC_BITS + LEN_BITS + 8 + CRC_BITS
 @dataclass
 class ChannelParams:
     tau: float = 2.0  # entropy gate, nats: below this a step is a carrier-null
+    framing: str = "v2"  # "v2" = framing.py (sync + ECC + gate); "v1" = legacy MAGIC/CRC16
+    profile: int = 1  # v2 profile id, see framing.PROFILES
+    window: int | None = None  # bound rank context to this many tokens; None = full prefix.
+    # Full-context ranks die under head-truncation (every downstream near-tie
+    # flips); a window makes cut damage end after `window` tokens by construction.
 
 
 @dataclass

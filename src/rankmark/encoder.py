@@ -4,8 +4,9 @@ import itertools
 from dataclasses import dataclass, field
 
 from .channel import ChannelParams, encode_step, frame_bits
+from .framing import build_frame, tag_of
 from .models import Lens
-from .tokenobs import StepScorer
+from .tokenobs import StepScorer, window_logits
 
 
 @dataclass
@@ -42,7 +43,10 @@ def embed(
     on_token=None,
 ) -> EmbedResult:
     params = params or ChannelParams()
-    frame = frame_bits(payload)
+    if params.framing == "v2":
+        frame = build_frame(payload, params.profile, tag_of(lens.name))
+    else:
+        frame = frame_bits(payload)
     bit_stream = itertools.cycle(frame)
     next_bit = next(bit_stream)
 
@@ -54,11 +58,15 @@ def embed(
     planted = 0
     nulls = 0
 
-    # Feed the prompt token by token too: the decoder will rebuild this cache
-    # the same way, and encode/decode must share the exact numerical path.
-    scorer = StepScorer(lens)
-    for tid in prompt_ctx:
-        logits = scorer.step(tid)
+    # Encode/decode must share the exact numerical path: either the cached
+    # step scorer fed token by token, or the same bounded-window forward the
+    # decoder's scan will use.
+    if params.window:
+        logits = window_logits(lens, ids[-params.window :])
+    else:
+        scorer = StepScorer(lens)
+        for tid in prompt_ctx:
+            logits = scorer.step(tid)
 
     for _ in range(max_new_tokens):
         choice = encode_step(logits, next_bit, params)
@@ -72,7 +80,10 @@ def embed(
             on_token(choice)
         if choice.token_id == eos:
             break
-        logits = scorer.step(choice.token_id)
+        if params.window:
+            logits = window_logits(lens, ids[-params.window :])
+        else:
+            logits = scorer.step(choice.token_id)
 
     bos_len = len(prompt_ctx) - len(lens.tokenizer(prompt, add_special_tokens=False).input_ids)
     full_ids = ids[bos_len:]  # strip BOS for text rendering
