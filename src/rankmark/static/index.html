@@ -125,12 +125,19 @@
 </main>
 <script>
 const $ = id => document.getElementById(id);
+// Served by `rankmark serve` this is same-origin; opened as a plain file
+// (file://), relative /api URLs can't resolve, so fall back to the default port.
+const BASE = location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
 let lastText = "", running = false;
 
 async function loadModels(){
-  const r = await fetch("/api/models"); const d = await r.json();
-  for(const sel of [$("lensE"), $("lensD")]){
-    sel.innerHTML = d.models.map(m => `<option>${m}</option>`).join("");
+  try{
+    const r = await fetch(BASE + "/api/models"); const d = await r.json();
+    for(const sel of [$("lensE"), $("lensD")]){
+      sel.innerHTML = d.models.map(m => `<option>${m}</option>`).join("");
+    }
+  }catch(err){
+    setVerdict(`can't reach the rankmark server${BASE ? ` at ${BASE}` : ""} — start it with: rankmark serve`, "bad");
   }
 }
 
@@ -146,7 +153,7 @@ function addToken(e){
 }
 
 async function streamPost(url, body, onEvent){
-  const resp = await fetch(url, {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)});
+  const resp = await fetch(BASE + url, {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)});
   if(!resp.ok){ throw new Error((await resp.json()).detail || resp.statusText); }
   const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = "";
   while(true){

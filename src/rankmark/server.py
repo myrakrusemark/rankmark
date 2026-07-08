@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -23,6 +24,10 @@ from .models import Lens, load_lens
 from .tokenobs import scan_iter
 
 app = FastAPI(title="rankmark")
+# The page also works opened straight from disk (file://), where the browser
+# sends Origin: null — a localhost-only tool, so allow anyone.
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
+                   allow_headers=["*"])
 STATIC = Path(__file__).parent / "static"
 
 _available: list[str] = ["Qwen/Qwen2.5-3B", "gpt2"]
