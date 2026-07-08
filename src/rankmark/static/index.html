@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rankmark</title>
+<style>
+  :root{
+    --bg:#faf9f6;--card:#fff;--border:#e2e0da;--text:#1a1a18;--muted:#6b6a64;
+    --b0:#c6efce;--b0t:#1e5631;--b1:#ffeb9c;--b1t:#6b5300;--b2:#ffc7ce;--b2t:#7a1f28;--b3:#d9d2f5;--b3t:#3c3489;
+    --ok:#1d7a44;--bad:#b3362e;--accent:#3a5fa8;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{--bg:#191917;--card:#22221f;--border:#3a3934;--text:#eceae4;--muted:#98968e;
+      --b0:#1e4a2c;--b0t:#a8e2b8;--b1:#4d3f08;--b1t:#f0d878;--b2:#54222a;--b2t:#f2aab2;--b3:#332d5e;--b3t:#c3bbf0;
+      --ok:#5fce8f;--bad:#f08c85;--accent:#8fb0ee}
+  }
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
+  main{max-width:880px;margin:2rem auto;padding:0 1rem}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.3rem}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  h1{font-size:17px;font-weight:600;margin:0;display:flex;gap:8px;align-items:center}
+  label{font-size:12px;color:var(--muted)}
+  input,select,textarea,button{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+  textarea{width:100%;box-sizing:border-box;resize:vertical;font-family:ui-monospace,monospace;font-size:13px}
+  button{cursor:pointer;background:var(--card)}
+  button:hover{border-color:var(--muted)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button:disabled{opacity:.5;cursor:default}
+  .mode{padding:6px 14px;font-size:13px}
+  .mode.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chips{display:flex;gap:10px;margin:14px 0}
+  .chip{flex:1;background:var(--bg);border-radius:8px;padding:8px 12px}
+  .chip b{display:block;font-size:18px;font-weight:600}
+  .chip span{font-size:11px;color:var(--muted)}
+  #stream{font-family:ui-monospace,monospace;font-size:13px;line-height:2.1;margin:10px 0;white-space:pre-wrap;word-break:break-word}
+  .tok{padding:2px 0;border-radius:3px}
+  .tok.b0{background:var(--b0);color:var(--b0t)}.tok.b1{background:var(--b1);color:var(--b1t)}
+  .tok.b2{background:var(--b2);color:var(--b2t)}.tok.b3{background:var(--b3);color:var(--b3t)}
+  .tok.car{border-bottom:2px solid currentColor}
+  #verdict{min-height:24px;font-size:14px;margin:12px 0 2px;font-weight:500}
+  .legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:6px}
+  .legend .tok{padding:2px 6px}
+  #attr{margin-top:10px;font-size:13px}
+  #attr div{display:flex;gap:10px;padding:6px 8px;border-radius:6px;align-items:baseline}
+  .hint{font-size:12px;color:var(--muted);margin:10px 0 0}
+  .num{width:70px}
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+  <div class="row" style="padding-bottom:12px;border-bottom:1px solid var(--border)">
+    <h1>rankmark <span style="font-weight:400;color:var(--muted);font-size:13px">the model is the key</span></h1>
+    <span style="flex:1"></span>
+    <button class="mode on" id="mEmbed">embed</button>
+    <button class="mode" id="mDecode">decode</button>
+  </div>
+
+  <div id="pEmbed" style="padding-top:14px">
+    <div class="row">
+      <div style="flex:2;min-width:240px"><label>prompt</label><br>
+        <input id="prompt" style="width:100%;box-sizing:border-box" value="The history of cryptography begins with"></div>
+      <div><label>payload (hex)</label><br><input id="payload" class="num" value="a7" style="font-family:ui-monospace,monospace"></div>
+      <div><label>max tokens</label><br><input id="maxtok" class="num" type="number" value="500" min="50" max="2000"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div><label>generate with</label><br><select id="lensE"></select></div>
+      <div><label>&tau; gate (nats)</label><br><input id="tauE" class="num" type="number" value="2.0" min="0.5" max="6" step="0.1"></div>
+      <div><label>frame profile</label><br><select id="profE">
+        <option value="0">lean — smallest frames</option>
+        <option value="1" selected>standard — CRC32 + full ECC</option>
+        <option value="2">robust — heaviest ECC</option>
+        <option value="3">gateless — no checksum (ablation)</option>
+        <option value="v1">v1 — legacy MAGIC/CRC16</option>
+      </select></div>
+      <div><label>window (tokens)</label><br><input id="winE" class="num" type="number" placeholder="full" min="16" max="512"></div>
+      <span style="flex:1"></span>
+      <button class="primary" id="btnEmbed">embed &rarr;</button>
+    </div>
+    <p class="hint">Generates token by token, picking rank-0 or rank-1 tokens so their parity spells out the payload. Underlined tokens carry a bit; the rest are carrier-nulls. Set a <b>window</b> (e.g. 64) to make the mark survive truncation — ranks are then scored from bounded context, so cutting the head off the text only disturbs the first <i>window</i> tokens instead of everything. CPU speed: expect a couple of tokens per second (slower with a window).</p>
+  </div>
+
+  <div id="pDecode" style="padding-top:14px;display:none">
+    <label>text to decode</label>
+    <textarea id="intext" rows="6" placeholder="paste text here (or embed first — the result lands here automatically)"></textarea>
+    <div class="row" style="margin-top:10px">
+      <div><label>read through</label><br><select id="lensD"></select></div>
+      <div><label>&tau; gate (nats)</label><br><input id="tauD" class="num" type="number" value="2.0" min="0.5" max="6" step="0.1"></div>
+      <div><label>frame profile</label><br><select id="profD">
+        <option value="0">lean</option>
+        <option value="1" selected>standard</option>
+        <option value="2">robust</option>
+        <option value="3">gateless</option>
+        <option value="v1">v1 legacy</option>
+      </select></div>
+      <div><label>window (tokens)</label><br><input id="winD" class="num" type="number" placeholder="full" min="16" max="512"></div>
+      <span style="flex:1"></span>
+      <button id="btnCut" title="cut a sixth off each end — the truncation test">&#9986; truncate</button>
+      <button id="btnAttr">attribute (all lenses)</button>
+      <button class="primary" id="btnDecode">decode &rarr;</button>
+    </div>
+    <p class="hint">Re-reads the text through the chosen model's logits, recovers each token's rank, re-applies the entropy gate, and looks for a checksum-valid frame. Only the model that generated the text should validate. Profile and window must match what the embed used. <b>&#9986; truncate</b> chops a sixth off each end — with a window set, the frame survives the cut.</p>
+  </div>
+
+  <div id="verdict"></div>
+  <div class="chips">
+    <div class="chip"><b id="stTok">&ndash;</b><span>tokens scored</span></div>
+    <div class="chip"><b id="stCar">&ndash;</b><span>bit carriers</span></div>
+    <div class="chip"><b id="stFrm">&ndash;</b><span>valid frames</span></div>
+    <div class="chip"><b id="stPay" style="font-family:ui-monospace,monospace">&ndash;</b><span>payload</span></div>
+  </div>
+  <div id="stream"></div>
+  <div class="legend">
+    <span><span class="tok b0">rank &lt; 10</span></span>
+    <span><span class="tok b1">&lt; 100</span></span>
+    <span><span class="tok b2">&lt; 1000</span></span>
+    <span><span class="tok b3">beyond</span></span>
+    <span>underline = bit carrier &middot; hover a token for details</span>
+    <span style="flex:1"></span>
+    <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
+  </div>
+  <div id="attr"></div>
+</div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let lastText = "", running = false;
+
+async function loadModels(){
+  const r = await fetch("/api/models"); const d = await r.json();
+  for(const sel of [$("lensE"), $("lensD")]){
+    sel.innerHTML = d.models.map(m => `<option>${m}</option>`).join("");
+  }
+}
+
+function setVerdict(msg, cls){ const v = $("verdict"); v.textContent = msg; v.style.color = cls === "ok" ? "var(--ok)" : cls === "bad" ? "var(--bad)" : "var(--muted)"; }
+function resetView(){ $("stream").innerHTML = ""; $("attr").innerHTML = ""; for(const id of ["stTok","stCar","stFrm","stPay"]) $(id).textContent = "–"; $("btnCopy").style.display = "none"; }
+
+function addToken(e){
+  const s = document.createElement("span");
+  s.className = `tok b${e.bucket}` + (e.carrier ? " car" : "");
+  s.textContent = e.piece;
+  s.title = `rank ${e.rank} · H ${e.entropy} nats` + (e.carrier ? ` · bit ${e.bit}` : " · carrier-null");
+  $("stream").appendChild(s);
+}
+
+async function streamPost(url, body, onEvent){
+  const resp = await fetch(url, {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)});
+  if(!resp.ok){ throw new Error((await resp.json()).detail || resp.statusText); }
+  const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = "";
+  while(true){
+    const {done, value} = await reader.read();
+    if(done) break;
+    buf += dec.decode(value, {stream:true});
+    let nl;
+    while((nl = buf.indexOf("\n")) >= 0){
+      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+      if(line) onEvent(JSON.parse(line));
+    }
+  }
+}
+
+function busy(b){ running = b; for(const id of ["btnEmbed","btnDecode","btnAttr","btnCut"]) $(id).disabled = b; }
+
+function channelParams(side){ // side = "E" | "D"
+  const prof = $("prof" + side).value, win = $("win" + side).value;
+  return {
+    framing: prof === "v1" ? "v1" : "v2",
+    profile: prof === "v1" ? 1 : +prof,
+    window: win ? +win : null,
+  };
+}
+
+async function runEmbed(){
+  if(running) return; busy(true); resetView();
+  let toks = 0, carriers = 0;
+  setVerdict("loading lens… (first time takes ~a minute)");
+  try{
+    await streamPost("/api/embed", {
+      prompt: $("prompt").value, payload: $("payload").value.trim(),
+      model: $("lensE").value, tau: +$("tauE").value, max_tokens: +$("maxtok").value,
+      ...channelParams("E")
+    }, e => {
+      if(e.type === "token"){ addToken(e); toks++; if(e.carrier) carriers++;
+        $("stTok").textContent = toks; $("stCar").textContent = carriers;
+        setVerdict(`embedding… ${toks} tokens, ${carriers} bits planted`);
+      } else if(e.type === "done"){
+        lastText = e.text; $("intext").value = e.text; $("btnCopy").style.display = "";
+        $("profD").value = $("profE").value; $("winD").value = $("winE").value; // decode with matching channel
+        $("stFrm").textContent = e.frames_planted; $("stPay").textContent = "0x" + $("payload").value.trim();
+        const enough = e.frames_planted >= 1;
+        setVerdict(`embedded ${e.bits_planted} bits (${e.frames_planted} frames)` +
+          (enough ? " — switch to decode to verify" : " — under 1 full frame, raise max tokens"),
+          enough ? "ok" : "bad");
+        if(!e.retokenizes_cleanly) setVerdict("warning: text does not re-tokenize cleanly; decode may fail", "bad");
+      } else if(e.type === "error"){ setVerdict(e.message, "bad"); }
+    });
+  }catch(err){ setVerdict(err.message, "bad"); }
+  busy(false);
+}
+
+async function runDecode(model, keepAttr){
+  const text = $("intext").value.trim();
+  if(!text){ setVerdict("paste some text first", "bad"); return null; }
+  if(!keepAttr) $("attr").innerHTML = "";
+  $("stream").innerHTML = ""; $("btnCopy").style.display = "none";
+  let toks = 0, carriers = 0, verdict = null;
+  setVerdict(`reading through ${model}… (loading the lens can take a minute)`);
+  try{
+    await streamPost("/api/decode", {text, model, tau: +$("tauD").value, ...channelParams("D")}, e => {
+      if(e.type === "token"){ addToken(e); toks++; if(e.carrier) carriers++;
+        $("stTok").textContent = toks; $("stCar").textContent = carriers;
+        setVerdict(`scoring through ${model}… ${toks} tokens`);
+      } else if(e.type === "done"){
+        verdict = e;
+        $("stFrm").textContent = e.frames; $("stPay").textContent = e.payload ? "0x" + e.payload : "–";
+        setVerdict(e.valid
+          ? `checksum valid — payload 0x${e.payload} recovered — this text was generated by ${model}`
+          : `no valid frame — ${model} cannot read this text (wrong lens, unwatermarked, or edited)`,
+          e.valid ? "ok" : "bad");
+      }
+    });
+  }catch(err){ setVerdict(err.message, "bad"); }
+  return verdict;
+}
+
+async function runAttribute(){
+  if(running) return; busy(true);
+  $("attr").innerHTML = "";
+  const models = [...$("lensD").options].map(o => o.value);
+  const rows = [];
+  for(const m of models){
+    const v = await runDecode(m, true);
+    if(!v) break;
+    rows.push(v);
+    const d = document.createElement("div");
+    d.innerHTML = `<span style="color:${v.valid ? "var(--ok)" : "var(--bad)"}">${v.valid ? "✓" : "✗"}</span>` +
+      `<span style="font-family:ui-monospace,monospace">${m}</span>` +
+      `<span style="color:var(--muted)">${v.valid ? `payload 0x${v.payload} · ${v.frames} frame(s)` : `${v.carriers} carriers, no valid frame`}</span>`;
+    $("attr").appendChild(d);
+  }
+  const winners = rows.filter(v => v.valid);
+  if(rows.length === models.length){
+    setVerdict(winners.length === 1 ? `ATTRIBUTED: ${winners[0].lens} (payload 0x${winners[0].payload})`
+      : winners.length ? `AMBIGUOUS: ${winners.map(v => v.lens).join(", ")}` : "UNATTRIBUTED — no lens validates",
+      winners.length === 1 ? "ok" : winners.length ? "" : "bad");
+  }
+  busy(false);
+}
+
+function setMode(embed){
+  $("pEmbed").style.display = embed ? "" : "none";
+  $("pDecode").style.display = embed ? "none" : "";
+  $("mEmbed").classList.toggle("on", embed);
+  $("mDecode").classList.toggle("on", !embed);
+}
+$("mEmbed").onclick = () => setMode(true);
+$("mDecode").onclick = () => setMode(false);
+$("btnEmbed").onclick = runEmbed;
+$("btnDecode").onclick = () => { if(!running){ busy(true); runDecode($("lensD").value).finally(() => busy(false)); } };
+$("btnAttr").onclick = runAttribute;
+$("btnCut").onclick = () => {
+  const t = $("intext").value, n = Math.floor(t.length / 6);
+  if(t.length < 12){ setVerdict("nothing to truncate", "bad"); return; }
+  $("intext").value = t.slice(n, t.length - n);
+  setVerdict("cut a sixth off each end — now decode", "");
+};
+$("btnCopy").onclick = () => navigator.clipboard.writeText(lastText);
+loadModels();
+</script>
+</body>
+</html>
