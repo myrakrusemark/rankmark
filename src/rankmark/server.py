@@ -66,6 +66,7 @@ class EmbedRequest(BaseModel):
     window: int | None = None
     temperature: float = 0.0
     top_k: int = 48
+    instruct: bool = False  # prompt is an instruction; only the reply is visible
 
 
 def ndjson(events) -> StreamingResponse:
@@ -170,7 +171,7 @@ def api_embed(req: EmbedRequest) -> StreamingResponse:
             try:
                 result = embed(
                     lens, req.prompt, payload, params,
-                    max_new_tokens=req.max_tokens, on_token=on_token,
+                    max_new_tokens=req.max_tokens, on_token=on_token, instruct=req.instruct,
                 )
                 q.put(
                     {

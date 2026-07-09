@@ -27,7 +27,8 @@ def cmd_embed(args) -> int:
     params = ChannelParams(tau=args.tau, profile=args.profile, window=args.window,
                            temperature=args.temperature, top_k=args.top_k)
     payload = bytes.fromhex(args.payload)
-    result = embed(lens, args.prompt, payload, params, max_new_tokens=args.max_tokens)
+    result = embed(lens, args.prompt, payload, params, max_new_tokens=args.max_tokens,
+                   instruct=args.instruct)
 
     print(result.text)
     print(
@@ -131,8 +132,11 @@ def main() -> int:
 
     p = sub.add_parser("embed", help="generate text with an embedded payload")
     p.add_argument("--model", required=True)
-    p.add_argument("--prompt", required=True)
+    p.add_argument("--prompt", required=True, help="completion prefix, or an instruction with --instruct")
     p.add_argument("--payload", required=True, help="hex bytes, e.g. a7")
+    p.add_argument("--instruct", action="store_true",
+                   help="treat --prompt as an instruction to a chat model; only the "
+                        "reply is visible (needs --window)")
     p.add_argument("--max-tokens", type=int, default=300)
     p.add_argument("--verify", action="store_true", help="round-trip decode before exiting")
     p.add_argument("--out", help="write result json here")
@@ -153,7 +157,11 @@ def main() -> int:
     p.set_defaults(fn=cmd_attribute)
 
     p = sub.add_parser("serve", help="run the local web UI")
-    p.add_argument("--pool", default="Qwen/Qwen2.5-3B,gpt2", help="lenses offered in the UI")
+    p.add_argument(
+        "--pool",
+        default="gpt2,Qwen/Qwen2.5-0.5B-Instruct,Qwen/Qwen2.5-3B,Qwen/Qwen2.5-3B-Instruct",
+        help="lenses offered in the UI",
+    )
     p.add_argument("--port", type=int, default=8765)
     p.set_defaults(fn=cmd_serve)
 

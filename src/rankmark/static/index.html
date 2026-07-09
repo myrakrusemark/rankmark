@@ -82,7 +82,7 @@
       <input id="msg" style="width:100%;box-sizing:border-box" placeholder="meet me at noon" maxlength="60">
     </div>
     <div>
-      <label>cover story &mdash; the visible text will start like this</label><br>
+      <label id="promptLabel">cover story &mdash; the visible text will start like this</label><br>
       <input id="prompt" style="width:100%;box-sizing:border-box" value="The history of cryptography begins with">
     </div>
     <details class="adv" id="advE">
@@ -172,12 +172,29 @@ const $ = id => document.getElementById(id);
 const BASE = location.protocol.startsWith("http") ? "" : "http://127.0.0.1:8765";
 let lastText = "", running = false;
 
+const isInstruct = name => /instruct|chat|-it\b/i.test(name || "");
+
+// an instruct lens turns the cover story into an instruction — the reply is
+// the whole visible text, and the window makes the instruction disposable so
+// the decoder never needs it
+function syncInstructUi(){
+  const inst = isInstruct($("lensE").value);
+  $("promptLabel").innerHTML = inst
+    ? "instruction &mdash; tell the AI what to write about"
+    : "cover story &mdash; the visible text will start like this";
+  $("prompt").placeholder = inst
+    ? "Write a short paragraph about the history of lighthouses."
+    : "";
+}
+
 async function loadModels(){
   try{
     const r = await fetch(BASE + "/api/models"); const d = await r.json();
     for(const sel of [$("lensE"), $("lensD")]){
       sel.innerHTML = d.models.map(m => `<option>${m}</option>`).join("");
     }
+    $("lensE").onchange = syncInstructUi;
+    syncInstructUi();
   }catch(err){
     setVerdict(`can't reach the rankmark server${BASE ? ` at ${BASE}` : ""} — start it with: rankmark serve`, "bad");
   }
@@ -320,6 +337,8 @@ async function runEmbed(){
     $("payload").value = [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
   }
   if(!$("payload").value.trim()){ setVerdict("type a secret message first", "bad"); return; }
+  const instruct = isInstruct($("lensE").value);
+  if(instruct && !$("winE").value) $("winE").value = 48; // instruction must be disposable
   if(auto){
     // accordion closed: choose everything from the message
     const nbytes = $("payload").value.trim().length / 2;
@@ -338,7 +357,7 @@ async function runEmbed(){
     await streamPost("/api/embed", {
       prompt: $("prompt").value, payload: $("payload").value.trim(),
       model: $("lensE").value, tau: +$("tauE").value, max_tokens: +$("maxtok").value,
-      ...channelParams("E")
+      instruct, ...channelParams("E")
     }, e => {
       if(e.type === "token"){ addToken(e); toks++; if(e.carrier) carriers++;
         $("stTok").textContent = toks; $("stCar").textContent = carriers;

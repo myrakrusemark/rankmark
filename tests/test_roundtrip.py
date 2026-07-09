@@ -72,6 +72,27 @@ def test_v2_frame_survives_truncation(gpt2):
 
 
 @pytest.mark.slow
+def test_instruct_instruction_is_disposable_past_window():
+    """Instruct mode: the decoder gets only the reply (never the instruction).
+    Past the window, encoder and decoder must compute identical carrier bits —
+    that agreement is what lets a frame validate without the instruction."""
+    win = 24
+    lens = load_lens("Qwen/Qwen2.5-0.5B-Instruct")
+    params = ChannelParams(tau=2.0, profile=0, window=win, temperature=0.0)
+    enc = []
+    result = embed(lens, "Describe a lighthouse in two sentences.", b"hi", params,
+                   max_new_tokens=120, instruct=True,
+                   on_token=lambda c: enc.append((c.planted, c.rank % 2)))
+    assert result.retokenizes_cleanly
+    ids = lens.tokenizer(result.text, add_special_tokens=False).input_ids
+    dec = {o.pos: (o.entropy >= params.tau, o.rank % 2) for o in scan(lens, ids, win)}
+
+    after = [p for p in range(win, len(enc)) if p in dec]
+    assert after, "generation too short to reach past the window"
+    assert all(enc[p] == dec[p] for p in after)  # instruction scrolled out → exact match
+
+
+@pytest.mark.slow
 def test_unwatermarked_text_does_not_validate(gpt2):
     text = (
         "Cryptography is the practice and study of techniques for secure "

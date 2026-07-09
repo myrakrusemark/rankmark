@@ -36,6 +36,23 @@ def context_ids(lens: Lens, text: str) -> list[int]:
     return ids
 
 
+def instruct_context_ids(lens: Lens, instruction: str) -> list[int]:
+    """Chat-template context: the instruction as a user turn, primed for the
+    assistant's reply. Only the assistant reply is ever visible/decoded, so
+    the decoder never sees this prefix — the window makes it a disposable head."""
+    if not getattr(lens.tokenizer, "chat_template", None):
+        raise ValueError(f"{lens.name} has no chat template; instruct mode needs one")
+    # render to text then encode — apply_chat_template's tokenize=True return
+    # shape varies across transformers versions; the string path is stable and
+    # the special tokens (<|im_start|> etc.) encode from the vocab.
+    templated = lens.tokenizer.apply_chat_template(
+        [{"role": "user", "content": instruction}],
+        add_generation_prompt=True,
+        tokenize=False,
+    )
+    return lens.tokenizer(templated, add_special_tokens=False).input_ids
+
+
 def embed(
     lens: Lens,
     prompt: str,
@@ -44,6 +61,7 @@ def embed(
     max_new_tokens: int = 300,
     on_token=None,
     seed: int | None = None,
+    instruct: bool = False,
 ) -> EmbedResult:
     params = params or ChannelParams()
     gen = None
@@ -53,7 +71,9 @@ def embed(
     bit_stream = itertools.cycle(frame)
     next_bit = next(bit_stream)
 
-    prompt_ctx = context_ids(lens, prompt)
+    if instruct and not params.window:
+        raise ValueError("instruct mode needs a window — the instruction must be disposable")
+    prompt_ctx = instruct_context_ids(lens, prompt) if instruct else context_ids(lens, prompt)
     if not prompt_ctx:
         raise ValueError("prompt tokenized to nothing and tokenizer has no BOS")
     ids = list(prompt_ctx)
@@ -90,19 +110,28 @@ def embed(
         else:
             logits = scorer.step(choice.token_id)
 
-    bos_len = len(prompt_ctx) - len(lens.tokenizer(prompt, add_special_tokens=False).input_ids)
-    full_ids = ids[bos_len:]  # strip BOS for text rendering
-    text = lens.tokenizer.decode(full_ids, skip_special_tokens=True)
-    continuation = lens.tokenizer.decode(ids[len(prompt_ctx) :], skip_special_tokens=True)
+    gen_ids = ids[len(prompt_ctx) :]
+    continuation = lens.tokenizer.decode(gen_ids, skip_special_tokens=True)
+    if instruct:
+        # only the assistant reply is visible; the decoder scans exactly this
+        text = continuation
+        visible_ids = [t for t in gen_ids if t != eos]
+        retokenizes = lens.tokenizer(text, add_special_tokens=False).input_ids == visible_ids
+    else:
+        # completion: the prompt is part of the visible text (that is why the
+        # decoder never needs it separately)
+        bos_len = len(prompt_ctx) - len(lens.tokenizer(prompt, add_special_tokens=False).input_ids)
+        visible_ids = ids[bos_len:]
+        text = lens.tokenizer.decode(visible_ids, skip_special_tokens=True)
+        retokenizes = context_ids(lens, text) == ids
 
-    reencoded = context_ids(lens, text)
     return EmbedResult(
         text=text,
         continuation=continuation,
-        token_ids=full_ids,
+        token_ids=visible_ids,
         bits_planted=planted,
         frames_planted=planted / len(frame),
         carrier_nulls=nulls,
-        retokenizes_cleanly=reencoded == ids,
+        retokenizes_cleanly=retokenizes,
         fingerprint=lens.fingerprint,
     )
