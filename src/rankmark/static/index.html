@@ -64,7 +64,22 @@
   .bit.k-checksum{background:var(--b3);border-color:var(--b3);color:var(--b3t)}
   .bit.k-parity{background:var(--b2);border-color:var(--b2);color:var(--b2t)}
   .bit.forming{opacity:.45}  /* tentative: part detected, checksum not yet confirmed */
-</style>
+  /* hide flow: form collapses to a summary, output grows in a drawer below */
+  #hideForm{overflow:hidden;transition:max-height .38s ease, opacity .28s ease;max-height:1200px}
+  #hideForm.collapsed{max-height:0;opacity:0;margin:0;pointer-events:none}
+  #hideSummary{display:flex;gap:10px;align-items:baseline;font-size:14px;color:var(--muted);
+    padding:2px 0 4px}
+  #hideSummary b{color:var(--text);font-weight:600}
+  #hideSummary .link{cursor:pointer;color:var(--accent);font-size:13px}
+  #hideSummary .link:hover{text-decoration:underline}
+  .prog{height:6px;background:var(--bg);border:1px solid var(--border);border-radius:99px;
+    overflow:hidden}
+  .prog > div{height:100%;width:0;background:var(--accent);transition:width .25s ease;border-radius:99px}
+  .prog.full > div{background:var(--ok)}
+  #hideDrawer,#revealOut{margin-top:12px;animation:grow .3s ease}
+  #hideDrawer .caption{font-size:12px;color:var(--muted);margin:2px 0 8px}
+  @keyframes grow{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+</style></style>
 </head>
 <body>
 <main>
@@ -77,6 +92,12 @@
   </div>
 
   <div id="pEmbed" style="padding-top:14px">
+   <div id="hideSummary" style="display:none">
+     <span>hiding <b id="sumMsg"></b> in <b id="sumCover"></b></span>
+     <span style="flex:1"></span>
+     <span class="link" id="btnNewHide">new message</span>
+   </div>
+   <div id="hideForm">
     <div style="margin-bottom:10px">
       <label>your secret message</label><br>
       <input id="msg" style="width:100%;box-sizing:border-box" placeholder="meet me at noon" maxlength="60">
@@ -119,6 +140,7 @@
       <button class="primary" id="btnEmbed">hide it in text &rarr;</button>
     </div>
     <p class="hint">Type a secret. The AI writes an innocent-looking paragraph and hides your message in its word choices &mdash; invisible to anyone reading, but the same AI can find it again later. Takes a few minutes (it thinks one word at a time).</p>
+   </div>
   </div>
 
   <div id="pDecode" style="padding-top:14px;display:none">
@@ -146,22 +168,23 @@
   </div>
 
   <div id="verdict"></div>
-  <div class="chips">
-    <div class="chip"><b id="stTok">&ndash;</b><span>word-pieces scanned</span></div>
-    <div class="chip"><b id="stCar">&ndash;</b><span>spots hiding bits</span></div>
-    <div class="chip"><b id="stFrm">&ndash;</b><span>copies of the message</span></div>
-    <div class="chip"><b id="stPay" style="font-family:ui-monospace,monospace">&ndash;</b><span>the secret</span></div>
+
+  <div id="hideDrawer" style="display:none">
+    <div class="prog" id="hideProg"><div id="progBar"></div></div>
+    <div class="caption" id="hideCaption">starting&hellip;</div>
+    <div id="stream"></div>
+    <div class="legend" id="legendE">
+      <span><span class="tok bit0">underline</span> carries a 0</span>
+      <span><span class="tok bit1">underline</span> carries a 1</span>
+      <span>no underline = no hidden bit here &middot; hover any word for details</span>
+      <span style="flex:1"></span>
+      <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
+    </div>
   </div>
-  <div id="stream"></div>
-  <div id="bits" style="display:none"></div>
-  <div class="legend" id="legendE">
-    <span><span class="tok bit0">underline</span> carries a 0</span>
-    <span><span class="tok bit1">underline</span> carries a 1</span>
-    <span>no underline = no hidden bit here &middot; hover any word for details</span>
-    <span style="flex:1"></span>
-    <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
-  </div>
-  <div class="legend" id="legendD" style="display:none">
+
+  <div id="revealOut" style="display:none">
+  <div id="bits"></div>
+  <div class="legend" id="legendD">
     <span><span class="bit k-sync" style="width:auto;padding:0 6px">sync</span> start knock</span>
     <span><span class="bit k-header" style="width:auto;padding:0 6px">header</span> length + author tag</span>
     <span><span class="bit k-payload" style="width:auto;padding:0 6px">payload</span> your message</span>
@@ -171,6 +194,7 @@
     <span>hover a bit to see the word that carries it</span>
   </div>
   <div id="attr"></div>
+  </div>
 </div>
 </main>
 <script>
@@ -209,14 +233,41 @@ async function loadModels(){
 }
 
 function setVerdict(msg, cls){ const v = $("verdict"); v.textContent = msg; v.style.color = cls === "ok" ? "var(--ok)" : cls === "bad" ? "var(--bad)" : "var(--muted)"; }
-function resetView(){ $("stream").innerHTML = ""; $("bits").innerHTML = ""; $("attr").innerHTML = ""; for(const id of ["stTok","stCar","stFrm","stPay"]) $(id).textContent = "–"; $("btnCopy").style.display = "none"; }
+function resetView(){ $("stream").innerHTML = ""; $("bits").innerHTML = ""; $("attr").innerHTML = ""; $("btnCopy").style.display = "none"; }
 
-// hide paints the text; reveal paints the recovered bit stream
+function setProgress(frac, done){  // bar fills 0..1 within the CURRENT copy, restarts each copy
+  $("progBar").style.width = Math.max(0, Math.min(100, Math.round(frac * 100))) + "%";
+  $("hideProg").classList.toggle("full", !!done);
+}
+// copies saved + bytes into the copy in progress; the bar cycles per copy
+function updateHideStats(carriers, frameBits, nbytes){
+  if(!frameBits){ return; }
+  const copies = Math.floor(carriers / frameBits);
+  const frac = (carriers % frameBits) / frameBits;
+  const bytes = Math.min(nbytes, Math.round(frac * nbytes));
+  setProgress(frac, false);
+  $("hideCaption").textContent =
+    `${bytes} / ${nbytes} bytes into copy ${copies + 1}  ·  ${copies} full ${copies === 1 ? "copy" : "copies"} saved`;
+}
+function collapseHideForm(){  // form -> one-line summary of what's being hidden
+  const secret = $("msg").value.trim() || payloadText($("payload").value.trim()) || ("0x" + $("payload").value.trim());
+  $("sumMsg").textContent = "“" + secret + "”";
+  const cover = ($("prompt").value.trim() || "").slice(0, 64);
+  $("sumCover").textContent = isInstruct($("lensE").value) ? ("a reply to “" + cover + "”") : ("“" + cover + "…”");
+  $("hideForm").classList.add("collapsed");
+  $("hideSummary").style.display = "flex";
+}
+function resetHideForm(){
+  $("hideForm").classList.remove("collapsed");
+  $("hideSummary").style.display = "none";
+  $("hideDrawer").style.display = "none";
+  setProgress(0);
+}
+
+// hide shows the text drawer; reveal shows the bit-strip output
 function showView(kind){
-  $("stream").style.display = kind === "text" ? "" : "none";
-  $("legendE").style.display = kind === "text" ? "" : "none";
-  $("bits").style.display = kind === "bits" ? "" : "none";
-  $("legendD").style.display = kind === "bits" ? "" : "none";
+  $("hideDrawer").style.display = kind === "text" ? "" : "none";
+  $("revealOut").style.display = kind === "bits" ? "" : "none";
 }
 
 const SPAN_LABELS = {sync: "sync — start knock", header: "header — length + author tag",
@@ -330,7 +381,6 @@ $("msg").addEventListener("input", () => {
 
 async function runEmbed(){
   if(running) return;
-  const auto = !$("advE").open;  // only affects verdict wording now
   const msg = $("msg").value.trim();
   if(msg){
     const bytes = new TextEncoder().encode(msg);
@@ -339,36 +389,33 @@ async function runEmbed(){
   }
   if(!$("payload").value.trim()){ setVerdict("type a secret message first", "bad"); return; }
   const instruct = isInstruct($("lensE").value);
-  busy(true); resetView(); showView("text");
-  let toks = 0, carriers = 0, frameBits = 0;
-  setVerdict("loading lens… (first time takes ~a minute)");
+  const nbytes = $("payload").value.trim().length / 2;
+  busy(true); resetView(); collapseHideForm(); showView("text"); setProgress(0);
+  $("hideCaption").textContent = "starting…";
+  let carriers = 0, frameBits = 0;
+  setVerdict("loading the AI… (first time takes ~a minute)");
   try{
     await streamPost("/api/embed", {
       prompt: $("prompt").value, payload: $("payload").value.trim(),
       model: $("lensE").value, tau: +$("tauE").value, max_tokens: 0,  // server sizes it
       instruct, ...channelParams("E")
     }, e => {
-      if(e.type === "start"){ frameBits = e.frame_bits; }
-      else if(e.type === "token"){ addToken(e); toks++; if(e.carrier) carriers++;
-        $("stTok").textContent = toks; $("stCar").textContent = carriers;
-        if(frameBits) $("stFrm").textContent = (carriers / frameBits).toFixed(2);  // copies so far
-        setVerdict(`hiding… ${toks} words written, ${carriers} bits planted`);
+      if(e.type === "start"){ frameBits = e.frame_bits; setVerdict(""); }
+      else if(e.type === "token"){ addToken(e); if(e.carrier) carriers++;
+        updateHideStats(carriers, frameBits, nbytes);
       } else if(e.type === "done"){
         lastText = e.text; $("intext").value = e.text; $("btnCopy").style.display = "";
         $("winD").value = $("winE").value; // decode with a matching channel
-        $("stFrm").textContent = e.frames_planted;
-        $("stPay").textContent = payloadText($("payload").value.trim())
-          ? `“${payloadText($("payload").value.trim())}”` : "0x" + $("payload").value.trim();
+        const copies = frameBits ? Math.floor(carriers / frameBits) : 0;
         const enough = e.frames_planted >= 1;
-        setVerdict(auto
-          ? (enough ? "done! your message is hidden in this text — hit reveal to prove it's there"
-                    : "the text came out too short to hold the whole message — try a shorter secret")
-          : `embedded ${e.bits_planted} bits (${e.frames_planted} copies)` +
-            (enough ? " — switch to reveal to verify" : " — under one full copy; try a shorter secret or less durable packaging"),
+        if(enough){ setProgress(1, true);
+          $("hideCaption").textContent = `saved — ${copies} full ${copies === 1 ? "copy" : "copies"} of your ${nbytes}-byte message hidden in the text`; }
+        setVerdict(enough
+          ? "done — your message is fully hidden in this text. switch to reveal to prove it's there."
+          : "the text came out too short to hold the whole message — try a shorter secret",
           enough ? "ok" : "bad");
-        if(!e.retokenizes_cleanly && enough) setVerdict(auto // never hide a fatal too-short verdict
-          ? "done — one spot came out fragile, but the reveal usually still works; try it (if it fails, tweak the cover story and re-hide)"
-          : "warning: text does not re-tokenize cleanly; soft decode usually survives it", "bad");
+        if(!e.retokenizes_cleanly && enough)
+          setVerdict("done — one spot came out fragile, but reveal usually still works; try it (or tweak the cover story and re-hide)", "");
       } else if(e.type === "error"){ setVerdict(e.message, "bad"); }
     });
   }catch(err){ setVerdict(err.message, "bad"); }
@@ -386,23 +433,18 @@ async function runDecode(model, keepAttr){
   try{
     await streamPost("/api/decode", {text, model, tau: +$("tauD").value, ...channelParams("D")}, e => {
       if(e.type === "token"){ toks++; if(e.carrier){ carriers++; addBit(e); }
-        $("stTok").textContent = toks; $("stCar").textContent = carriers;
         if(!found) setVerdict(`scoring through ${model}… ${toks} tokens`);
       } else if(e.type === "partial"){ // sync/header/body forming, pre-checksum
         paintPartial(e.spans);
       } else if(e.type === "frame"){ // a frame locked mid-scan — surface it now
         found = true; paintSpans(e.spans);
         const msg = payloadText(e.payload);
-        $("stFrm").textContent = e.frames;
-        $("stPay").textContent = msg ? `“${msg}”` : "0x" + e.payload;
         setVerdict(`✅ found it — ${msg ? `hidden message: “${msg}”` : `hidden data 0x${e.payload}`}`
           + ` · written by ${model} · still scanning for more copies…`, "ok");
       } else if(e.type === "done"){
         verdict = e;
         paintSpans(e.spans);
         const msg = e.payload && payloadText(e.payload);
-        $("stFrm").textContent = e.frames;
-        $("stPay").textContent = e.payload ? (msg ? `“${msg}”` : "0x" + e.payload) : "–";
         setVerdict(e.valid
           ? `✅ found it — ${msg ? `hidden message: “${msg}”` : `hidden data 0x${e.payload}`} · this text was written by ${model}`
           : ($("advD").open
@@ -470,9 +512,11 @@ function setMode(embed){
   $("pDecode").style.display = embed ? "none" : "";
   $("mEmbed").classList.toggle("on", embed);
   $("mDecode").classList.toggle("on", !embed);
+  if(!running){ resetHideForm(); $("revealOut").style.display = "none"; setVerdict(""); }
 }
 $("mEmbed").onclick = () => setMode(true);
 $("mDecode").onclick = () => setMode(false);
+$("btnNewHide").onclick = () => { if(!running){ resetHideForm(); setVerdict(""); $("msg").focus(); } };
 // the accordions remember whether you left them open
 for(const id of ["advE", "advD"]){
   try{ if(localStorage["rm_" + id]) $(id).open = true; }catch{}
