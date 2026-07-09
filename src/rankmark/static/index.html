@@ -48,6 +48,8 @@
   #tip{position:fixed;display:none;pointer-events:none;z-index:10;background:var(--card);
     border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;
     font-family:ui-monospace,monospace;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap}
+  body:not(.adv) .advOnly{display:none!important}
+  body.adv .simpleOnly{display:none!important}
 </style>
 </head>
 <body>
@@ -56,18 +58,25 @@
   <div class="row" style="padding-bottom:12px;border-bottom:1px solid var(--border)">
     <h1>rankmark <span style="font-weight:400;color:var(--muted);font-size:13px">the model is the key</span></h1>
     <span style="flex:1"></span>
-    <button class="mode on" id="mEmbed">embed</button>
-    <button class="mode" id="mDecode">decode</button>
+    <button class="mode on" id="mEmbed"><span class="simpleOnly">hide</span><span class="advOnly">embed</span></button>
+    <button class="mode" id="mDecode"><span class="simpleOnly">reveal</span><span class="advOnly">decode</span></button>
+    <button class="mode" id="mAdv" title="show all the research knobs">advanced</button>
   </div>
 
   <div id="pEmbed" style="padding-top:14px">
-    <div class="row">
-      <div style="flex:2;min-width:240px"><label>prompt</label><br>
-        <input id="prompt" style="width:100%;box-sizing:border-box" value="The history of cryptography begins with"></div>
-      <div><label>payload (hex)</label><br><input id="payload" class="num" value="a7" style="font-family:ui-monospace,monospace"></div>
-      <div><label>max tokens</label><br><input id="maxtok" class="num" type="number" value="500" min="50" max="2000"></div>
+    <div class="simpleOnly" style="margin-bottom:10px">
+      <label>your secret message</label><br>
+      <input id="msg" style="width:100%;box-sizing:border-box" placeholder="meet me at noon" maxlength="60">
     </div>
-    <div class="row" style="margin-top:10px">
+    <div class="row">
+      <div style="flex:2;min-width:240px">
+        <label class="simpleOnly">cover story — the visible text will start like this</label>
+        <label class="advOnly">prompt</label><br>
+        <input id="prompt" style="width:100%;box-sizing:border-box" value="The history of cryptography begins with"></div>
+      <div class="advOnly"><label>payload (hex)</label><br><input id="payload" class="num" value="a7" style="font-family:ui-monospace,monospace"></div>
+      <div class="advOnly"><label>max tokens</label><br><input id="maxtok" class="num" type="number" value="500" min="50" max="2000"></div>
+    </div>
+    <div class="row advOnly" style="margin-top:10px">
       <div><label>generate with</label><br><select id="lensE"></select></div>
       <div><label>&tau; gate (nats)</label><br><input id="tauE" class="num" type="number" value="2.0" min="0.5" max="6" step="0.1"></div>
       <div><label>frame profile</label><br><select id="profE">
@@ -78,40 +87,44 @@
         <option value="v1">v1 — legacy MAGIC/CRC16</option>
       </select></div>
       <div><label>window (tokens)</label><br><input id="winE" class="num" type="number" placeholder="full" min="16" max="512"></div>
-      <span style="flex:1"></span>
-      <button class="primary" id="btnEmbed">embed &rarr;</button>
     </div>
-    <p class="hint">Generates token by token, picking rank-0 or rank-1 tokens so their parity spells out the payload. Underlined tokens carry a bit; the rest are carrier-nulls. Set a <b>window</b> (e.g. 64) to make the mark survive truncation — ranks are then scored from bounded context, so cutting the head off the text only disturbs the first <i>window</i> tokens instead of everything. CPU speed: expect a couple of tokens per second (slower with a window).</p>
+    <div class="row" style="margin-top:12px">
+      <span style="flex:1"></span>
+      <button class="primary" id="btnEmbed"><span class="simpleOnly">hide it in text &rarr;</span><span class="advOnly">embed &rarr;</span></button>
+    </div>
+    <p class="hint simpleOnly">Type a secret. The AI writes an innocent-looking paragraph and hides your message in its word choices — invisible to anyone reading, but the same AI can find it again later. Takes a few minutes (it thinks one word at a time).</p>
+    <p class="hint advOnly">Generates token by token, picking rank-0 or rank-1 tokens so their parity spells out the payload. Underlined tokens carry a bit; the rest are carrier-nulls. Set a <b>window</b> (e.g. 64) to make the mark survive truncation — ranks are then scored from bounded context, so cutting the head off the text only disturbs the first <i>window</i> tokens instead of everything. CPU speed: expect a couple of tokens per second (slower with a window).</p>
   </div>
 
   <div id="pDecode" style="padding-top:14px;display:none">
-    <label>text to decode</label>
-    <textarea id="intext" rows="6" placeholder="paste text here (or embed first — the result lands here automatically)"></textarea>
-    <div class="row" style="margin-top:10px">
+    <label class="simpleOnly">paste text that might have a hidden message</label>
+    <label class="advOnly">text to decode</label>
+    <textarea id="intext" rows="6" placeholder="paste text here (or hide a message first — the result lands here automatically)"></textarea>
+    <div class="row advOnly" style="margin-top:10px">
       <div><label>read through</label><br><select id="lensD"></select></div>
       <div><label>&tau; gate (nats)</label><br><input id="tauD" class="num" type="number" value="2.0" min="0.5" max="6" step="0.1"></div>
-      <div><label>frame profile</label><br><select id="profD">
-        <option value="0">lean</option>
-        <option value="1" selected>standard</option>
-        <option value="2">robust</option>
-        <option value="3">gateless</option>
+      <div><label>format</label><br><select id="fmtD">
+        <option value="v2" selected>v2 (profile auto-detected)</option>
         <option value="v1">v1 legacy</option>
       </select></div>
       <div><label>window (tokens)</label><br><input id="winD" class="num" type="number" placeholder="full" min="16" max="512"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
       <span style="flex:1"></span>
       <button id="btnCut" title="cut a sixth off each end — the truncation test">&#9986; truncate</button>
-      <button id="btnAttr">attribute (all lenses)</button>
-      <button class="primary" id="btnDecode">decode &rarr;</button>
+      <button id="btnAttr" class="advOnly">attribute (all lenses)</button>
+      <button class="primary" id="btnDecode"><span class="simpleOnly">reveal the message &rarr;</span><span class="advOnly">decode &rarr;</span></button>
     </div>
-    <p class="hint">Re-reads the text through the chosen model's logits, recovers each token's rank, re-applies the entropy gate, and looks for a checksum-valid frame. Only the model that generated the text should validate. Profile and window must match what the embed used. <b>&#9986; truncate</b> chops a sixth off each end — with a window set, the frame survives the cut.</p>
+    <p class="hint simpleOnly">Every AI model on this machine takes a turn reading the text. If one of them wrote it, the hidden message pops out — and you learn which model it was. <b>&#9986; truncate</b> chops off the ends first, to prove the message survives being cut up.</p>
+    <p class="hint advOnly">Re-reads the text through the chosen model's logits, recovers each token's rank, re-applies the entropy gate, and looks for a checksum-valid frame. Only the model that generated the text should validate. The v2 scan auto-detects the profile; the <b>window</b> must match the embed. <b>&#9986; truncate</b> chops a sixth off each end — with a window set, the frame survives the cut.</p>
   </div>
 
   <div id="verdict"></div>
   <div class="chips">
-    <div class="chip"><b id="stTok">&ndash;</b><span>tokens scored</span></div>
-    <div class="chip"><b id="stCar">&ndash;</b><span>bit carriers</span></div>
-    <div class="chip"><b id="stFrm">&ndash;</b><span>valid frames</span></div>
-    <div class="chip"><b id="stPay" style="font-family:ui-monospace,monospace">&ndash;</b><span>payload</span></div>
+    <div class="chip"><b id="stTok">&ndash;</b><span><span class="simpleOnly">word-pieces scanned</span><span class="advOnly">tokens scored</span></span></div>
+    <div class="chip"><b id="stCar">&ndash;</b><span><span class="simpleOnly">spots hiding bits</span><span class="advOnly">bit carriers</span></span></div>
+    <div class="chip"><b id="stFrm">&ndash;</b><span><span class="simpleOnly">copies of the message</span><span class="advOnly">valid frames</span></span></div>
+    <div class="chip"><b id="stPay" style="font-family:ui-monospace,monospace">&ndash;</b><span><span class="simpleOnly">the secret</span><span class="advOnly">payload</span></span></div>
   </div>
   <div id="stream"></div>
   <div class="legend">
@@ -119,7 +132,7 @@
     <span><span class="tok b1">&lt; 100</span></span>
     <span><span class="tok b2">&lt; 1000</span></span>
     <span><span class="tok b3">beyond</span></span>
-    <span>underline = bit carrier &middot; hover a token for details</span>
+    <span><span class="simpleOnly">underlined = carrying a piece of the secret &middot; hover any word for details</span><span class="advOnly">underline = bit carrier &middot; hover a token for details</span></span>
     <span style="flex:1"></span>
     <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
   </div>
@@ -186,7 +199,11 @@ async function streamPost(url, body, onEvent){
 function busy(b){ running = b; for(const id of ["btnEmbed","btnDecode","btnAttr","btnCut"]) $(id).disabled = b; }
 
 function channelParams(side){ // side = "E" | "D"
-  const prof = $("prof" + side).value, win = $("win" + side).value;
+  const win = $("win" + side).value;
+  if(side === "D"){
+    return {framing: $("fmtD").value, profile: 1, window: win ? +win : null};
+  }
+  const prof = $("profE").value;
   return {
     framing: prof === "v1" ? "v1" : "v2",
     profile: prof === "v1" ? 1 : +prof,
@@ -194,8 +211,32 @@ function channelParams(side){ // side = "E" | "D"
   };
 }
 
+const simple = () => !document.body.classList.contains("adv");
+
+function payloadText(hex){ // printable UTF-8 or null
+  try{
+    const bytes = new Uint8Array(hex.match(/../g).map(h => parseInt(h, 16)));
+    const s = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+    return /^[\x20-\x7e\u00a0-\uffff]*$/u.test(s) ? s : null;
+  }catch{ return null; }
+}
+
 async function runEmbed(){
-  if(running) return; busy(true); resetView();
+  if(running) return;
+  if(simple()){
+    // plain-language mode: message as text, everything else chosen for you
+    const msg = $("msg").value.trim();
+    if(!msg){ setVerdict("type a secret message first", "bad"); return; }
+    const bytes = new TextEncoder().encode(msg);
+    if(bytes.length > 60){ setVerdict("message too long — keep it under ~60 characters", "bad"); return; }
+    $("payload").value = [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+    const models = [...$("lensE").options].map(o => o.value);
+    if(models.includes("gpt2")) $("lensE").value = "gpt2"; // fastest lens for the demo
+    $("profE").value = "0"; $("winE").value = 48; $("tauE").value = 2.0;
+    const frameBits = 13 + 18 + 8 * (bytes.length + 4); // lean frame for this payload
+    $("maxtok").value = Math.min(900, Math.max(180, Math.ceil(frameBits * 2 / 0.5)));
+  }
+  busy(true); resetView();
   let toks = 0, carriers = 0;
   setVerdict("loading lens… (first time takes ~a minute)");
   try{
@@ -209,13 +250,20 @@ async function runEmbed(){
         setVerdict(`embedding… ${toks} tokens, ${carriers} bits planted`);
       } else if(e.type === "done"){
         lastText = e.text; $("intext").value = e.text; $("btnCopy").style.display = "";
-        $("profD").value = $("profE").value; $("winD").value = $("winE").value; // decode with matching channel
+        // decode with a matching channel
+        $("fmtD").value = $("profE").value === "v1" ? "v1" : "v2";
+        $("winD").value = $("winE").value;
         $("stFrm").textContent = e.frames_planted; $("stPay").textContent = "0x" + $("payload").value.trim();
         const enough = e.frames_planted >= 1;
-        setVerdict(`embedded ${e.bits_planted} bits (${e.frames_planted} frames)` +
-          (enough ? " — switch to decode to verify" : " — under 1 full frame, raise max tokens"),
+        setVerdict(simple()
+          ? (enough ? "done! your message is hidden in this text — hit reveal to prove it's there"
+                    : "the text came out too short to hold the whole message — try a shorter secret")
+          : `embedded ${e.bits_planted} bits (${e.frames_planted} frames)` +
+            (enough ? " — switch to decode to verify" : " — under 1 full frame, raise max tokens"),
           enough ? "ok" : "bad");
-        if(!e.retokenizes_cleanly) setVerdict("warning: text does not re-tokenize cleanly; decode may fail", "bad");
+        if(!e.retokenizes_cleanly) setVerdict(simple()
+          ? "done — one spot came out fragile, but the reveal usually still works; try it (if it fails, tweak the cover story and re-hide)"
+          : "warning: text does not re-tokenize cleanly; soft decode usually survives it", "bad");
       } else if(e.type === "error"){ setVerdict(e.message, "bad"); }
     });
   }catch(err){ setVerdict(err.message, "bad"); }
@@ -236,10 +284,16 @@ async function runDecode(model, keepAttr){
         setVerdict(`scoring through ${model}… ${toks} tokens`);
       } else if(e.type === "done"){
         verdict = e;
-        $("stFrm").textContent = e.frames; $("stPay").textContent = e.payload ? "0x" + e.payload : "–";
+        const msg = e.payload && payloadText(e.payload);
+        $("stFrm").textContent = e.frames;
+        $("stPay").textContent = e.payload ? (msg ? `“${msg}”` : "0x" + e.payload) : "–";
         setVerdict(e.valid
-          ? `checksum valid — payload 0x${e.payload} recovered — this text was generated by ${model}`
-          : `no valid frame — ${model} cannot read this text (wrong lens, unwatermarked, or edited)`,
+          ? (simple()
+              ? `✅ found it — ${msg ? `hidden message: “${msg}”` : `hidden data 0x${e.payload}`} · this text was written by ${model}`
+              : `checksum valid — payload 0x${e.payload}${msg ? ` (“${msg}”)` : ""} recovered — this text was generated by ${model}`)
+          : (simple()
+              ? `${model} didn't write this one…`
+              : `no valid frame — ${model} cannot read this text (wrong lens, unwatermarked, or edited)`),
           e.valid ? "ok" : "bad");
       }
     });
@@ -271,6 +325,33 @@ async function runAttribute(){
   busy(false);
 }
 
+// simple reveal: try every model, matched window first, then full context
+async function runSimpleFind(){
+  if(running) return; busy(true);
+  $("attr").innerHTML = "";
+  $("fmtD").value = "v2";
+  // fast lens first — it's also simple-embed's default, so the common case ends in one pass
+  const models = [...$("lensD").options].map(o => o.value)
+    .sort((a, b) => (b === "gpt2") - (a === "gpt2"));
+  let found = null;
+  outer:
+  for(const win of ["48", ""]){
+    $("winD").value = win;
+    for(const m of models){
+      const v = await runDecode(m, true);
+      if(v === null) break outer; // no text / request failed
+      if(v.valid){ found = {v, m}; break outer; }
+    }
+  }
+  if(found){
+    const msg = payloadText(found.v.payload);
+    setVerdict(`✅ found it — ${msg ? `hidden message: “${msg}”` : `hidden data 0x${found.v.payload}`} · this text was written by ${found.m}`, "ok");
+  } else if($("intext").value.trim()){
+    setVerdict("❌ no hidden message — none of the models here wrote this text (or it was edited too heavily)", "bad");
+  }
+  busy(false);
+}
+
 function setMode(embed){
   $("pEmbed").style.display = embed ? "" : "none";
   $("pDecode").style.display = embed ? "none" : "";
@@ -279,8 +360,18 @@ function setMode(embed){
 }
 $("mEmbed").onclick = () => setMode(true);
 $("mDecode").onclick = () => setMode(false);
+$("mAdv").onclick = () => {
+  const adv = document.body.classList.toggle("adv");
+  $("mAdv").classList.toggle("on", adv);
+  try{ localStorage.rmAdv = adv ? "1" : ""; }catch{}
+};
+try{ if(localStorage.rmAdv){ document.body.classList.add("adv"); $("mAdv").classList.add("on"); } }catch{}
 $("btnEmbed").onclick = runEmbed;
-$("btnDecode").onclick = () => { if(!running){ busy(true); runDecode($("lensD").value).finally(() => busy(false)); } };
+$("btnDecode").onclick = () => {
+  if(running) return;
+  if(simple()){ runSimpleFind(); return; }
+  busy(true); runDecode($("lensD").value).finally(() => busy(false));
+};
 $("btnAttr").onclick = runAttribute;
 $("btnCut").onclick = () => {
   const t = $("intext").value, n = Math.floor(t.length / 6);
