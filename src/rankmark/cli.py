@@ -24,7 +24,8 @@ def read_text(args) -> str:
 
 def cmd_embed(args) -> int:
     lens = load_lens(args.model, args.dtype)
-    params = ChannelParams(tau=args.tau, profile=args.profile, window=args.window)
+    params = ChannelParams(tau=args.tau, profile=args.profile, window=args.window,
+                           temperature=args.temperature, top_k=args.top_k)
     payload = bytes.fromhex(args.payload)
     result = embed(lens, args.prompt, payload, params, max_new_tokens=args.max_tokens)
 
@@ -122,6 +123,10 @@ def main() -> int:
     parser.add_argument("--window", type=int, default=None,
                         help="bound rank context to N tokens (survives head-truncation; "
                              "slower). default: full prefix")
+    parser.add_argument("--temperature", type=float, default=0.0,
+                        help="0 = greedy; >0 samples same-parity tokens, breaking "
+                             "repetition loops (decode is unchanged)")
+    parser.add_argument("--top-k", type=int, default=48, help="sampling window when temperature>0")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("embed", help="generate text with an embedded payload")

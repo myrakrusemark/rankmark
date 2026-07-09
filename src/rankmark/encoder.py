@@ -3,6 +3,8 @@
 import itertools
 from dataclasses import dataclass, field
 
+import torch
+
 from .channel import ChannelParams, encode_step
 from .framing import build_frame, tag_of
 from .models import Lens
@@ -41,8 +43,12 @@ def embed(
     params: ChannelParams | None = None,
     max_new_tokens: int = 300,
     on_token=None,
+    seed: int | None = None,
 ) -> EmbedResult:
     params = params or ChannelParams()
+    gen = None
+    if params.temperature > 0 and seed is not None:
+        gen = torch.Generator().manual_seed(seed)
     frame = build_frame(payload, params.profile, tag_of(lens.name))
     bit_stream = itertools.cycle(frame)
     next_bit = next(bit_stream)
@@ -68,7 +74,7 @@ def embed(
     for _ in range(max_new_tokens):
         # the model may not end the text before one whole frame is planted
         ban = eos if planted < len(frame) else None
-        choice = encode_step(logits, next_bit, params, ban_token=ban)
+        choice = encode_step(logits, next_bit, params, ban_token=ban, generator=gen)
         if choice.planted:
             planted += 1
             next_bit = next(bit_stream)

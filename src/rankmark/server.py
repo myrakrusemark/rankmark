@@ -65,6 +65,8 @@ class EmbedRequest(BaseModel):
     max_tokens: int = 500
     profile: int = 1
     window: int | None = None
+    temperature: float = 0.0
+    top_k: int = 48
 
 
 def ndjson(events) -> StreamingResponse:
@@ -124,7 +126,8 @@ def api_decode(req: DecodeRequest) -> StreamingResponse:
 @app.post("/api/embed")
 def api_embed(req: EmbedRequest) -> StreamingResponse:
     lens = get_lens(req.model)
-    params = ChannelParams(tau=req.tau, profile=req.profile, window=req.window)
+    params = ChannelParams(tau=req.tau, profile=req.profile, window=req.window,
+                           temperature=req.temperature, top_k=req.top_k)
     try:
         payload = bytes.fromhex(req.payload)
     except ValueError:

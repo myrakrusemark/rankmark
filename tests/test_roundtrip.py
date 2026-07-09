@@ -37,6 +37,19 @@ def test_embed_decode_round_trip_lean(gpt2):
 
 
 @pytest.mark.slow
+def test_temperature_round_trip(gpt2):
+    """Sampling deeper same-parity tokens must not change what decodes back."""
+    params = ChannelParams(tau=2.0, profile=0, temperature=0.8, top_k=48)
+    result = embed(gpt2, PROMPT, PAYLOAD, params, max_new_tokens=300, seed=7)
+    assert result.frames_planted >= 1.0
+    decoded = decode(gpt2, result.text, params)
+    assert decoded.valid and decoded.payload == PAYLOAD
+    # the whole point: the mark is no longer a wall of rank-0 tokens
+    ranks = [o.rank for o in decoded.obs]
+    assert sum(r > 1 for r in ranks) > 0.1 * len(ranks)
+
+
+@pytest.mark.slow
 def test_v2_frame_survives_truncation(gpt2):
     """The Phase-2 milestone on a real lens: cut the head and tail off the
     marked text and a repeated lean frame still validates.

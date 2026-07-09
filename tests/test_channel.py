@@ -52,6 +52,26 @@ def test_banned_token_skips_to_same_parity():
     assert null.token_id == 1 and not null.planted  # null dodges the ban too
 
 
+def test_temperature_carrier_keeps_parity():
+    logits = torch.tensor([3.0, 2.9, 2.8, 2.7, 2.6, 2.5])  # flat: deep ranks in play
+    params = ChannelParams(tau=0.5, temperature=1.5, top_k=6)
+    gen = torch.Generator().manual_seed(0)
+    ranks = set()
+    for _ in range(40):
+        c = encode_step(logits, next_bit=1, params=params, generator=gen)
+        assert c.planted and c.rank % 2 == 1  # always odd rank -> bit 1
+        ranks.add(c.rank)
+    assert len(ranks) > 1  # actually explores beyond rank 1, not stuck greedy
+
+
+def test_temperature_null_samples_beyond_rank_zero():
+    logits = torch.tensor([2.0, 1.9, 1.8, 1.7])  # low-entropy-ish but flat top
+    params = ChannelParams(tau=5.0, temperature=2.0, top_k=4)  # tau high -> all nulls
+    gen = torch.Generator().manual_seed(1)
+    ranks = set(encode_step(logits, 0, params, generator=gen).rank for _ in range(40))
+    assert ranks != {0}  # a null that can escape the greedy rank-0 rut
+
+
 def test_sorted_ties_break_to_lower_token_id():
     logits = torch.tensor([1.0, 2.0, 2.0, 0.5])
     order = sorted_token_ids(logits).tolist()

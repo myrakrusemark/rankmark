@@ -19,6 +19,13 @@ class ChannelParams:
     window: int | None = None  # bound rank context to this many tokens; None = full prefix.
     # Full-context ranks die under head-truncation (every downstream near-tie
     # flips); a window makes cut damage end after `window` tokens by construction.
+    temperature: float = 0.0  # 0 = greedy (rank 0/1, deterministic). Above 0, sample.
+    top_k: int = 48  # sampling candidate window (only used when temperature > 0)
+    # Temperature breaks the greedy repetition loops small models fall into: a
+    # null samples freely (this is what escapes a loop), a carrier samples among
+    # tokens of the RIGHT PARITY. The decoder only reads rank parity, never which
+    # token was picked, so rank 7 carries a 1-bit exactly as rank 1 does — the
+    # round trip is unchanged, but the text stops looking like a wall of rank-0.
 
 
 def crc16(data: bytes) -> int:
@@ -67,26 +74,48 @@ class StepChoice:
 
 
 def encode_step(
-    logits: torch.Tensor, next_bit: int, params: ChannelParams, ban_token: int | None = None
+    logits: torch.Tensor,
+    next_bit: int,
+    params: ChannelParams,
+    ban_token: int | None = None,
+    generator: torch.Generator | None = None,
 ) -> StepChoice:
     """Pick the next token.
 
-    Below the entropy gate: emit rank 0 as a carrier-null, plant nothing.
-    Above it: emit the highest-probability token whose rank parity equals
-    next_bit — rank 0 for a 0 bit, rank 1 for a 1 bit.
+    Greedy (temperature 0): below the gate emit rank 0 (a carrier-null);
+    above it emit the top token whose rank parity equals next_bit — rank 0
+    for a 0 bit, rank 1 for a 1 bit.
 
-    A banned token (the encoder bans EOS until a whole frame is planted, so
-    the model can't end the text before the message is in) is replaced by
-    the next-best choice that changes nothing for the decoder: nulls carry
-    no bits, and carriers skip to the next rank of the SAME parity.
+    Temperature > 0: sample instead of taking the top. A null samples across
+    the top_k window (breaking the greedy repetition loops small models fall
+    into); a carrier samples among top_k tokens of the RIGHT PARITY. Either
+    way the decoder only reads rank parity, so a deeper same-parity pick
+    carries the same bit — the round trip is identical, the text just stops
+    looking like a suspicious wall of rank-0 tokens.
+
+    A banned token (the encoder bans EOS until a whole frame is planted) is
+    dropped from the candidates; greedily it is replaced by the next choice
+    of the same role — nulls carry nothing, carriers keep their parity.
     """
     logits = logits.float()
     entropy = entropy_of(logits)
     order = sorted_token_ids(logits)
-    if entropy < params.tau:
-        rank = 1 if int(order[0]) == ban_token else 0
-        return StepChoice(int(order[rank]), False, rank, entropy)
-    rank = next_bit
-    while int(order[rank]) == ban_token:
-        rank += 2  # same parity, next-best token
-    return StepChoice(int(order[rank]), True, rank, entropy)
+    is_null = entropy < params.tau
+
+    if params.temperature <= 0.0:
+        if is_null:
+            rank = 1 if int(order[0]) == ban_token else 0
+            return StepChoice(int(order[rank]), False, rank, entropy)
+        rank = next_bit
+        while int(order[rank]) == ban_token:
+            rank += 2  # same parity, next-best token
+        return StepChoice(int(order[rank]), True, rank, entropy)
+
+    # temperature sampling among candidate ranks of the right role/parity
+    k = min(params.top_k, int(order.numel()))
+    cand = [r for r in range(k) if is_null or r % 2 == next_bit]
+    cand = [r for r in cand if int(order[r]) != ban_token] or cand
+    cand_logits = logits[order[cand]]
+    probs = torch.softmax(cand_logits / params.temperature, dim=-1)
+    rank = cand[int(torch.multinomial(probs, 1, generator=generator))]
+    return StepChoice(int(order[rank]), not is_null, rank, entropy)

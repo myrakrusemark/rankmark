@@ -96,10 +96,11 @@
             <option value="2">robust &mdash; heaviest ECC</option>
           </select></div>
           <div><label>window (tokens)</label><br><input id="winE" class="num" type="number" placeholder="full" min="16" max="512"></div>
+          <div><label>temperature</label><br><input id="tempE" class="num" type="number" value="0.7" min="0" max="2" step="0.1"></div>
           <div><label>payload (hex)</label><br><input id="payload" class="num" value="" placeholder="from msg" style="font-family:ui-monospace,monospace"></div>
           <div><label>max tokens</label><br><input id="maxtok" class="num" type="number" value="500" min="50" max="2000"></div>
         </div>
-        <p class="hint">Generates token by token, picking rank-0 or rank-1 tokens so their parity spells out the payload. The secret message fills the payload hex automatically; edit the hex for raw bytes. Set a <b>window</b> (e.g. 64) to make the mark survive truncation &mdash; ranks are then scored from bounded context, so a cut only disturbs the first <i>window</i> tokens. With this panel closed, all of these are chosen automatically.</p>
+        <p class="hint">Generates token by token; each bit is the parity of the chosen token's rank. The secret message fills the payload hex automatically; edit the hex for raw bytes. <b>Temperature</b> 0 is greedy (rank 0/1 only — cleanest signal, but small models can fall into repetition loops); above 0 it samples among same-parity tokens, which breaks the loops and looks like ordinary text — the decode is identical either way. Set a <b>window</b> (e.g. 64) to survive truncation. With this panel closed, all of these are chosen automatically.</p>
       </div>
     </details>
     <div class="row" style="margin-top:12px">
@@ -268,7 +269,8 @@ function channelParams(side){ // side = "E" | "D"
   if(side === "D"){
     return {profile: 1, window: win ? +win : null}; // scan auto-detects profile
   }
-  return {profile: +$("profE").value, window: win ? +win : null};
+  return {profile: +$("profE").value, window: win ? +win : null,
+          temperature: +$("tempE").value, top_k: 48};
 }
 
 function payloadText(hex){ // printable UTF-8 or null
@@ -303,7 +305,9 @@ async function runEmbed(){
     const nbytes = $("payload").value.trim().length / 2;
     const models = [...$("lensE").options].map(o => o.value);
     if(models.includes("gpt2")) $("lensE").value = "gpt2"; // fastest lens
-    $("profE").value = "0"; $("winE").value = 48; $("tauE").value = 2.0;
+    // temperature 0.7 keeps small models out of the repetition loops that
+    // starve the channel of carriers on formulaic prompts
+    $("profE").value = "0"; $("winE").value = 48; $("tauE").value = 2.0; $("tempE").value = 0.7;
     const frameBits = 13 + 18 + 8 * (nbytes + 4); // lean frame for this payload
     $("maxtok").value = Math.min(900, Math.max(180, Math.ceil(frameBits * 2 / 0.5)));
   }
