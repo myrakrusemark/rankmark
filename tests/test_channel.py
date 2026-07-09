@@ -42,6 +42,16 @@ def test_encode_step_plants_parity():
     assert one.token_id == 1  # rank 1 carries bit 1
 
 
+def test_banned_token_skips_to_same_parity():
+    logits = torch.tensor([1.0, 0.9, 0.8, 0.7])  # high entropy, 4-way close
+    params = ChannelParams(tau=0.5)
+    choice = encode_step(logits, next_bit=0, params=params, ban_token=0)
+    assert choice.token_id == 2 and choice.rank == 2  # next even rank
+    assert choice.rank % 2 == 0  # parity survives the ban
+    null = encode_step(torch.tensor([10.0, 0.0, 0.0, 0.0]), 1, ChannelParams(tau=1.0), ban_token=0)
+    assert null.token_id == 1 and not null.planted  # null dodges the ban too
+
+
 def test_sorted_ties_break_to_lower_token_id():
     logits = torch.tensor([1.0, 2.0, 2.0, 0.5])
     order = sorted_token_ids(logits).tolist()

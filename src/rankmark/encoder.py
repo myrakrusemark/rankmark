@@ -66,7 +66,9 @@ def embed(
             logits = scorer.step(tid)
 
     for _ in range(max_new_tokens):
-        choice = encode_step(logits, next_bit, params)
+        # the model may not end the text before one whole frame is planted
+        ban = eos if planted < len(frame) else None
+        choice = encode_step(logits, next_bit, params, ban_token=ban)
         if choice.planted:
             planted += 1
             next_bit = next(bit_stream)

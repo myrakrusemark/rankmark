@@ -332,7 +332,7 @@ async function runEmbed(){
           : `embedded ${e.bits_planted} bits (${e.frames_planted} frames)` +
             (enough ? " — switch to reveal to verify" : " — under 1 full frame, raise max tokens"),
           enough ? "ok" : "bad");
-        if(!e.retokenizes_cleanly) setVerdict(auto
+        if(!e.retokenizes_cleanly && enough) setVerdict(auto // never hide a fatal too-short verdict
           ? "done — one spot came out fragile, but the reveal usually still works; try it (if it fails, tweak the cover story and re-hide)"
           : "warning: text does not re-tokenize cleanly; soft decode usually survives it", "bad");
       } else if(e.type === "error"){ setVerdict(e.message, "bad"); }

@@ -66,16 +66,27 @@ class StepChoice:
     entropy: float
 
 
-def encode_step(logits: torch.Tensor, next_bit: int, params: ChannelParams) -> StepChoice:
+def encode_step(
+    logits: torch.Tensor, next_bit: int, params: ChannelParams, ban_token: int | None = None
+) -> StepChoice:
     """Pick the next token.
 
     Below the entropy gate: emit rank 0 as a carrier-null, plant nothing.
     Above it: emit the highest-probability token whose rank parity equals
     next_bit — rank 0 for a 0 bit, rank 1 for a 1 bit.
+
+    A banned token (the encoder bans EOS until a whole frame is planted, so
+    the model can't end the text before the message is in) is replaced by
+    the next-best choice that changes nothing for the decoder: nulls carry
+    no bits, and carriers skip to the next rank of the SAME parity.
     """
     logits = logits.float()
     entropy = entropy_of(logits)
-    if entropy < params.tau:
-        return StepChoice(int(logits.argmax()), False, 0, entropy)
     order = sorted_token_ids(logits)
-    return StepChoice(int(order[next_bit]), True, next_bit, entropy)
+    if entropy < params.tau:
+        rank = 1 if int(order[0]) == ban_token else 0
+        return StepChoice(int(order[rank]), False, rank, entropy)
+    rank = next_bit
+    while int(order[rank]) == ban_token:
+        rank += 2  # same parity, next-best token
+    return StepChoice(int(order[rank]), True, rank, entropy)
