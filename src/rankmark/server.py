@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .channel import ChannelParams
-from .framing import frame_spans, llr_of, parse_frames_soft, tag_of
+from .framing import frame_spans, llr_of, parse_frames_soft, partial_spans, tag_of
 from .encoder import embed
 from .models import Lens, load_lens
 from .tokenobs import scan_iter
@@ -123,6 +123,8 @@ def api_decode(req: DecodeRequest) -> StreamingResponse:
                         "payload": frames[0].payload.hex(),
                         "spans": [s for f in frames for s in frame_spans(f)],
                     }
+                # tentative parts of the frame still arriving at the tail
+                yield {"type": "partial", "spans": partial_spans(llrs)}
         frames = [f for f in parse_frames_soft(llrs, tag) if f.tag_ok]
         yield {
             "type": "done",

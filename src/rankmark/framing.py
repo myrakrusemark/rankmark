@@ -179,26 +179,74 @@ def parse_frames_hard(bits: list[int], lens_tag: int | None = None) -> list[Deco
     return parse_frames_soft(bits_to_llrs(bits), lens_tag)
 
 
-def frame_spans(frame: DecodedFrame) -> list[dict]:
-    """Labelled bit ranges of a decoded frame, in carrier-bit coordinates.
+def frame_layout(payload_len: int, p: Profile) -> list[tuple[str, int]]:
+    """(kind, bit-length) parts of one frame, in wire order from its sync.
 
-    For profiles without an inner code the RS codeword is payload, checksum,
-    then parity bytes in wire order, so those get their own labels; conv or
-    interleaved profiles weave them together, so the body is one span.
+    Profiles without an inner code expose payload / checksum / parity
+    separately; conv or interleaved profiles braid the body, so it is one
+    'woven' span.
     """
-    p = next(q for q in PROFILES.values() if q.name == frame.profile)
     parts = [("sync", len(p.sync)), ("header", HEADER_BITS * p.header_rep)]
     if p.conv or p.depth > 1:
-        parts.append(("woven", _body_coded_bits(len(frame.payload), p)))
+        parts.append(("woven", _body_coded_bits(payload_len, p)))
     else:
-        parts += [("payload", 8 * len(frame.payload)),
+        parts += [("payload", 8 * payload_len),
                   ("checksum", 8 * p.crc_bytes),
                   ("parity", 8 * p.rs_nsym)]
-    spans, cur = [], frame.offset
-    for kind, n in parts:
-        spans.append({"kind": kind, "start": cur, "len": n})
+    return parts
+
+
+def _spans_from(layout: list[tuple[str, int]], offset: int, limit: int) -> list[dict]:
+    spans, cur = [], offset
+    for kind, n in layout:
+        if cur >= limit:
+            break
+        spans.append({"kind": kind, "start": cur, "len": min(n, limit - cur)})
         cur += n
     return spans
+
+
+def frame_spans(frame: DecodedFrame) -> list[dict]:
+    """Labelled bit ranges of a fully decoded (checksum-valid) frame."""
+    p = next(q for q in PROFILES.values() if q.name == frame.profile)
+    layout = frame_layout(len(frame.payload), p)
+    total = sum(n for _, n in layout)
+    return _spans_from(layout, frame.offset, frame.offset + total)
+
+
+def partial_spans(llrs: list[float]) -> list[dict]:
+    """Tentative labelling of the frame currently arriving at the tail — sync
+    the moment it correlates, header once its bits land, and the body regions
+    as they stream in, BEFORE the checksum confirms anything.
+
+    Requires an EXACT sync match (not the tolerance parse_frames_soft allows):
+    on the author's own lens real syncs are planted exactly, so this lights up
+    true frames as they assemble while a random wrong-lens stream shows nothing.
+    Display only — parse_frames_soft remains the source of truth.
+    """
+    hard = llrs_to_bits(llrs)
+    n = len(hard)
+    best = None  # (offset, profile) — the latest exact sync = frame in progress
+    for p in PROFILES.values():
+        sync_len = len(p.sync)
+        for off in range(n - sync_len, -1, -1):
+            if all(b == s for b, s in zip(hard[off : off + sync_len], p.sync)):
+                if best is None or off > best[0]:
+                    best = (off, p)
+                break
+    if best is None:
+        return []
+    off, p = best
+    hdr_len = HEADER_BITS * p.header_rep
+    hdr_start = off + len(p.sync)
+    # can't read the body layout until the whole header has arrived
+    if hdr_start + hdr_len > n:
+        return _spans_from([("sync", len(p.sync)), ("header", hdr_len)], off, n)
+    hdr = llrs_to_bits(rep_decode_soft(llrs[hdr_start : hdr_start + hdr_len], p.header_rep))
+    payload_len = bits_to_int(hdr[:LEN_BITS])
+    if not 1 <= payload_len <= (1 << LEN_BITS) - 1:
+        return _spans_from([("sync", len(p.sync)), ("header", hdr_len)], off, n)
+    return _spans_from(frame_layout(payload_len, p), off, n)
 
 
 def llr_of(rank: int, entropy: float, tau: float) -> float:

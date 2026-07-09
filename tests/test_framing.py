@@ -5,6 +5,7 @@ import random
 from rankmark.ecc import bits_to_llrs
 from rankmark.framing import (
     DEFAULT_PROFILE,
+    HEADER_BITS,
     PROFILES,
     build_frame,
     frame_len_bits,
@@ -12,6 +13,7 @@ from rankmark.framing import (
     llr_of,
     parse_frames_hard,
     parse_frames_soft,
+    partial_spans,
     tag_of,
 )
 
@@ -99,6 +101,38 @@ def test_frame_spans_tile_the_frame():
         kinds = [s["kind"] for s in spans]
         assert kinds[:2] == ["sync", "header"]
         assert ("woven" in kinds) == (profile.conv or profile.depth > 1)
+
+
+def test_partial_spans_identify_parts_as_they_arrive():
+    from rankmark.ecc import bits_to_llrs
+
+    pid = 0  # lean: payload/checksum/parity split out, easy to check
+    p = PROFILES[pid]
+    full = build_frame(b"\xa7\x42", pid, TAG)
+
+    # only sync has arrived -> just a sync span
+    just_sync = partial_spans(bits_to_llrs(full[: len(p.sync)]))
+    assert [s["kind"] for s in just_sync] == ["sync"]
+    assert just_sync[0]["start"] == 0
+
+    # sync + full header + a few body bits -> sync, header, and a payload span
+    upto = len(p.sync) + HEADER_BITS * p.header_rep + 5
+    mid = partial_spans(bits_to_llrs(full[:upto]))
+    kinds = [s["kind"] for s in mid]
+    assert kinds[:2] == ["sync", "header"]
+    assert "payload" in kinds  # body layout known from the decoded header length
+    assert sum(s["len"] for s in mid) == upto  # clipped exactly to what arrived
+
+
+def test_partial_spans_empty_on_random_bits():
+    import random
+
+    rng = random.Random(5)
+    llrs = [rng.choice((4.0, -4.0)) for _ in range(400)]
+    # exact-sync requirement makes false positives vanishingly unlikely
+    assert partial_spans(llrs) == [] or all(
+        s["kind"] == "sync" for s in partial_spans(llrs)
+    )
 
 
 def test_llr_sign_carries_parity_and_damage_is_quiet():

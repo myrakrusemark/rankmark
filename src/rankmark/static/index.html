@@ -63,6 +63,7 @@
   .bit.k-payload,.bit.k-woven{background:var(--b0);border-color:var(--b0);color:var(--b0t)}
   .bit.k-checksum{background:var(--b3);border-color:var(--b3);color:var(--b3t)}
   .bit.k-parity{background:var(--b2);border-color:var(--b2);color:var(--b2t)}
+  .bit.forming{opacity:.45}  /* tentative: part detected, checksum not yet confirmed */
 </style>
 </head>
 <body>
@@ -206,13 +207,27 @@ function addBit(e){
   $("bits").appendChild(b);
 }
 
-function paintSpans(spans){
+function paintSpans(spans){ // confirmed (checksum-valid) — solid, and locked in
   const cells = $("bits").children;
   for(const s of spans || []){
     for(let i = s.start; i < s.start + s.len && i < cells.length; i++){
       cells[i].className = "bit k-" + s.kind;
+      cells[i].dataset.confirmed = "1";
       cells[i].dataset.info =
         `bit ${i} · ${SPAN_LABELS[s.kind]} · carried by “${pieceLabel(cells[i].dataset.piece)}”`;
+    }
+  }
+}
+
+function paintPartial(spans){ // tentative — the frame currently arriving
+  const cells = $("bits").children;
+  for(const c of cells) if(!c.dataset.confirmed) c.className = "bit";
+  for(const s of spans || []){
+    for(let i = s.start; i < s.start + s.len && i < cells.length; i++){
+      if(cells[i].dataset.confirmed) continue;
+      cells[i].className = "bit k-" + s.kind + " forming";
+      cells[i].dataset.info =
+        `bit ${i} · forming: ${SPAN_LABELS[s.kind]} · “${pieceLabel(cells[i].dataset.piece)}”`;
     }
   }
 }
@@ -363,6 +378,8 @@ async function runDecode(model, keepAttr){
       if(e.type === "token"){ toks++; if(e.carrier){ carriers++; addBit(e); }
         $("stTok").textContent = toks; $("stCar").textContent = carriers;
         if(!found) setVerdict(`scoring through ${model}… ${toks} tokens`);
+      } else if(e.type === "partial"){ // sync/header/body forming, pre-checksum
+        paintPartial(e.spans);
       } else if(e.type === "frame"){ // a frame locked mid-scan — surface it now
         found = true; paintSpans(e.spans);
         const msg = payloadText(e.payload);
