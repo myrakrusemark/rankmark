@@ -144,10 +144,10 @@
   <div id="stream"></div>
   <div id="bits" style="display:none"></div>
   <div class="legend" id="legendE">
-    <span><span class="tok b0">rank &lt; 10</span></span>
-    <span><span class="tok b1">&lt; 100</span></span>
-    <span><span class="tok b2">&lt; 1000</span></span>
-    <span><span class="tok b3">beyond</span></span>
+    <span><span class="tok b0">rank 0</span> top pick</span>
+    <span><span class="tok b1">rank 1</span> 2nd</span>
+    <span><span class="tok b2">2&ndash;9</span> near</span>
+    <span><span class="tok b3">10+</span> far</span>
     <span>underlined = carrying a piece of the secret &middot; hover any word for details</span>
     <span style="flex:1"></span>
     <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
@@ -217,9 +217,14 @@ function paintSpans(spans){
   }
 }
 
+// rankmark's whole signal lives at ranks 0–1 (greedy) or 0–47 (temperature),
+// never the GLTR 100/1000/beyond range — so recolor at OUR resolution: rank 0
+// (top pick), rank 1 (2nd — where 1-bits live), 2–9 (sampled near), 10+ (far)
+function rankBand(rank){ return rank === 0 ? 0 : rank === 1 ? 1 : rank < 10 ? 2 : 3; }
+
 function addToken(e){
   const s = document.createElement("span");
-  s.className = `tok b${e.bucket}` + (e.carrier ? " car" : "");
+  s.className = `tok b${rankBand(e.rank)}` + (e.carrier ? " car" : "");
   // newlines break the line for real (pre-wrap), but leave a visible ↵ so the
   // token can be seen and hovered; copy still uses the exact text
   s.textContent = e.piece.replace(/\n/g, "↵\n");
