@@ -54,24 +54,28 @@
   details.adv summary:hover{color:var(--text)}
   details.adv .inner{margin-top:8px;padding:10px 12px;background:var(--bg);
     border:1px solid var(--border);border-radius:8px}
-  #bits{font-family:ui-monospace,monospace;font-size:11px;line-height:1;margin:10px 0;
-    display:flex;flex-wrap:wrap;gap:2px}
-  .bit{display:inline-flex;align-items:center;justify-content:center;width:13px;height:20px;
-    border-radius:3px;background:var(--bg);border:1px solid var(--border);color:var(--muted)}
-  .bit.k-sync{background:var(--accent);border-color:var(--accent);color:#fff}
-  .bit.k-header{background:var(--b1);border-color:var(--b1);color:var(--b1t)}
-  .bit.k-payload,.bit.k-woven{background:var(--b0);border-color:var(--b0);color:var(--b0t)}
-  .bit.k-checksum{background:var(--b3);border-color:var(--b3);color:var(--b3t)}
-  .bit.k-parity{background:var(--b2);border-color:var(--b2);color:var(--b2t)}
-  .bit.forming{opacity:.45}  /* tentative: part detected, checksum not yet confirmed */
-  /* hide flow: form collapses to a summary, output grows in a drawer below */
-  #hideForm{overflow:hidden;transition:max-height .38s ease, opacity .28s ease;max-height:1200px}
-  #hideForm.collapsed{max-height:0;opacity:0;margin:0;pointer-events:none}
-  #hideSummary{display:flex;gap:10px;align-items:baseline;font-size:14px;color:var(--muted);
-    padding:2px 0 4px}
-  #hideSummary b{color:var(--text);font-weight:600}
-  #hideSummary .link{cursor:pointer;color:var(--accent);font-size:13px}
-  #hideSummary .link:hover{text-decoration:underline}
+  /* one continuous bar; each found bit is an equal-width slice, colored by frame part */
+  #bits{display:flex;width:100%;height:26px;margin:12px 0;border:1px solid var(--border);
+    border-radius:6px;overflow:hidden;background:var(--bg)}
+  .bit{flex:1 1 0;min-width:0;height:100%;background:transparent;transition:background .12s}
+  .bit.k-sync{background:var(--accent)}
+  .bit.k-header{background:var(--b1)}
+  .bit.k-payload,.bit.k-woven{background:var(--b0)}
+  .bit.k-checksum{background:var(--b3)}
+  .bit.k-parity{background:var(--b2)}
+  .bit.forming{opacity:.5}  /* tentative: part detected, checksum not yet confirmed */
+  #foundMsg{margin:14px 0;padding:14px 16px;border:1px solid var(--ok);border-radius:10px;background:var(--card)}
+  #foundMsg .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  #foundMsg .txt{font-size:22px;font-weight:600;margin:3px 0;word-break:break-word}
+  #foundMsg .by{font-size:12px;color:var(--muted)}
+  /* hide & reveal: form collapses to a one-line summary, output grows below */
+  #hideForm,#revealForm{overflow:hidden;transition:max-height .38s ease, opacity .28s ease;max-height:1200px}
+  #hideForm.collapsed,#revealForm.collapsed{max-height:0;opacity:0;margin:0;pointer-events:none}
+  #hideSummary,#revealSummary{display:flex;gap:10px;align-items:baseline;font-size:14px;
+    color:var(--muted);padding:2px 0 4px}
+  #hideSummary b,#revealSummary b{color:var(--text);font-weight:600}
+  .link{cursor:pointer;color:var(--accent);font-size:13px}
+  .link:hover{text-decoration:underline}
   .prog{height:6px;background:var(--bg);border:1px solid var(--border);border-radius:99px;
     overflow:hidden}
   .prog > div{height:100%;width:0;background:var(--accent);transition:width .25s ease;border-radius:99px}
@@ -144,6 +148,12 @@
   </div>
 
   <div id="pDecode" style="padding-top:14px;display:none">
+   <div id="revealSummary" style="display:none">
+     <span id="revSummaryText">reading the pasted text</span>
+     <span style="flex:1"></span>
+     <span class="link" id="btnNewReveal">paste new text</span>
+   </div>
+   <div id="revealForm">
     <label>paste text that might have a hidden message</label>
     <textarea id="intext" rows="6" placeholder="paste text here (or hide a message first — the result lands here automatically)"></textarea>
     <details class="adv" id="advD">
@@ -165,6 +175,7 @@
       <button class="primary" id="btnDecode">reveal the message &rarr;</button>
     </div>
     <p class="hint">Every AI model on this machine takes a turn reading the text. If one of them wrote it, the hidden message pops out &mdash; and you learn which model it was. <b>&#9986; truncate</b> chops off the ends first, to prove the message survives being cut up.</p>
+   </div>
   </div>
 
   <div id="verdict"></div>
@@ -184,6 +195,7 @@
 
   <div id="revealOut" style="display:none">
   <div id="bits"></div>
+  <div id="foundMsg" style="display:none"></div>
   <div class="legend" id="legendD">
     <span><span class="bit k-sync" style="width:auto;padding:0 6px">sync</span> start knock</span>
     <span><span class="bit k-header" style="width:auto;padding:0 6px">header</span> length + author tag</span>
@@ -276,11 +288,34 @@ const SPAN_LABELS = {sync: "sync — start knock", header: "header — length + 
 
 function addBit(e){
   const b = document.createElement("span");
-  b.className = "bit";
-  b.textContent = e.bit;
+  b.className = "bit";  // one equal-width slice of the bar; no digit
   b.dataset.info = `bit ${$("bits").children.length} · no frame · carried by “${pieceLabel(e.piece)}”`;
   b.dataset.piece = e.piece;
   $("bits").appendChild(b);
+}
+
+function showFound(msg, model, hex){  // the decoded secret, beneath the bar
+  const el = $("foundMsg"); el.innerHTML = "";
+  const lbl = document.createElement("div"); lbl.className = "lbl";
+  lbl.textContent = msg ? "hidden message" : "hidden data";
+  const txt = document.createElement("div"); txt.className = "txt";
+  txt.textContent = msg ? "“" + msg + "”" : "0x" + hex;
+  const by = document.createElement("div"); by.className = "by";
+  by.textContent = "written by " + model;
+  el.append(lbl, txt, by);
+  el.style.display = "";
+}
+
+function collapseRevealForm(){
+  $("revSummaryText").textContent = `reading the pasted text (${$("intext").value.trim().length} characters)`;
+  $("revealForm").classList.add("collapsed");
+  $("revealSummary").style.display = "flex";
+}
+function resetRevealForm(){
+  $("revealForm").classList.remove("collapsed");
+  $("revealSummary").style.display = "none";
+  $("revealOut").style.display = "none";
+  $("foundMsg").style.display = "none";
 }
 
 function paintSpans(spans){ // confirmed (checksum-valid) — solid, and locked in
@@ -438,15 +473,14 @@ async function runDecode(model, keepAttr){
         paintPartial(e.spans);
       } else if(e.type === "frame"){ // a frame locked mid-scan — surface it now
         found = true; paintSpans(e.spans);
-        const msg = payloadText(e.payload);
-        setVerdict(`✅ found it — ${msg ? `hidden message: “${msg}”` : `hidden data 0x${e.payload}`}`
-          + ` · written by ${model} · still scanning for more copies…`, "ok");
+        showFound(payloadText(e.payload), model, e.payload);
+        setVerdict("✅ found it — still scanning for more copies…", "ok");
       } else if(e.type === "done"){
         verdict = e;
         paintSpans(e.spans);
-        const msg = e.payload && payloadText(e.payload);
+        if(e.valid) showFound(e.payload && payloadText(e.payload), model, e.payload);
         setVerdict(e.valid
-          ? `✅ found it — ${msg ? `hidden message: “${msg}”` : `hidden data 0x${e.payload}`} · this text was written by ${model}`
+          ? `✅ this text was written by ${model}`
           : ($("advD").open
               ? `no valid frame — ${model} cannot read this text (wrong lens, unwatermarked, or edited)`
               : `${model} didn't write this one…`),
@@ -499,8 +533,8 @@ async function runAutoFind(){
     }
   }
   if(found){
-    const msg = payloadText(found.v.payload);
-    setVerdict(`✅ found it — ${msg ? `hidden message: “${msg}”` : `hidden data 0x${found.v.payload}`} · this text was written by ${found.m}`, "ok");
+    showFound(payloadText(found.v.payload), found.m, found.v.payload);
+    setVerdict(`✅ this text was written by ${found.m}`, "ok");
   } else if($("intext").value.trim()){
     setVerdict("❌ no hidden message — none of the models here wrote this text (or it was edited too heavily)", "bad");
   }
@@ -512,11 +546,12 @@ function setMode(embed){
   $("pDecode").style.display = embed ? "none" : "";
   $("mEmbed").classList.toggle("on", embed);
   $("mDecode").classList.toggle("on", !embed);
-  if(!running){ resetHideForm(); $("revealOut").style.display = "none"; setVerdict(""); }
+  if(!running){ resetHideForm(); resetRevealForm(); setVerdict(""); }
 }
 $("mEmbed").onclick = () => setMode(true);
 $("mDecode").onclick = () => setMode(false);
 $("btnNewHide").onclick = () => { if(!running){ resetHideForm(); setVerdict(""); $("msg").focus(); } };
+$("btnNewReveal").onclick = () => { if(!running){ resetRevealForm(); setVerdict(""); $("intext").focus(); } };
 // the accordions remember whether you left them open
 for(const id of ["advE", "advD"]){
   try{ if(localStorage["rm_" + id]) $(id).open = true; }catch{}
@@ -525,6 +560,8 @@ for(const id of ["advE", "advD"]){
 $("btnEmbed").onclick = runEmbed;
 $("btnDecode").onclick = () => {
   if(running) return;
+  if(!$("intext").value.trim()){ setVerdict("paste some text first", "bad"); return; }
+  collapseRevealForm(); $("foundMsg").style.display = "none"; showView("bits");
   if(!$("advD").open){ runAutoFind(); return; }
   busy(true); runDecode($("lensD").value).finally(() => busy(false));
 };
