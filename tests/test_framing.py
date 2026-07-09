@@ -8,6 +8,7 @@ from rankmark.framing import (
     PROFILES,
     build_frame,
     frame_len_bits,
+    frame_spans,
     llr_of,
     parse_frames_hard,
     parse_frames_soft,
@@ -83,6 +84,21 @@ def test_tag_mismatch_is_flagged():
     bits = build_frame(PAYLOAD, DEFAULT_PROFILE, other)
     frames = find(parse_frames_hard(bits, TAG), "standard")
     assert frames and not frames[0].tag_ok
+
+
+def test_frame_spans_tile_the_frame():
+    for pid, profile in PROFILES.items():
+        payload = b"\xa7\x42"
+        frames = find(parse_frames_hard(build_frame(payload, pid, TAG), TAG), profile.name)
+        spans = frame_spans(frames[0])
+        assert spans[0]["start"] == 0 and spans[0]["kind"] == "sync"
+        assert [s["start"] for s in spans] == [
+            sum(t["len"] for t in spans[:i]) for i in range(len(spans))
+        ]  # contiguous
+        assert sum(s["len"] for s in spans) == frame_len_bits(len(payload), pid)
+        kinds = [s["kind"] for s in spans]
+        assert kinds[:2] == ["sync", "header"]
+        assert ("woven" in kinds) == (profile.conv or profile.depth > 1)
 
 
 def test_llr_sign_carries_parity_and_damage_is_quiet():

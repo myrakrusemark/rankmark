@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from .channel import ChannelParams
 from .decoder import gate_bits
-from .framing import llr_of, parse_frames_soft, tag_of
+from .framing import frame_spans, llr_of, parse_frames_soft, tag_of
 from .encoder import embed
 from .models import Lens, load_lens
 from .tokenobs import scan_iter
@@ -115,6 +115,7 @@ def api_decode(req: DecodeRequest) -> StreamingResponse:
             "frames": len(frames),
             "valid": bool(frames),
             "payload": frames[0].payload.hex() if frames else None,
+            "spans": [s for f in frames for s in frame_spans(f)],
         }
 
     return ndjson(events())

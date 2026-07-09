@@ -54,6 +54,15 @@
   details.adv summary:hover{color:var(--text)}
   details.adv .inner{margin-top:8px;padding:10px 12px;background:var(--bg);
     border:1px solid var(--border);border-radius:8px}
+  #bits{font-family:ui-monospace,monospace;font-size:11px;line-height:1;margin:10px 0;
+    display:flex;flex-wrap:wrap;gap:2px}
+  .bit{display:inline-flex;align-items:center;justify-content:center;width:13px;height:20px;
+    border-radius:3px;background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+  .bit.k-sync{background:var(--accent);border-color:var(--accent);color:#fff}
+  .bit.k-header{background:var(--b1);border-color:var(--b1);color:var(--b1t)}
+  .bit.k-payload,.bit.k-woven{background:var(--b0);border-color:var(--b0);color:var(--b0t)}
+  .bit.k-checksum{background:var(--b3);border-color:var(--b3);color:var(--b3t)}
+  .bit.k-parity{background:var(--b2);border-color:var(--b2);color:var(--b2t)}
 </style>
 </head>
 <body>
@@ -132,7 +141,8 @@
     <div class="chip"><b id="stPay" style="font-family:ui-monospace,monospace">&ndash;</b><span>the secret</span></div>
   </div>
   <div id="stream"></div>
-  <div class="legend">
+  <div id="bits" style="display:none"></div>
+  <div class="legend" id="legendE">
     <span><span class="tok b0">rank &lt; 10</span></span>
     <span><span class="tok b1">&lt; 100</span></span>
     <span><span class="tok b2">&lt; 1000</span></span>
@@ -140,6 +150,15 @@
     <span>underlined = carrying a piece of the secret &middot; hover any word for details</span>
     <span style="flex:1"></span>
     <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
+  </div>
+  <div class="legend" id="legendD" style="display:none">
+    <span><span class="bit k-sync" style="width:auto;padding:0 6px">sync</span> start knock</span>
+    <span><span class="bit k-header" style="width:auto;padding:0 6px">header</span> length + author tag</span>
+    <span><span class="bit k-payload" style="width:auto;padding:0 6px">payload</span> your message</span>
+    <span><span class="bit k-checksum" style="width:auto;padding:0 6px">checksum</span> the proof seal</span>
+    <span><span class="bit k-parity" style="width:auto;padding:0 6px">parity</span> repair data</span>
+    <span><span class="bit" style="width:auto;padding:0 6px">plain</span> no frame here</span>
+    <span>hover a bit to see the word that carries it</span>
   </div>
   <div id="attr"></div>
 </div>
@@ -163,7 +182,39 @@ async function loadModels(){
 }
 
 function setVerdict(msg, cls){ const v = $("verdict"); v.textContent = msg; v.style.color = cls === "ok" ? "var(--ok)" : cls === "bad" ? "var(--bad)" : "var(--muted)"; }
-function resetView(){ $("stream").innerHTML = ""; $("attr").innerHTML = ""; for(const id of ["stTok","stCar","stFrm","stPay"]) $(id).textContent = "–"; $("btnCopy").style.display = "none"; }
+function resetView(){ $("stream").innerHTML = ""; $("bits").innerHTML = ""; $("attr").innerHTML = ""; for(const id of ["stTok","stCar","stFrm","stPay"]) $(id).textContent = "–"; $("btnCopy").style.display = "none"; }
+
+// hide paints the text; reveal paints the recovered bit stream
+function showView(kind){
+  $("stream").style.display = kind === "text" ? "" : "none";
+  $("legendE").style.display = kind === "text" ? "" : "none";
+  $("bits").style.display = kind === "bits" ? "" : "none";
+  $("legendD").style.display = kind === "bits" ? "" : "none";
+}
+
+const SPAN_LABELS = {sync: "sync — start knock", header: "header — length + author tag",
+  payload: "payload — your message", checksum: "checksum — the proof seal",
+  parity: "parity — repair data", woven: "message + armor (woven together)"};
+
+function addBit(e){
+  const b = document.createElement("span");
+  b.className = "bit";
+  b.textContent = e.bit;
+  b.dataset.info = `bit ${$("bits").children.length} · no frame · carried by “${e.piece.trim() || e.piece}”`;
+  b.dataset.piece = e.piece;
+  $("bits").appendChild(b);
+}
+
+function paintSpans(spans){
+  const cells = $("bits").children;
+  for(const s of spans || []){
+    for(let i = s.start; i < s.start + s.len && i < cells.length; i++){
+      cells[i].className = "bit k-" + s.kind;
+      cells[i].dataset.info =
+        `bit ${i} · ${SPAN_LABELS[s.kind]} · carried by “${cells[i].dataset.piece.trim() || cells[i].dataset.piece}”`;
+    }
+  }
+}
 
 function addToken(e){
   const s = document.createElement("span");
@@ -175,15 +226,17 @@ function addToken(e){
 
 // instant tooltip — native title popups are slow and missing in some embedded browsers
 const tip = document.createElement("div"); tip.id = "tip"; document.body.appendChild(tip);
-$("stream").addEventListener("mouseover", e => {
-  const t = e.target.closest(".tok");
-  if(t && t.dataset.info){ tip.textContent = t.dataset.info; tip.style.display = "block"; }
-});
-$("stream").addEventListener("mousemove", e => {
-  tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8) + "px";
-  tip.style.top = (e.clientY + 16) + "px";
-});
-$("stream").addEventListener("mouseout", () => { tip.style.display = "none"; });
+for(const host of ["stream", "bits"]){
+  $(host).addEventListener("mouseover", e => {
+    const t = e.target.closest(".tok, .bit");
+    if(t && t.dataset.info){ tip.textContent = t.dataset.info; tip.style.display = "block"; }
+  });
+  $(host).addEventListener("mousemove", e => {
+    tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = (e.clientY + 16) + "px";
+  });
+  $(host).addEventListener("mouseout", () => { tip.style.display = "none"; });
+}
 
 async function streamPost(url, body, onEvent){
   const resp = await fetch(BASE + url, {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)});
@@ -247,7 +300,7 @@ async function runEmbed(){
     const frameBits = 13 + 18 + 8 * (nbytes + 4); // lean frame for this payload
     $("maxtok").value = Math.min(900, Math.max(180, Math.ceil(frameBits * 2 / 0.5)));
   }
-  busy(true); resetView();
+  busy(true); resetView(); showView("text");
   let toks = 0, carriers = 0;
   setVerdict("loading lens… (first time takes ~a minute)");
   try{
@@ -285,16 +338,18 @@ async function runDecode(model, keepAttr){
   const text = $("intext").value.trim();
   if(!text){ setVerdict("paste some text first", "bad"); return null; }
   if(!keepAttr) $("attr").innerHTML = "";
-  $("stream").innerHTML = ""; $("btnCopy").style.display = "none";
+  $("stream").innerHTML = ""; $("bits").innerHTML = ""; $("btnCopy").style.display = "none";
+  showView("bits");
   let toks = 0, carriers = 0, verdict = null;
   setVerdict(`reading through ${model}… (loading the lens can take a minute)`);
   try{
     await streamPost("/api/decode", {text, model, tau: +$("tauD").value, ...channelParams("D")}, e => {
-      if(e.type === "token"){ addToken(e); toks++; if(e.carrier) carriers++;
+      if(e.type === "token"){ toks++; if(e.carrier){ carriers++; addBit(e); }
         $("stTok").textContent = toks; $("stCar").textContent = carriers;
         setVerdict(`scoring through ${model}… ${toks} tokens`);
       } else if(e.type === "done"){
         verdict = e;
+        paintSpans(e.spans);
         const msg = e.payload && payloadText(e.payload);
         $("stFrm").textContent = e.frames;
         $("stPay").textContent = e.payload ? (msg ? `“${msg}”` : "0x" + e.payload) : "–";

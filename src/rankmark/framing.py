@@ -179,6 +179,28 @@ def parse_frames_hard(bits: list[int], lens_tag: int | None = None) -> list[Deco
     return parse_frames_soft(bits_to_llrs(bits), lens_tag)
 
 
+def frame_spans(frame: DecodedFrame) -> list[dict]:
+    """Labelled bit ranges of a decoded frame, in carrier-bit coordinates.
+
+    For profiles without an inner code the RS codeword is payload, checksum,
+    then parity bytes in wire order, so those get their own labels; conv or
+    interleaved profiles weave them together, so the body is one span.
+    """
+    p = next(q for q in PROFILES.values() if q.name == frame.profile)
+    parts = [("sync", len(p.sync)), ("header", HEADER_BITS * p.header_rep)]
+    if p.conv or p.depth > 1:
+        parts.append(("woven", _body_coded_bits(len(frame.payload), p)))
+    else:
+        parts += [("payload", 8 * len(frame.payload)),
+                  ("checksum", 8 * p.crc_bytes),
+                  ("parity", 8 * p.rs_nsym)]
+    spans, cur = [], frame.offset
+    for kind, n in parts:
+        spans.append({"kind": kind, "start": cur, "len": n})
+        cur += n
+    return spans
+
+
 def llr_of(rank: int, entropy: float, tau: float) -> float:
     """Per-carrier soft bit from what the lens saw at that position.
 
