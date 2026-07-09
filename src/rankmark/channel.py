@@ -1,9 +1,8 @@
-"""Arm A channel: entropy-gated rank parity, and the self-clocking frame.
+"""Arm A channel: entropy-gated rank parity.
 
-A frame is [ MAGIC(16) | LEN(8) | PAYLOAD | CRC16 ], repeated back-to-back
-for as long as generation runs. MAGIC gives the decoder sync without knowing
-where the watermark starts; CRC16 over LEN+PAYLOAD is the validation gate —
-a wrong-lens decode passing both is ~2^-32 per offset.
+The bit layer only — how one payload bit becomes one token choice, plus the
+shared bit/byte/CRC helpers. The frame around the bits (sync, header, ECC,
+the attribution gate) lives in framing.py.
 """
 
 from dataclasses import dataclass
@@ -12,27 +11,14 @@ import torch
 
 from .tokenobs import entropy_of
 
-MAGIC = 0xB65D
-MAGIC_BITS = 16
-LEN_BITS = 8
-CRC_BITS = 16
-MIN_FRAME_BITS = MAGIC_BITS + LEN_BITS + 8 + CRC_BITS
-
 
 @dataclass
 class ChannelParams:
     tau: float = 2.0  # entropy gate, nats: below this a step is a carrier-null
-    framing: str = "v2"  # "v2" = framing.py (sync + ECC + gate); "v1" = legacy MAGIC/CRC16
-    profile: int = 1  # v2 profile id, see framing.PROFILES
+    profile: int = 1  # frame profile id, see framing.PROFILES
     window: int | None = None  # bound rank context to this many tokens; None = full prefix.
     # Full-context ranks die under head-truncation (every downstream near-tie
     # flips); a window makes cut damage end after `window` tokens by construction.
-
-
-@dataclass
-class Frame:
-    offset: int  # bit offset where MAGIC matched
-    payload: bytes
 
 
 def crc16(data: bytes) -> int:
@@ -62,29 +48,6 @@ def bytes_to_bits(data: bytes) -> list[int]:
 
 def bits_to_bytes(bits: list[int]) -> bytes:
     return bytes(bits_to_int(bits[i : i + 8]) for i in range(0, len(bits), 8))
-
-
-def frame_bits(payload: bytes) -> list[int]:
-    if not 1 <= len(payload) <= 255:
-        raise ValueError("payload must be 1..255 bytes")
-    body = bytes([len(payload)]) + payload
-    return int_to_bits(MAGIC, MAGIC_BITS) + bytes_to_bits(body) + int_to_bits(crc16(body), CRC_BITS)
-
-
-def parse_frames(bits: list[int]) -> list[Frame]:
-    """Slide over every bit offset looking for MAGIC, then CRC-validate."""
-    frames = []
-    for off in range(len(bits) - MIN_FRAME_BITS + 1):
-        if bits_to_int(bits[off : off + MAGIC_BITS]) != MAGIC:
-            continue
-        length = bits_to_int(bits[off + MAGIC_BITS : off + MAGIC_BITS + LEN_BITS])
-        end = off + MAGIC_BITS + LEN_BITS + 8 * length + CRC_BITS
-        if length == 0 or end > len(bits):
-            continue
-        body = bits_to_bytes(bits[off + MAGIC_BITS : end - CRC_BITS])
-        if crc16(body) == bits_to_int(bits[end - CRC_BITS : end]):
-            frames.append(Frame(offset=off, payload=body[1:]))
-    return frames
 
 
 def sorted_token_ids(logits: torch.Tensor) -> torch.Tensor:

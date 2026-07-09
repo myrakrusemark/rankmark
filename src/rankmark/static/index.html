@@ -195,9 +195,9 @@ function busy(b){ running = b; for(const id of ["btnEmbed","btnDecode","btnAttr"
 function channelParams(side){ // side = "E" | "D"
   const win = $("win" + side).value;
   if(side === "D"){
-    return {framing: "v2", profile: 1, window: win ? +win : null}; // scan auto-detects profile
+    return {profile: 1, window: win ? +win : null}; // scan auto-detects profile
   }
-  return {framing: "v2", profile: +$("profE").value, window: win ? +win : null};
+  return {profile: +$("profE").value, window: win ? +win : null};
 }
 
 const simple = () => !document.body.classList.contains("adv");

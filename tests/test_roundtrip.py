@@ -27,18 +27,8 @@ def test_determinism_same_text_same_ranks(gpt2):
 
 
 @pytest.mark.slow
-def test_embed_decode_round_trip_v1(gpt2):
-    params = ChannelParams(tau=2.0, framing="v1")
-    result = embed(gpt2, PROMPT, PAYLOAD, params, max_new_tokens=200)
-    assert result.frames_planted >= 1.0, "not enough entropy to plant one frame"
-    decoded = decode(gpt2, result.text, params)
-    assert decoded.valid
-    assert decoded.payload == PAYLOAD
-
-
-@pytest.mark.slow
-def test_embed_decode_round_trip_v2_lean(gpt2):
-    params = ChannelParams(tau=2.0, framing="v2", profile=0)
+def test_embed_decode_round_trip_lean(gpt2):
+    params = ChannelParams(tau=2.0, profile=0)
     result = embed(gpt2, PROMPT, PAYLOAD, params, max_new_tokens=250)
     assert result.frames_planted >= 1.0, "not enough entropy to plant one frame"
     decoded = decode(gpt2, result.text, params)
@@ -55,7 +45,7 @@ def test_v2_frame_survives_truncation(gpt2):
     head cut all the way to the end of the text (~25% carrier parity flips
     measured on gpt2), but windowed ranks match bit-for-bit once the scan is
     `window` tokens past the cut."""
-    params = ChannelParams(tau=2.0, framing="v2", profile=0, window=64)
+    params = ChannelParams(tau=2.0, profile=0, window=64)
     result = embed(gpt2, PROMPT, PAYLOAD, params, max_new_tokens=450)
     assert result.frames_planted >= 3.0, "need a few repetitions to truncate into"
 

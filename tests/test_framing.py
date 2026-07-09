@@ -75,17 +75,7 @@ def test_standard_survives_scattered_bit_flips():
 def test_wrong_lens_random_bits_never_validate():
     rng = random.Random(13)
     llrs = [rng.choice((4.0, -4.0)) for _ in range(6000)]
-    gated = [f for f in parse_frames_soft(llrs, TAG) if f.profile != "gateless"]
-    assert gated == []
-
-
-def test_gateless_ablation_false_detects_on_noise():
-    """BREW's warning, reproduced: with no checksum, RS happily 'corrects'
-    random noise into spurious payloads. The gate earns its place."""
-    rng = random.Random(17)
-    llrs = [rng.choice((4.0, -4.0)) for _ in range(20000)]
-    spurious = [f for f in parse_frames_soft(llrs) if f.profile == "gateless"]
-    assert spurious, "expected RS-only decoding to hallucinate at least one frame"
+    assert parse_frames_soft(llrs, TAG) == []
 
 
 def test_tag_mismatch_is_flagged():

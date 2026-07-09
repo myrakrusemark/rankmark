@@ -16,15 +16,14 @@ Phase 1 (Arm A: entropy-gated rank parity, GLTR heatmap), and Phase 2
 - **Embed**: while generating, at each high-entropy step emit the token whose
   rank parity (rank 0 or rank 1) matches the next payload bit. Low-entropy
   steps emit rank 0 and carry nothing (carrier-nulls), so text quality holds.
-- **Frame** (v2): payload is wrapped as `[SYNC | HEADER | ECC(PAYLOAD‖CRC)]`,
+- **Frame**: payload is wrapped as `[SYNC | HEADER | ECC(PAYLOAD‖CRC)]`,
   repeated for as long as generation runs. A sliding correlator finds the
   sync pattern anywhere in the carrier stream; the ECC stack (Reed–Solomon +
   interleave + rate-1/2 convolutional with soft Viterbi, by profile) absorbs
   edit damage; the CRC is the attribution gate. Profiles trade capacity for
   robustness: `--profile 0` (lean, 71-bit frames — any ~150-carrier span
   holds a whole one), `1` (standard, CRC32 + full ECC), `2` (robust, ~2^-48
-  gate), `3` (gateless — the BREW ablation that shows why the gate exists).
-  `--framing v1` keeps the Phase-1 MAGIC+CRC16 format.
+  gate).
 - **Decode**: teacher-force the text through a lens, recover each token's
   rank, re-apply the same entropy gate, read parities as soft bits (edit
   damage arrives quiet, not loud and wrong), scan for gate-passing frames.

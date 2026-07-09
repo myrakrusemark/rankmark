@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from .channel import ChannelParams, parse_frames
+from .channel import ChannelParams
 from .decoder import gate_bits
 from .framing import llr_of, parse_frames_soft, tag_of
 from .encoder import embed
@@ -53,7 +53,6 @@ class DecodeRequest(BaseModel):
     text: str
     model: str
     tau: float = 2.0
-    framing: str = "v2"
     profile: int = 1
     window: int | None = None
 
@@ -64,7 +63,6 @@ class EmbedRequest(BaseModel):
     model: str
     tau: float = 2.0
     max_tokens: int = 500
-    framing: str = "v2"
     profile: int = 1
     window: int | None = None
 
@@ -88,8 +86,7 @@ def api_models() -> dict:
 @app.post("/api/decode")
 def api_decode(req: DecodeRequest) -> StreamingResponse:
     lens = get_lens(req.model)
-    params = ChannelParams(tau=req.tau, framing=req.framing, profile=req.profile,
-                          window=req.window)
+    params = ChannelParams(tau=req.tau, profile=req.profile, window=req.window)
 
     def events():
         ids = lens.tokenizer(req.text, add_special_tokens=False).input_ids
@@ -108,11 +105,8 @@ def api_decode(req: DecodeRequest) -> StreamingResponse:
                 "bit": o.rank % 2,
             }
         carriers, bits = gate_bits(obs, params)
-        if params.framing == "v2":
-            llrs = [llr_of(o.rank, o.entropy, params.tau) for o in carriers]
-            frames = [f for f in parse_frames_soft(llrs, tag_of(lens.name)) if f.tag_ok]
-        else:
-            frames = parse_frames(bits)
+        llrs = [llr_of(o.rank, o.entropy, params.tau) for o in carriers]
+        frames = [f for f in parse_frames_soft(llrs, tag_of(lens.name)) if f.tag_ok]
         yield {
             "type": "done",
             "lens": req.model,
@@ -129,8 +123,7 @@ def api_decode(req: DecodeRequest) -> StreamingResponse:
 @app.post("/api/embed")
 def api_embed(req: EmbedRequest) -> StreamingResponse:
     lens = get_lens(req.model)
-    params = ChannelParams(tau=req.tau, framing=req.framing, profile=req.profile,
-                          window=req.window)
+    params = ChannelParams(tau=req.tau, profile=req.profile, window=req.window)
     try:
         payload = bytes.fromhex(req.payload)
     except ValueError:

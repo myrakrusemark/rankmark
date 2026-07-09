@@ -3,7 +3,7 @@
 import itertools
 from dataclasses import dataclass, field
 
-from .channel import ChannelParams, encode_step, frame_bits
+from .channel import ChannelParams, encode_step
 from .framing import build_frame, tag_of
 from .models import Lens
 from .tokenobs import StepScorer, window_logits
@@ -43,10 +43,7 @@ def embed(
     on_token=None,
 ) -> EmbedResult:
     params = params or ChannelParams()
-    if params.framing == "v2":
-        frame = build_frame(payload, params.profile, tag_of(lens.name))
-    else:
-        frame = frame_bits(payload)
+    frame = build_frame(payload, params.profile, tag_of(lens.name))
     bit_stream = itertools.cycle(frame)
     next_bit = next(bit_stream)
 

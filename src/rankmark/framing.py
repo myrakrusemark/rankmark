@@ -17,11 +17,6 @@ gate width, ECC stack), because they trade capacity against robustness:
             rate-1/2 convolutional inner code with soft Viterbi.
   robust    header x5, MAGIC16+CRC32 gate (~2^-48 with header consistency),
             RS(+8), deeper interleave.
-  gateless  the BREW ablation: convolutional code only, NO checksum and no
-            RS. Viterbi always emits its maximum-likelihood guess — it has
-            no concept of failure — so random noise decodes into spurious
-            payloads. This profile exists to demonstrate that the gate (and
-            even RS's refusal to decode) earns its place.
 
 Deviation from the build plan noted: the plan sketches one fixed geometry
 (31-chip sync, header x5). At measured capacity (~63 carrier bits per 500
@@ -66,7 +61,7 @@ class Profile:
     sync: tuple[int, ...]
     sync_tol: int  # chips allowed to mismatch during the scan
     header_rep: int
-    crc_bytes: int  # 2 = CRC16, 4 = CRC32, 6 = MAGIC16 + CRC32, 0 = no gate
+    crc_bytes: int  # 2 = CRC16, 4 = CRC32, 6 = MAGIC16 + CRC32
     rs_nsym: int
     conv: bool
     depth: int  # interleave depth over the RS codeword
@@ -76,7 +71,6 @@ PROFILES: dict[int, Profile] = {
     0: Profile("lean", tuple(BARKER_13), 1, 2, 2, 2, False, 1),
     1: Profile("standard", tuple(MSEQ_31), 3, 3, 4, 4, True, 4),
     2: Profile("robust", tuple(MSEQ_31), 5, 5, 6, 8, True, 8),
-    3: Profile("gateless", tuple(BARKER_13), 1, 2, 0, 0, True, 1),
 }
 DEFAULT_PROFILE = 1
 
@@ -96,8 +90,6 @@ def tag_of(model_name: str) -> int:
 
 
 def _checksum(payload: bytes, crc_bytes: int) -> bytes:
-    if crc_bytes == 0:
-        return b""
     if crc_bytes == 2:
         return crc16(payload).to_bytes(2)
     crc = zlib.crc32(payload).to_bytes(4)
@@ -137,7 +129,7 @@ def _decode_body(llrs: list[float], payload_len: int, p: Profile) -> bytes | Non
     if decoded is None:
         return None
     payload = decoded[:payload_len]
-    if p.crc_bytes and decoded[payload_len:] != _checksum(payload, p.crc_bytes):
+    if decoded[payload_len:] != _checksum(payload, p.crc_bytes):
         return None
     return payload
 
