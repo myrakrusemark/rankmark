@@ -89,6 +89,7 @@
       <label id="promptLabel">cover story &mdash; the visible text will start like this</label><br>
       <input id="prompt" style="width:100%;box-sizing:border-box" value="The history of cryptography begins with">
     </div>
+    <input id="payload" type="hidden" value="">  <!-- filled from the secret message -->
     <details class="adv" id="advE">
       <summary>advanced &mdash; packaging and gate</summary>
       <div class="inner">
@@ -101,10 +102,9 @@
           </select></div>
           <div><label>window (tokens)</label><br><input id="winE" class="num" type="number" placeholder="full" min="16" max="512"></div>
           <div><label>temperature</label><br><input id="tempE" class="num" type="number" value="0.7" min="0" max="2" step="0.1"></div>
-          <div><label>payload (hex)</label><br><input id="payload" class="num" value="" placeholder="from msg" style="font-family:ui-monospace,monospace"></div>
           <div><label>max tokens</label><br><input id="maxtok" class="num" type="number" value="500" min="50" max="2000"></div>
         </div>
-        <p class="hint">Generates token by token; each bit is the parity of the chosen token's rank. The secret message fills the payload hex automatically; edit the hex for raw bytes. <b>Temperature</b> 0 is greedy (rank 0/1 only — cleanest signal, but small models can fall into repetition loops); above 0 it samples among same-parity tokens, which breaks the loops and looks like ordinary text — the decode is identical either way. Set a <b>window</b> (e.g. 64) to survive truncation. With this panel closed, all of these are chosen automatically.</p>
+        <p class="hint">Generates token by token; each bit is the parity of the chosen token's rank. <b>Temperature</b> 0 is greedy (rank 0/1 only — cleanest signal, but small models can fall into repetition loops); above 0 it samples among same-parity tokens, which breaks the loops and looks like ordinary text — the decode is identical either way. Set a <b>window</b> (e.g. 64) to survive truncation. With this panel closed, all of these are chosen automatically.</p>
       </div>
     </details>
     <div class="row" style="margin-top:12px">
@@ -321,13 +321,10 @@ function payloadText(hex){ // printable UTF-8 or null
   }catch{ return null; }
 }
 
-// the message box and the hex payload are two views of the same bytes
+// the secret message drives the (hidden) hex payload
 $("msg").addEventListener("input", () => {
   const bytes = new TextEncoder().encode($("msg").value);
   $("payload").value = [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
-});
-$("payload").addEventListener("input", () => {
-  $("msg").value = ($("payload").value.trim().length % 2 === 0 && payloadText($("payload").value.trim())) || "";
 });
 
 async function runEmbed(){
