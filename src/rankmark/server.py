@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .channel import ChannelParams
-from .framing import frame_spans, llr_of, parse_frames_soft, partial_spans, tag_of
+from .framing import build_frame, frame_spans, llr_of, parse_frames_soft, partial_spans, tag_of
 from .encoder import embed
 from .models import Lens, load_lens
 from .tokenobs import scan_iter
@@ -189,7 +189,8 @@ def api_embed(req: EmbedRequest) -> StreamingResponse:
             q.put(None)
 
         threading.Thread(target=run, daemon=True).start()
-        yield {"type": "start", "lens": req.model, "prompt": req.prompt}
+        frame_bits = len(build_frame(payload, params.profile, tag_of(lens.name)))
+        yield {"type": "start", "lens": req.model, "prompt": req.prompt, "frame_bits": frame_bits}
         while (event := q.get()) is not None:
             yield event
 

@@ -351,7 +351,7 @@ async function runEmbed(){
     $("maxtok").value = Math.min(900, Math.max(180, Math.ceil(frameBits * 2 / 0.5)));
   }
   busy(true); resetView(); showView("text");
-  let toks = 0, carriers = 0;
+  let toks = 0, carriers = 0, frameBits = 0;
   setVerdict("loading lens… (first time takes ~a minute)");
   try{
     await streamPost("/api/embed", {
@@ -359,8 +359,10 @@ async function runEmbed(){
       model: $("lensE").value, tau: +$("tauE").value, max_tokens: +$("maxtok").value,
       instruct, ...channelParams("E")
     }, e => {
-      if(e.type === "token"){ addToken(e); toks++; if(e.carrier) carriers++;
+      if(e.type === "start"){ frameBits = e.frame_bits; }
+      else if(e.type === "token"){ addToken(e); toks++; if(e.carrier) carriers++;
         $("stTok").textContent = toks; $("stCar").textContent = carriers;
+        if(frameBits) $("stFrm").textContent = (carriers / frameBits).toFixed(2);  // copies so far
         setVerdict(`hiding… ${toks} words written, ${carriers} bits planted`);
       } else if(e.type === "done"){
         lastText = e.text; $("intext").value = e.text; $("btnCopy").style.display = "";
