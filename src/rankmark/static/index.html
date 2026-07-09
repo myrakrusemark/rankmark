@@ -81,15 +81,18 @@
       <label>your secret message</label><br>
       <input id="msg" style="width:100%;box-sizing:border-box" placeholder="meet me at noon" maxlength="60">
     </div>
+    <div style="margin-bottom:10px">
+      <label>generate with &mdash; a chat model takes an instruction, a base model a cover story</label><br>
+      <select id="lensE" style="width:100%;box-sizing:border-box"></select>
+    </div>
     <div>
       <label id="promptLabel">cover story &mdash; the visible text will start like this</label><br>
       <input id="prompt" style="width:100%;box-sizing:border-box" value="The history of cryptography begins with">
     </div>
     <details class="adv" id="advE">
-      <summary>advanced &mdash; pick the model, packaging, and gate yourself</summary>
+      <summary>advanced &mdash; packaging and gate</summary>
       <div class="inner">
         <div class="row">
-          <div><label>generate with</label><br><select id="lensE"></select></div>
           <div><label>&tau; gate (nats)</label><br><input id="tauE" class="num" type="number" value="2.0" min="0.5" max="6" step="0.1"></div>
           <div><label>frame profile</label><br><select id="profE">
             <option value="0">lean &mdash; smallest frames</option>
@@ -340,10 +343,9 @@ async function runEmbed(){
   const instruct = isInstruct($("lensE").value);
   if(instruct && !$("winE").value) $("winE").value = 48; // instruction must be disposable
   if(auto){
-    // accordion closed: choose everything from the message
+    // accordion closed: choose the packaging/gate from the message, but honor
+    // the model the user picked above (it's no longer hidden in advanced)
     const nbytes = $("payload").value.trim().length / 2;
-    const models = [...$("lensE").options].map(o => o.value);
-    if(models.includes("gpt2")) $("lensE").value = "gpt2"; // fastest lens
     // temperature 0.7 keeps small models out of the repetition loops that
     // starve the channel of carriers on formulaic prompts
     $("profE").value = "0"; $("winE").value = 48; $("tauE").value = 2.0; $("tempE").value = 0.7;
