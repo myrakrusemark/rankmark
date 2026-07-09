@@ -356,13 +356,20 @@ async function runDecode(model, keepAttr){
   if(!keepAttr) $("attr").innerHTML = "";
   $("stream").innerHTML = ""; $("bits").innerHTML = ""; $("btnCopy").style.display = "none";
   showView("bits");
-  let toks = 0, carriers = 0, verdict = null;
+  let toks = 0, carriers = 0, verdict = null, found = false;
   setVerdict(`reading through ${model}… (loading the lens can take a minute)`);
   try{
     await streamPost("/api/decode", {text, model, tau: +$("tauD").value, ...channelParams("D")}, e => {
       if(e.type === "token"){ toks++; if(e.carrier){ carriers++; addBit(e); }
         $("stTok").textContent = toks; $("stCar").textContent = carriers;
-        setVerdict(`scoring through ${model}… ${toks} tokens`);
+        if(!found) setVerdict(`scoring through ${model}… ${toks} tokens`);
+      } else if(e.type === "frame"){ // a frame locked mid-scan — surface it now
+        found = true; paintSpans(e.spans);
+        const msg = payloadText(e.payload);
+        $("stFrm").textContent = e.frames;
+        $("stPay").textContent = msg ? `“${msg}”` : "0x" + e.payload;
+        setVerdict(`✅ found it — ${msg ? `hidden message: “${msg}”` : `hidden data 0x${e.payload}`}`
+          + ` · written by ${model} · still scanning for more copies…`, "ok");
       } else if(e.type === "done"){
         verdict = e;
         paintSpans(e.spans);

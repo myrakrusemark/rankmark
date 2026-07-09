@@ -17,7 +17,6 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .channel import ChannelParams
-from .decoder import gate_bits
 from .framing import frame_spans, llr_of, parse_frames_soft, tag_of
 from .encoder import embed
 from .models import Lens, load_lens
@@ -93,9 +92,13 @@ def api_decode(req: DecodeRequest) -> StreamingResponse:
     def events():
         ids = lens.tokenizer(req.text, add_special_tokens=False).input_ids
         yield {"type": "start", "lens": req.model, "tokens": len(ids)}
+        tag = tag_of(lens.name)
         obs = []
+        llrs = []  # one per carrier, in carrier order (== the bit-strip cells)
+        seen = 0
         for o in scan_iter(lens, ids, params.window):
             obs.append(o)
+            carrier = o.entropy >= params.tau
             yield {
                 "type": "token",
                 "pos": o.pos,
@@ -103,16 +106,28 @@ def api_decode(req: DecodeRequest) -> StreamingResponse:
                 "rank": o.rank,
                 "bucket": o.bucket,
                 "entropy": round(o.entropy, 3),
-                "carrier": o.entropy >= params.tau,
+                "carrier": carrier,
                 "bit": o.rank % 2,
             }
-        carriers, bits = gate_bits(obs, params)
-        llrs = [llr_of(o.rank, o.entropy, params.tau) for o in carriers]
-        frames = [f for f in parse_frames_soft(llrs, tag_of(lens.name)) if f.tag_ok]
+            # scan the carriers so far — a frame that validates on a prefix
+            # stays valid (each carrier's llr depends only on itself), so the
+            # message and its colored parts can surface mid-stream
+            if carrier:
+                llrs.append(llr_of(o.rank, o.entropy, params.tau))
+                frames = [f for f in parse_frames_soft(llrs, tag) if f.tag_ok]
+                if len(frames) > seen:
+                    seen = len(frames)
+                    yield {
+                        "type": "frame",
+                        "frames": len(frames),
+                        "payload": frames[0].payload.hex(),
+                        "spans": [s for f in frames for s in frame_spans(f)],
+                    }
+        frames = [f for f in parse_frames_soft(llrs, tag) if f.tag_ok]
         yield {
             "type": "done",
             "lens": req.model,
-            "carriers": len(carriers),
+            "carriers": len(llrs),
             "total": len(obs),
             "frames": len(frames),
             "valid": bool(frames),
