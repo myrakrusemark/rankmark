@@ -83,8 +83,6 @@
         <option value="0">lean — smallest frames</option>
         <option value="1" selected>standard — CRC32 + full ECC</option>
         <option value="2">robust — heaviest ECC</option>
-        <option value="3">gateless — no checksum (ablation)</option>
-        <option value="v1">v1 — legacy MAGIC/CRC16</option>
       </select></div>
       <div><label>window (tokens)</label><br><input id="winE" class="num" type="number" placeholder="full" min="16" max="512"></div>
     </div>
@@ -103,10 +101,6 @@
     <div class="row advOnly" style="margin-top:10px">
       <div><label>read through</label><br><select id="lensD"></select></div>
       <div><label>&tau; gate (nats)</label><br><input id="tauD" class="num" type="number" value="2.0" min="0.5" max="6" step="0.1"></div>
-      <div><label>format</label><br><select id="fmtD">
-        <option value="v2" selected>v2 (profile auto-detected)</option>
-        <option value="v1">v1 legacy</option>
-      </select></div>
       <div><label>window (tokens)</label><br><input id="winD" class="num" type="number" placeholder="full" min="16" max="512"></div>
     </div>
     <div class="row" style="margin-top:12px">
@@ -201,14 +195,9 @@ function busy(b){ running = b; for(const id of ["btnEmbed","btnDecode","btnAttr"
 function channelParams(side){ // side = "E" | "D"
   const win = $("win" + side).value;
   if(side === "D"){
-    return {framing: $("fmtD").value, profile: 1, window: win ? +win : null};
+    return {framing: "v2", profile: 1, window: win ? +win : null}; // scan auto-detects profile
   }
-  const prof = $("profE").value;
-  return {
-    framing: prof === "v1" ? "v1" : "v2",
-    profile: prof === "v1" ? 1 : +prof,
-    window: win ? +win : null,
-  };
+  return {framing: "v2", profile: +$("profE").value, window: win ? +win : null};
 }
 
 const simple = () => !document.body.classList.contains("adv");
@@ -251,7 +240,6 @@ async function runEmbed(){
       } else if(e.type === "done"){
         lastText = e.text; $("intext").value = e.text; $("btnCopy").style.display = "";
         // decode with a matching channel
-        $("fmtD").value = $("profE").value === "v1" ? "v1" : "v2";
         $("winD").value = $("winE").value;
         $("stFrm").textContent = e.frames_planted; $("stPay").textContent = "0x" + $("payload").value.trim();
         const enough = e.frames_planted >= 1;
@@ -329,7 +317,6 @@ async function runAttribute(){
 async function runSimpleFind(){
   if(running) return; busy(true);
   $("attr").innerHTML = "";
-  $("fmtD").value = "v2";
   // fast lens first — it's also simple-embed's default, so the common case ends in one pass
   const models = [...$("lensD").options].map(o => o.value)
     .sort((a, b) => (b === "gpt2") - (a === "gpt2"));
