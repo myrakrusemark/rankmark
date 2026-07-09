@@ -200,7 +200,7 @@ function addBit(e){
   const b = document.createElement("span");
   b.className = "bit";
   b.textContent = e.bit;
-  b.dataset.info = `bit ${$("bits").children.length} · no frame · carried by “${e.piece.trim() || e.piece}”`;
+  b.dataset.info = `bit ${$("bits").children.length} · no frame · carried by “${pieceLabel(e.piece)}”`;
   b.dataset.piece = e.piece;
   $("bits").appendChild(b);
 }
@@ -211,7 +211,7 @@ function paintSpans(spans){
     for(let i = s.start; i < s.start + s.len && i < cells.length; i++){
       cells[i].className = "bit k-" + s.kind;
       cells[i].dataset.info =
-        `bit ${i} · ${SPAN_LABELS[s.kind]} · carried by “${cells[i].dataset.piece.trim() || cells[i].dataset.piece}”`;
+        `bit ${i} · ${SPAN_LABELS[s.kind]} · carried by “${pieceLabel(cells[i].dataset.piece)}”`;
     }
   }
 }
@@ -219,9 +219,16 @@ function paintSpans(spans){
 function addToken(e){
   const s = document.createElement("span");
   s.className = `tok b${e.bucket}` + (e.carrier ? " car" : "");
-  s.textContent = e.piece;
+  // newlines break the line for real (pre-wrap), but leave a visible ↵ so the
+  // token can be seen and hovered; copy still uses the exact text
+  s.textContent = e.piece.replace(/\n/g, "↵\n");
   s.dataset.info = `rank ${e.rank} · H ${e.entropy} nats` + (e.carrier ? ` · bit ${e.bit}` : " · carrier-null");
   $("stream").appendChild(s);
+}
+
+function pieceLabel(piece){
+  const p = piece.replace(/\n/g, "↵").trim();
+  return p || (piece.includes("↵") || piece.includes("\n") ? "↵" : "␣");
 }
 
 // instant tooltip — native title popups are slow and missing in some embedded browsers
