@@ -89,22 +89,29 @@
       <label id="promptLabel">cover story &mdash; the visible text will start like this</label><br>
       <input id="prompt" style="width:100%;box-sizing:border-box" value="The history of cryptography begins with">
     </div>
-    <input id="payload" type="hidden" value="">  <!-- filled from the secret message -->
+    <!-- filled/fixed under the hood; the message drives the payload, and window
+         (truncation survival) + tau (hiding gate) sit at good defaults -->
+    <input id="payload" type="hidden" value="">
+    <input id="winE" type="hidden" value="48">
+    <input id="tauE" type="hidden" value="2.0">
     <details class="adv" id="advE">
-      <summary>advanced &mdash; packaging and gate</summary>
+      <summary>advanced</summary>
       <div class="inner">
         <div class="row">
-          <div><label>&tau; gate (nats)</label><br><input id="tauE" class="num" type="number" value="2.0" min="0.5" max="6" step="0.1"></div>
-          <div><label>frame profile</label><br><select id="profE">
-            <option value="0">lean &mdash; smallest frames</option>
-            <option value="1" selected>standard &mdash; CRC32 + full ECC</option>
-            <option value="2">robust &mdash; heaviest ECC</option>
-          </select></div>
-          <div><label>window (tokens)</label><br><input id="winE" class="num" type="number" placeholder="full" min="16" max="512"></div>
-          <div><label>temperature</label><br><input id="tempE" class="num" type="number" value="0.7" min="0" max="2" step="0.1"></div>
-          <div><label>max tokens</label><br><input id="maxtok" class="num" type="number" value="500" min="50" max="2000"></div>
+          <div style="flex:1;min-width:240px">
+            <label>durability &mdash; sturdier packets survive more editing, but need longer text</label><br>
+            <select id="profE" style="width:100%;box-sizing:border-box">
+              <option value="0" selected>lean &mdash; smallest, most fragile</option>
+              <option value="1">standard &mdash; balanced</option>
+              <option value="2">robust &mdash; survives heavy editing</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <label>wording variety &mdash; 0 is the cleanest signal, higher reads more natural</label><br>
+            <input id="tempE" type="number" value="0.7" min="0" max="2" step="0.1" style="width:100%;box-sizing:border-box">
+          </div>
         </div>
-        <p class="hint">Generates token by token; each bit is the parity of the chosen token's rank. <b>Temperature</b> 0 is greedy (rank 0/1 only — cleanest signal, but small models can fall into repetition loops); above 0 it samples among same-parity tokens, which breaks the loops and looks like ordinary text — the decode is identical either way. Set a <b>window</b> (e.g. 64) to survive truncation. With this panel closed, all of these are chosen automatically.</p>
+        <p class="hint">Each hidden bit is the parity of the chosen word's rank. <b>Durability</b> adds error-correction so the message survives edits and truncation, at the cost of needing more text per copy. <b>Wording variety</b> is the sampling temperature: 0 always takes the model's top choice (cleanest watermark, but small models can loop); higher samples more widely, which breaks loops and reads more naturally — the decode is identical either way. The AI keeps writing until at least one full copy is embedded, then stops on its own.</p>
       </div>
     </details>
     <div class="row" style="margin-top:12px">
@@ -329,7 +336,7 @@ $("msg").addEventListener("input", () => {
 
 async function runEmbed(){
   if(running) return;
-  const auto = !$("advE").open;
+  const auto = !$("advE").open;  // only affects verdict wording now
   const msg = $("msg").value.trim();
   if(msg){
     const bytes = new TextEncoder().encode(msg);
@@ -338,24 +345,13 @@ async function runEmbed(){
   }
   if(!$("payload").value.trim()){ setVerdict("type a secret message first", "bad"); return; }
   const instruct = isInstruct($("lensE").value);
-  if(instruct && !$("winE").value) $("winE").value = 48; // instruction must be disposable
-  if(auto){
-    // accordion closed: choose the packaging/gate from the message, but honor
-    // the model the user picked above (it's no longer hidden in advanced)
-    const nbytes = $("payload").value.trim().length / 2;
-    // temperature 0.7 keeps small models out of the repetition loops that
-    // starve the channel of carriers on formulaic prompts
-    $("profE").value = "0"; $("winE").value = 48; $("tauE").value = 2.0; $("tempE").value = 0.7;
-    const frameBits = 13 + 18 + 8 * (nbytes + 4); // lean frame for this payload
-    $("maxtok").value = Math.min(900, Math.max(180, Math.ceil(frameBits * 2 / 0.5)));
-  }
   busy(true); resetView(); showView("text");
   let toks = 0, carriers = 0, frameBits = 0;
   setVerdict("loading lens… (first time takes ~a minute)");
   try{
     await streamPost("/api/embed", {
       prompt: $("prompt").value, payload: $("payload").value.trim(),
-      model: $("lensE").value, tau: +$("tauE").value, max_tokens: +$("maxtok").value,
+      model: $("lensE").value, tau: +$("tauE").value, max_tokens: 0,  // server sizes it
       instruct, ...channelParams("E")
     }, e => {
       if(e.type === "start"){ frameBits = e.frame_bits; }
@@ -373,8 +369,8 @@ async function runEmbed(){
         setVerdict(auto
           ? (enough ? "done! your message is hidden in this text — hit reveal to prove it's there"
                     : "the text came out too short to hold the whole message — try a shorter secret")
-          : `embedded ${e.bits_planted} bits (${e.frames_planted} frames)` +
-            (enough ? " — switch to reveal to verify" : " — under 1 full frame, raise max tokens"),
+          : `embedded ${e.bits_planted} bits (${e.frames_planted} copies)` +
+            (enough ? " — switch to reveal to verify" : " — under one full copy; try a shorter secret or less durable packaging"),
           enough ? "ok" : "bad");
         if(!e.retokenizes_cleanly && enough) setVerdict(auto // never hide a fatal too-short verdict
           ? "done — one spot came out fragile, but the reveal usually still works; try it (if it fails, tweak the cover story and re-hide)"

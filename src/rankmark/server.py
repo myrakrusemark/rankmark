@@ -61,7 +61,7 @@ class EmbedRequest(BaseModel):
     payload: str  # hex
     model: str
     tau: float = 2.0
-    max_tokens: int = 500
+    max_tokens: int = 0  # 0 = server sizes it for a couple of copies past the window
     profile: int = 1
     window: int | None = None
     temperature: float = 0.0
@@ -151,6 +151,11 @@ def api_embed(req: EmbedRequest) -> StreamingResponse:
     except ValueError:
         raise HTTPException(400, "payload must be hex bytes, e.g. a7") from None
 
+    frame_bits = len(build_frame(payload, params.profile, tag_of(lens.name)))
+    # the EOS ban already keeps the model going until one full copy is planted;
+    # this is just an upper bound sized for ~2 copies past the burned window
+    max_new = req.max_tokens or min(1800, (params.window or 0) + int(frame_bits * 2.4))
+
     def events():
         q: queue.Queue = queue.Queue()
 
@@ -171,7 +176,7 @@ def api_embed(req: EmbedRequest) -> StreamingResponse:
             try:
                 result = embed(
                     lens, req.prompt, payload, params,
-                    max_new_tokens=req.max_tokens, on_token=on_token, instruct=req.instruct,
+                    max_new_tokens=max_new, on_token=on_token, instruct=req.instruct,
                 )
                 q.put(
                     {
@@ -189,7 +194,6 @@ def api_embed(req: EmbedRequest) -> StreamingResponse:
             q.put(None)
 
         threading.Thread(target=run, daemon=True).start()
-        frame_bits = len(build_frame(payload, params.profile, tag_of(lens.name)))
         yield {"type": "start", "lens": req.model, "prompt": req.prompt, "frame_bits": frame_bits}
         while (event := q.get()) is not None:
             yield event
