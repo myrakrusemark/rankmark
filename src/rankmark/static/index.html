@@ -8,12 +8,12 @@
   :root{
     --bg:#faf9f6;--card:#fff;--border:#e2e0da;--text:#1a1a18;--muted:#6b6a64;
     --b0:#c6efce;--b0t:#1e5631;--b1:#ffeb9c;--b1t:#6b5300;--b2:#ffc7ce;--b2t:#7a1f28;--b3:#d9d2f5;--b3t:#3c3489;
-    --ok:#1d7a44;--bad:#b3362e;--accent:#3a5fa8;
+    --ok:#1d7a44;--bad:#b3362e;--accent:#3a5fa8;--bit0:#2f8f57;--bit1:#c07d1a;
   }
   @media(prefers-color-scheme:dark){
     :root{--bg:#191917;--card:#22221f;--border:#3a3934;--text:#eceae4;--muted:#98968e;
       --b0:#1e4a2c;--b0t:#a8e2b8;--b1:#4d3f08;--b1t:#f0d878;--b2:#54222a;--b2t:#f2aab2;--b3:#332d5e;--b3t:#c3bbf0;
-      --ok:#5fce8f;--bad:#f08c85;--accent:#8fb0ee}
+      --ok:#5fce8f;--bad:#f08c85;--accent:#8fb0ee;--bit0:#5fce8f;--bit1:#e0a94a}
   }
   body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
   main{max-width:880px;margin:2rem auto;padding:0 1rem}
@@ -34,10 +34,10 @@
   .chip b{display:block;font-size:18px;font-weight:600}
   .chip span{font-size:11px;color:var(--muted)}
   #stream{font-family:ui-monospace,monospace;font-size:13px;line-height:2.1;margin:10px 0;white-space:pre-wrap;word-break:break-word}
-  .tok{padding:2px 0;border-radius:3px}
-  .tok.b0{background:var(--b0);color:var(--b0t)}.tok.b1{background:var(--b1);color:var(--b1t)}
-  .tok.b2{background:var(--b2);color:var(--b2t)}.tok.b3{background:var(--b3);color:var(--b3t)}
-  .tok.car{border-bottom:2px solid currentColor}
+  /* subtle: plain text, only carriers get a colored underline (its color = the bit) */
+  .tok{padding:1px 0}
+  .tok.bit0{border-bottom:2px solid var(--bit0)}
+  .tok.bit1{border-bottom:2px solid var(--bit1)}
   #verdict{min-height:24px;font-size:14px;margin:12px 0 2px;font-weight:500}
   .legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:6px}
   .legend .tok{padding:2px 6px}
@@ -155,11 +155,9 @@
   <div id="stream"></div>
   <div id="bits" style="display:none"></div>
   <div class="legend" id="legendE">
-    <span><span class="tok b0">rank 0</span> top pick</span>
-    <span><span class="tok b1">rank 1</span> 2nd</span>
-    <span><span class="tok b2">2&ndash;9</span> near</span>
-    <span><span class="tok b3">10+</span> far</span>
-    <span>underlined = carrying a piece of the secret &middot; hover any word for details</span>
+    <span><span class="tok bit0">underline</span> carries a 0</span>
+    <span><span class="tok bit1">underline</span> carries a 1</span>
+    <span>no underline = no hidden bit here &middot; hover any word for details</span>
     <span style="flex:1"></span>
     <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
   </div>
@@ -259,14 +257,10 @@ function paintPartial(spans){ // tentative — the frame currently arriving
   }
 }
 
-// rankmark's whole signal lives at ranks 0–1 (greedy) or 0–47 (temperature),
-// never the GLTR 100/1000/beyond range — so recolor at OUR resolution: rank 0
-// (top pick), rank 1 (2nd — where 1-bits live), 2–9 (sampled near), 10+ (far)
-function rankBand(rank){ return rank === 0 ? 0 : rank === 1 ? 1 : rank < 10 ? 2 : 3; }
-
 function addToken(e){
   const s = document.createElement("span");
-  s.className = `tok b${rankBand(e.rank)}` + (e.carrier ? " car" : "");
+  // plain text; a carrier gets a colored underline whose color IS the bit it holds
+  s.className = "tok" + (e.carrier ? " bit" + e.bit : "");
   // newlines break the line for real (pre-wrap), but leave a visible ↵ so the
   // token can be seen and hovered; copy still uses the exact text
   s.textContent = e.piece.replace(/\n/g, "↵\n");
