@@ -277,8 +277,12 @@ function updateHideStats(carriers, frameBits, nbytes){
 function collapseHideForm(){  // form -> one-line summary of what's being hidden
   const secret = $("msg").value.trim() || payloadText($("payload").value.trim()) || ("0x" + $("payload").value.trim());
   $("sumMsg").textContent = "“" + secret + "”";
-  const cover = ($("prompt").value.trim() || "").slice(0, 64);
-  $("sumCover").textContent = isInstruct($("lensE").value) ? ("a reply to “" + cover + "”") : ("“" + cover + "…”");
+  // display-only truncation — the model always gets the full prompt
+  const full = $("prompt").value.trim(), cut = full.length > 64;
+  const cover = full.slice(0, 64) + (cut ? "…" : "");
+  $("sumCover").textContent = isInstruct($("lensE").value)
+    ? ("a reply to “" + cover + "”")
+    : ("“" + full.slice(0, 64) + "…”"); // completion mode: text always continues past the cover
   $("hideForm").classList.add("collapsed");
   $("hideSummary").style.display = "flex";
 }
