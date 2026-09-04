@@ -10,3 +10,5 @@ out/
 !docs/**/*.html
 !src/rankmark/static/*.html
 !web/**/*.html
+# engine build artifacts (from the wllama fork); fetched or built, not source
+web/vendor/
