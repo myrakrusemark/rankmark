@@ -2,8 +2,13 @@
   "_comment": "Model ladder for the public site, pinned by Hugging Face repo revision and file sha256 (from the HF API, blobs=true, on 2026-09-04). A lens id is frozen forever once texts carry it. Files over 2 GB are split with llama-gguf-split in Phase 2 and the parts get their own hashes here.",
   "engine": {
     "name": "llama.cpp-wasm (wllama fork)",
-    "build": null,
-    "_comment": "build hash is filled in by the Phase 1 engine spike"
+    "repo": "https://github.com/myrakrusemark/wllama",
+    "branch": "rankmark",
+    "commit": "9fb194c",
+    "wllama": "3.7.0",
+    "llamacpp": "c7bda030",
+    "emsdk": "4.0.20",
+    "_comment": "the engine build is part of a lens fingerprint; rebuilds get a new commit here"
   },
   "rungs": [
     {

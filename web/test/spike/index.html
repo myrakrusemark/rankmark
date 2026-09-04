@@ -1,0 +1,163 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>rankmark engine spike</title>
+<style>body{font:13px/1.4 monospace;margin:16px} pre{white-space:pre-wrap}</style>
+<h1>engine spike: llama.cpp wasm via the wllama fork</h1>
+<p>Drive from the console: <code>spike.start("load")</code>, then <code>spike.start("sanity")</code>,
+<code>spike.start("determinism", 100)</code>, <code>spike.start("prefill")</code>,
+<code>spike.start("roundtrip", "a7", 0, 700)</code>, <code>spike.start("threads", [1,2,4,8])</code>.
+Status in <code>spike.status</code>, results in <code>spike.results</code>.</p>
+<pre id="log"></pre>
+<script type="module">
+import { LlamaLens } from "./llama-lens.js";
+import { embed } from "../../engine/encoder.js";
+import { decode } from "../../engine/decoder.js";
+import { entropyOf, sortedTokenIds } from "../../engine/logits.js";
+
+const MODELS = {
+  "Qwen3-0.6B-Q8_0": "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/23749fefcc72300e3a2ad315e1317431b06b590a/Qwen3-0.6B-Q8_0.gguf",
+  // Qwen's own 0.6B repo ships Q8_0 only; the 4-bit file is unsloth's mirror
+  "Qwen3-0.6B-Q4_K_M": "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/50968a4468ef4233ed78cd7c3de230dd1d61a56b/Qwen3-0.6B-Q4_K_M.gguf",
+  "Qwen3-1.7B-Q8_0": "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf",
+};
+const PROMPT = "The history of cryptography begins with";
+
+const el = document.getElementById("log");
+const log = (...a) => {
+  const s = a.map(x => typeof x === "string" ? x : JSON.stringify(x)).join(" ");
+  el.textContent += new Date().toISOString().slice(11, 19) + " " + s + "\n";
+  console.log(s);
+};
+const hash = async (f32) => {
+  const h = await crypto.subtle.digest("SHA-256", f32.buffer.slice(f32.byteOffset, f32.byteOffset + f32.byteLength));
+  return [...new Uint8Array(h)].slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("");
+};
+const now = () => performance.now();
+
+const spike = {
+  status: {},
+  results: {},
+  lens: null,
+  model: "Qwen3-0.6B-Q8_0",
+  env: {
+    crossOriginIsolated: self.crossOriginIsolated,
+    threads: navigator.hardwareConcurrency,
+    memory64: (() => { try { new WebAssembly.Memory({ address: "i64", initial: 1n, maximum: 2n }); return true; } catch { return false; } })(),
+    jspi: typeof WebAssembly.Suspending === "function",
+    ua: navigator.userAgent,
+  },
+
+  start(name, ...args) {
+    this.status[name] = { running: true };
+    this[name](...args).then(r => {
+      this.results[name] = r; this.status[name] = { running: false, done: true };
+      log(`[${name}] done`, r);
+    }).catch(e => {
+      this.status[name] = { running: false, error: String(e && e.stack || e) };
+      log(`[${name}] ERROR`, String(e && e.stack || e));
+    });
+    return `started ${name}`;
+  },
+
+  async load(model = this.model, n_threads = 4) {
+    if (this.lens) { await this.lens.unload(); this.lens = null; }
+    this.model = model;
+    const t0 = now();
+    let last = 0;
+    this.lens = await LlamaLens.load(model, MODELS[model], {
+      n_threads,
+      onProgress: ({ loaded, total }) => {
+        const pct = Math.round(100 * loaded / total);
+        if (pct >= last + 10) { last = pct; log(`download ${pct}%`); }
+      },
+    });
+    return { model, n_threads, nVocab: this.lens.nVocab, eos: this.lens.eosId, eog: [...this.lens.eogIds], loadSeconds: +((now() - t0) / 1000).toFixed(1) };
+  },
+
+  async sanity() {
+    const L = this.lens;
+    const ids = await L.encodeText(PROMPT);
+    const t0 = now();
+    const logits = await L.step(ids, true);
+    const ms = now() - t0;
+    let finite = true, min = Infinity, max = -Infinity;
+    for (let i = 0; i < logits.length; i++) { const v = logits[i]; if (!Number.isFinite(v)) finite = false; if (v < min) min = v; if (v > max) max = v; }
+    const order = sortedTokenIds(logits);
+    const top = [...order.slice(0, 5)].map(t => ({ id: t, piece: L.decodeOne(t), logit: +logits[t].toFixed(3) }));
+    const back = await L.decodeTokens(ids);
+    return { promptTokens: ids.length, retokenizes: back === PROMPT, logitsLen: logits.length, finite, min: +min.toFixed(3), max: +max.toFixed(3), entropy: +entropyOf(logits).toFixed(3), top, prefillMs: Math.round(ms) };
+  },
+
+  // run-to-run: same prefix, fresh cache each time, hash the logit row
+  async determinism(n = 100, greedyRuns = 5, greedyTokens = 64) {
+    const L = this.lens;
+    const ids = await L.encodeText(PROMPT);
+    const hashes = new Map();
+    const t0 = now();
+    for (let i = 0; i < n; i++) {
+      const h = await hash(await L.step(ids, true));
+      hashes.set(h, (hashes.get(h) || 0) + 1);
+    }
+    const prefillMs = (now() - t0) / n;
+    // greedy generation: full sequences must match across runs
+    const seqs = [];
+    const t1 = now();
+    for (let r = 0; r < greedyRuns; r++) {
+      const out = await L.run(ids[0], ids.length - 1 + greedyTokens, (() => { let k = 1; return logits => k < ids.length ? ids[k++] : sortedTokenIds(logits)[0]; })());
+      seqs.push(out.join(","));
+    }
+    const tokPerSec = greedyRuns * (ids.length - 1 + greedyTokens) / ((now() - t1) / 1000);
+    return { runs: n, distinctLogitHashes: hashes.size, prefillMsPerRun: Math.round(prefillMs), greedyRuns, greedyDistinctSequences: new Set(seqs).size, tokPerSec: +tokPerSec.toFixed(2), sample: await L.decodeTokens(seqs[0].split(",").map(Number).slice(ids.length)) };
+  },
+
+  // one raw_eval call with all tokens vs one call per token: the C++ loops either way, so this must match
+  async prefill() {
+    const L = this.lens;
+    const ids = await L.encodeText(PROMPT);
+    const a = await hash(await L.step(ids, true));
+    let logits = await L.step([ids[0]], true);
+    for (let i = 1; i < ids.length; i++) logits = await L.step([ids[i]]);
+    const b = await hash(logits);
+    return { oneCall: a, perToken: b, equal: a === b };
+  },
+
+  async roundtrip(payloadHex = "a7", profile = 0, maxNew = 700, tau = 2.0) {
+    const L = this.lens;
+    const events = { tokens: 0, carriers: 0 };
+    const t0 = now();
+    const emb = await embed(L, { prompt: PROMPT, payloadHex, profile, tau, maxNew }, e => {
+      if (e.type === "token") { events.tokens++; if (e.carrier) events.carriers++; }
+      if (e.type === "progress" && e.frac === 0) log(`embed: ${e.copies} full frame(s) planted at carrier ${e.carriers}`);
+    });
+    const embedSec = (now() - t0) / 1000;
+    log(`embed done: ${events.tokens} tokens, ${events.carriers} carriers, ${emb.framesPlanted} frames, retokenizes=${emb.retokenizes}`);
+    const t1 = now();
+    let decodeCarriers = 0;
+    const dec = await decode(L, emb.text, { tau }, e => { if (e.type === "token" && e.carrier) decodeCarriers++; if (e.type === "frame") log(`decode: frame locked, payload ${e.payload}`); });
+    const decodeSec = (now() - t1) / 1000;
+    return {
+      payloadHex, profile, maxNew, tau,
+      embed: { tokens: events.tokens, carriers: events.carriers, carrierRate: +(events.carriers / events.tokens).toFixed(3), framesPlanted: emb.framesPlanted, retokenizes: emb.retokenizes, seconds: +embedSec.toFixed(1), tokPerSec: +(events.tokens / embedSec).toFixed(2) },
+      decode: { valid: dec.valid, payload: dec.payload, match: dec.payload === payloadHex, carriers: decodeCarriers, frames: dec.frames, seconds: +decodeSec.toFixed(1) },
+      text: emb.text,
+    };
+  },
+
+  // reload with different thread counts; the logit row for one prefix must not change
+  async threads(list = [1, 2, 4, 8]) {
+    const out = [];
+    for (const n of list) {
+      await this.load(this.model, n);
+      const ids = await this.lens.encodeText(PROMPT);
+      const t0 = now();
+      const h = await hash(await this.lens.step(ids, true));
+      out.push({ n_threads: n, hash: h, prefillMs: Math.round(now() - t0) });
+      log(`threads=${n} hash=${h}`);
+    }
+    return { runs: out, allEqual: new Set(out.map(o => o.hash)).size === 1 };
+  },
+};
+
+window.spike = spike;
+log("env", spike.env);
+</script>
