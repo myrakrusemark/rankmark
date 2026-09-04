@@ -83,22 +83,31 @@
     overflow:hidden}
   .prog > div{height:100%;width:0;background:var(--accent);transition:width .25s ease;border-radius:99px}
   .prog.full > div{background:var(--ok)}
-  #hideDrawer,#revealOut{margin-top:12px;animation:grow .3s ease}
+  /* the output is a tray that slides out from underneath the card: a separate,
+     narrower element tucked behind the card's bottom edge */
+  .card{position:relative;z-index:1}
+  .drawer{position:relative;z-index:0;margin:0 22px;background:var(--card);
+    border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;
+    padding:1.1rem 1.3rem;animation:drawer .38s ease}
   #hideDrawer .caption{font-size:12px;color:var(--muted);margin:2px 0 8px}
-  @keyframes grow{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  @keyframes drawer{from{opacity:0;transform:translateY(-28px)}to{opacity:1;transform:none}}
+  .btn-wide{width:100%;box-sizing:border-box;justify-content:center}
 </style></style>
 </head>
 <body>
 <main>
-<div class="card">
-  <div class="row" style="padding-bottom:12px;border-bottom:1px solid var(--border)">
-    <h1>rankmark <span style="font-weight:400;color:var(--muted);font-size:13px">the model is the key</span></h1>
-    <span style="flex:1"></span>
-    <button class="mode on" id="mEmbed">hide</button>
-    <button class="mode" id="mDecode">reveal</button>
-  </div>
+<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+  <h1>rankmark <span style="font-weight:400;color:var(--muted);font-size:13px">the model is the key</span></h1>
+  <span style="flex:1"></span>
+  <button class="mode on" id="mEmbed">hide</button>
+  <button class="mode" id="mDecode">reveal</button>
+</div>
 
-  <div id="pEmbed" style="padding-top:14px">
+<div id="verdict"></div>
+
+<!-- HIDE — form card, with the output drawer sliding out beneath it -->
+<div id="pEmbed">
+  <div class="card" id="hideCard">
    <div id="hideSummary" style="display:none">
      <span>hiding <b id="sumMsg"></b> in <b id="sumCover"></b></span>
      <span style="flex:1"></span>
@@ -142,15 +151,27 @@
         <p class="hint">Each hidden bit is the parity of the chosen word's rank. <b>Durability</b> adds error-correction so the message survives edits and truncation, at the cost of needing more text per copy. <b>Wording variety</b> is the sampling temperature: 0 always takes the model's top choice (cleanest watermark, but small models can loop); higher samples more widely, which breaks loops and reads more naturally — the decode is identical either way. The AI keeps writing until at least one full copy is embedded, then stops on its own.</p>
       </div>
     </details>
-    <div class="row" style="margin-top:12px">
-      <span style="flex:1"></span>
-      <button class="primary" id="btnEmbed">hide it in text &rarr;</button>
-    </div>
-    <p class="hint">Type a secret. The AI writes an innocent-looking paragraph and hides your message in its word choices &mdash; invisible to anyone reading, but the same AI can find it again later. Takes a few minutes (it thinks one word at a time).</p>
+    <button class="primary btn-wide" id="btnEmbed" style="margin-top:14px">Hide in text &rarr;</button>
    </div>
   </div>
 
-  <div id="pDecode" style="padding-top:14px;display:none">
+  <div id="hideDrawer" class="drawer" style="display:none">
+    <div class="prog" id="hideProg"><div id="progBar"></div></div>
+    <div class="caption" id="hideCaption">starting&hellip;</div>
+    <div id="stream"></div>
+    <div class="legend" id="legendE">
+      <span><span class="tok bit0">underline</span> carries a 0</span>
+      <span><span class="tok bit1">underline</span> carries a 1</span>
+      <span>no underline = no hidden bit here &middot; hover any word for details</span>
+      <span style="flex:1"></span>
+      <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
+    </div>
+  </div>
+</div>
+
+<!-- REVEAL — form card, with the bit-strip + secret drawer sliding out beneath it -->
+<div id="pDecode" style="display:none">
+  <div class="card" id="revealCard">
    <div id="revealSummary" style="display:none">
      <span id="revSummaryText">reading the pasted text</span>
      <span style="flex:1"></span>
@@ -172,31 +193,14 @@
         <p class="hint">Re-reads the text through the chosen model's logits, recovers each token's rank, re-applies the entropy gate, and looks for a checksum-valid frame. The scan auto-detects the profile; the <b>window</b> must match the embed. With this panel closed, reveal tries every lens and both window settings on its own.</p>
       </div>
     </details>
-    <div class="row" style="margin-top:12px">
-      <span style="flex:1"></span>
+    <div class="row" style="margin-top:14px">
       <button id="btnCut" title="cut a sixth off each end — the truncation test">&#9986; truncate</button>
-      <button class="primary" id="btnDecode">reveal the message &rarr;</button>
+      <button class="primary" id="btnDecode" style="flex:1;justify-content:center">Reveal the message &rarr;</button>
     </div>
-    <p class="hint">Every AI model on this machine takes a turn reading the text. If one of them wrote it, the hidden message pops out &mdash; and you learn which model it was. <b>&#9986; truncate</b> chops off the ends first, to prove the message survives being cut up.</p>
    </div>
   </div>
 
-  <div id="verdict"></div>
-
-  <div id="hideDrawer" style="display:none">
-    <div class="prog" id="hideProg"><div id="progBar"></div></div>
-    <div class="caption" id="hideCaption">starting&hellip;</div>
-    <div id="stream"></div>
-    <div class="legend" id="legendE">
-      <span><span class="tok bit0">underline</span> carries a 0</span>
-      <span><span class="tok bit1">underline</span> carries a 1</span>
-      <span>no underline = no hidden bit here &middot; hover any word for details</span>
-      <span style="flex:1"></span>
-      <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
-    </div>
-  </div>
-
-  <div id="revealOut" style="display:none">
+  <div id="revealOut" class="drawer" style="display:none">
   <div id="bits"></div>
   <div id="foundMsg" style="display:none"></div>
   <div class="legend" id="legendD">
