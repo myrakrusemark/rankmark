@@ -1,5 +1,5 @@
 {
-  "_comment": "Model ladder for the public site, pinned by Hugging Face repo revision and file sha256 (from the HF API, blobs=true, on 2026-09-04). A lens id is frozen forever once texts carry it. Files over 2 GB are split with llama-gguf-split in Phase 2 and the parts get their own hashes here.",
+  "_comment": "Model ladder for the public site, pinned by Hugging Face repo revision and file sha256 (from the HF API, blobs=true, on 2026-09-04). A lens id is frozen forever once texts carry it. The memory64 build loads single files of any size straight from the Hub (the 2.5 GB 4B file was verified 2026-09-04); the wasm32 compat build (Safari) is limited to 2 GB per file, so rungs marked memory64 are not offered there. carrierRate sizes the token budget, see each rung's note.",
   "engine": {
     "name": "llama.cpp-wasm (wllama fork)",
     "repo": "https://github.com/myrakrusemark/wllama",
@@ -23,7 +23,10 @@
       "quant": "Q8_0",
       "heapGB": 1.0,
       "memory64": false,
-      "tagCapBytes": 3
+      "tagCapBytes": 3,
+      "nCtx": 2048,
+      "carrierRate": 0.28,
+      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3"
     },
     {
       "id": "Qwen3-1.7B-Q8_0",
@@ -36,7 +39,10 @@
       "quant": "Q8_0",
       "heapGB": 2.3,
       "memory64": false,
-      "tagCapBytes": 4
+      "tagCapBytes": 4,
+      "nCtx": 2048,
+      "carrierRate": 0.12,
+      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3"
     },
     {
       "id": "Qwen3-4B-Q4_K_M",
@@ -47,10 +53,13 @@
       "bytes": 2497280256,
       "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
       "quant": "Q4_K_M",
-      "split": "pending: parts of <= 512 MB, hashed in Phase 2",
       "heapGB": 3.0,
-      "memory64": false,
-      "tagCapBytes": 8
+      "memory64": true,
+      "tagCapBytes": 8,
+      "nCtx": 2048,
+      "carrierRate": 0.12,
+      "browsers": "Chrome >= 133, Firefox >= 134 (single file over 2 GB needs the memory64 build)",
+      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3"
     },
     {
       "id": "Qwen3-8B-Q4_K_M",
@@ -61,11 +70,13 @@
       "bytes": 5027783488,
       "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
       "quant": "Q4_K_M",
-      "split": "pending: parts of <= 512 MB, hashed in Phase 2",
       "heapGB": 5.5,
       "memory64": true,
       "browsers": "Chrome >= 137, Firefox >= 153; no Safari (no stable Memory64)",
-      "tagCapBytes": 8
+      "tagCapBytes": 8,
+      "nCtx": 2048,
+      "carrierRate": 0.12,
+      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3"
     }
   ]
 }
