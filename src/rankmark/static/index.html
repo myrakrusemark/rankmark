@@ -63,6 +63,9 @@
   .bit.k-payload,.bit.k-woven{background:var(--b0)}
   .bit.k-checksum{background:var(--b3)}
   .bit.k-parity{background:var(--b2)}
+  /* one level deeper: within each frame part, a 1-bit is a darker slice than a 0-bit */
+  .bit.v1[class*="k-"]{filter:brightness(.68) saturate(1.15)}
+  @media(prefers-color-scheme:dark){.bit.v1[class*="k-"]{filter:brightness(1.55) saturate(1.1)}}
   .bit.forming{opacity:.5}  /* tentative: part detected, checksum not yet confirmed */
   #foundMsg{margin:14px 0;padding:14px 16px;border:1px solid var(--ok);border-radius:10px;background:var(--card)}
   #foundMsg .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
@@ -203,6 +206,7 @@
     <span><span class="bit k-checksum" style="width:auto;padding:0 6px">checksum</span> the proof seal</span>
     <span><span class="bit k-parity" style="width:auto;padding:0 6px">parity</span> repair data</span>
     <span><span class="bit" style="width:auto;padding:0 6px">plain</span> no frame here</span>
+    <span><span class="bit k-payload" style="width:auto;padding:0 6px">0</span><span class="bit v1 k-payload" style="width:auto;padding:0 6px">1</span> shade is the bit</span>
     <span>hover a bit to see the word that carries it</span>
   </div>
   <div id="attr"></div>
@@ -288,8 +292,9 @@ const SPAN_LABELS = {sync: "sync — start knock", header: "header — length + 
 
 function addBit(e){
   const b = document.createElement("span");
-  b.className = "bit";  // one equal-width slice of the bar; no digit
-  b.dataset.info = `bit ${$("bits").children.length} · no frame · carried by “${pieceLabel(e.piece)}”`;
+  b.className = "bit v" + e.bit;  // one equal-width slice; shade encodes the bit value
+  b.dataset.bit = e.bit;
+  b.dataset.info = `bit ${$("bits").children.length} = ${e.bit} · no frame · carried by “${pieceLabel(e.piece)}”`;
   b.dataset.piece = e.piece;
   $("bits").appendChild(b);
 }
@@ -322,23 +327,23 @@ function paintSpans(spans){ // confirmed (checksum-valid) — solid, and locked 
   const cells = $("bits").children;
   for(const s of spans || []){
     for(let i = s.start; i < s.start + s.len && i < cells.length; i++){
-      cells[i].className = "bit k-" + s.kind;
+      cells[i].className = "bit v" + cells[i].dataset.bit + " k-" + s.kind;
       cells[i].dataset.confirmed = "1";
       cells[i].dataset.info =
-        `bit ${i} · ${SPAN_LABELS[s.kind]} · carried by “${pieceLabel(cells[i].dataset.piece)}”`;
+        `bit ${i} = ${cells[i].dataset.bit} · ${SPAN_LABELS[s.kind]} · carried by “${pieceLabel(cells[i].dataset.piece)}”`;
     }
   }
 }
 
 function paintPartial(spans){ // tentative — the frame currently arriving
   const cells = $("bits").children;
-  for(const c of cells) if(!c.dataset.confirmed) c.className = "bit";
+  for(const c of cells) if(!c.dataset.confirmed) c.className = "bit v" + c.dataset.bit;
   for(const s of spans || []){
     for(let i = s.start; i < s.start + s.len && i < cells.length; i++){
       if(cells[i].dataset.confirmed) continue;
-      cells[i].className = "bit k-" + s.kind + " forming";
+      cells[i].className = "bit v" + cells[i].dataset.bit + " k-" + s.kind + " forming";
       cells[i].dataset.info =
-        `bit ${i} · forming: ${SPAN_LABELS[s.kind]} · “${pieceLabel(cells[i].dataset.piece)}”`;
+        `bit ${i} = ${cells[i].dataset.bit} · forming: ${SPAN_LABELS[s.kind]} · “${pieceLabel(cells[i].dataset.piece)}”`;
     }
   }
 }
