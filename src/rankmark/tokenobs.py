@@ -73,10 +73,16 @@ def window_logits(lens: Lens, ctx_ids: list[int]) -> torch.Tensor:
     and get bit-identical logits, which is the whole point — a position
     more than `window` tokens past any cut sees the same context whether
     or not the head of the text was truncated away.
+
+    logits_to_keep=1 skips the lm_head for every position but the last
+    (~1.5x on gpt2, whose lm_head is a third of the FLOPs). It changes the
+    matmul shape and therefore the reduction order — measurably not
+    bit-identical to the all-positions head — so it lives here, inside the
+    one function both sides share, and never as a caller option.
     """
     inp = torch.tensor([ctx_ids], device=lens.device)
     with torch.no_grad():
-        out = lens.model(inp)
+        out = lens.model(inp, logits_to_keep=1)
     return out.logits[0, -1].float()
 
 
