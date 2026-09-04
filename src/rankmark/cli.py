@@ -118,6 +118,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="rankmark", description=__doc__)
     parser.add_argument("--tau", type=float, default=2.0, help="entropy gate in nats")
     parser.add_argument("--dtype", choices=["float32", "bfloat16"], default=None)
+    parser.add_argument("--device", choices=["cpu", "cuda"], default=None,
+                        help="default: cuda when available. cpu and cuda logits differ — "
+                             "decode on the device class that embedded")
     parser.add_argument("--profile", type=int, default=1, choices=sorted(PROFILES),
                         help="v2 profile: " + ", ".join(
                             f"{i}={p.name}" for i, p in sorted(PROFILES.items())))
