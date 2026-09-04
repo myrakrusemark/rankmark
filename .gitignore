@@ -9,3 +9,4 @@ out/
 *.html
 !docs/**/*.html
 !src/rankmark/static/*.html
+!web/**/*.html
