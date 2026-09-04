@@ -242,8 +242,13 @@ function syncInstructUi(){
 async function loadModels(){
   try{
     const r = await fetch(BASE + "/api/models"); const d = await r.json();
+    // two sections: base models continue a cover story, chat models answer an instruction
+    const groups = [["completion", d.models.filter(m => !isInstruct(m))],
+                    ["instruct / chat", d.models.filter(isInstruct)]];
     for(const sel of [$("lensE"), $("lensD")]){
-      sel.innerHTML = d.models.map(m => `<option>${m}</option>`).join("");
+      sel.innerHTML = groups.map(([label, ms]) => ms.length
+        ? `<optgroup label="${label}">` + ms.map(m => `<option>${m}</option>`).join("") + `</optgroup>`
+        : "").join("");
     }
     $("lensE").onchange = syncInstructUi;
     syncInstructUi();
