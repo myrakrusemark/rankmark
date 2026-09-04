@@ -1,0 +1,165 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>rankmark engine tests</title>
+<style>body{font:13px/1.4 monospace;margin:16px} pre{white-space:pre-wrap}</style>
+<h1>engine tests (worker + registry)</h1>
+<p>Console: <code>engine.start("probe")</code>, <code>engine.start("load", "Qwen3-0.6B-Q8_0")</code>,
+<code>engine.start("roundtrip", "Qwen3-0.6B-Q8_0", {payloadHex:"a7", profile:0, temperature:0.7})</code>,
+<code>engine.start("cancelTest", "Qwen3-0.6B-Q8_0")</code>, <code>engine.start("unload")</code>.
+Status in <code>engine.status</code>, results in <code>engine.results</code>.</p>
+<pre id="log"></pre>
+<script type="module">
+import { loadRegistry, rungById } from "../../engine/models.js";
+import { probe } from "../../engine/probe.js";
+import { markCard } from "../../engine/fingerprint.js";
+
+const el = document.getElementById("log");
+const log = (...a) => {
+  const s = a.map(x => typeof x === "string" ? x : JSON.stringify(x)).join(" ");
+  el.textContent += new Date().toISOString().slice(11, 19) + " " + s + "\n";
+  console.log(s);
+};
+const now = () => performance.now();
+const PROMPT = "The history of cryptography begins with";
+
+const worker = new Worker("../../engine/worker.js", { type: "module" });
+const pending = new Map();
+let nextReq = 1;
+worker.onmessage = ev => {
+  const { reqId, kind, data } = ev.data;
+  const p = pending.get(reqId);
+  if (!p) return;
+  if (kind === "event") p.onEvent?.(data);
+  else if (kind === "progress") p.onProgress?.(data);
+  else if (kind === "ready") p.onReady?.(data);
+  else if (kind === "done") { pending.delete(reqId); p.resolve(data); }
+  else if (kind === "cancelled") { pending.delete(reqId); p.resolve({ cancelled: true }); }
+  else if (kind === "error") { pending.delete(reqId); p.reject(new Error(data.message)); }
+};
+function runJob(cmd, args, hooks = {}) {
+  return new Promise((resolve, reject) => {
+    const reqId = nextReq++;
+    pending.set(reqId, { resolve, reject, ...hooks });
+    worker.postMessage({ reqId, cmd, args });
+  });
+}
+
+const registry = await loadRegistry();
+log("registry", registry.rungs.map(r => r.id));
+
+const engine = {
+  status: {}, results: {}, registry, runJob,
+
+  start(name, ...args) {
+    this.status[name] = { running: true };
+    this[name](...args).then(r => {
+      this.results[name] = r; this.status[name] = { running: false, done: true };
+      log(`[${name}] done`, r);
+    }).catch(e => {
+      this.status[name] = { running: false, error: String(e && e.stack || e) };
+      log(`[${name}] ERROR`, String(e && e.stack || e));
+    });
+    return `started ${name}`;
+  },
+
+  async probe() { return probe(registry); },
+
+  async load(id, threads) {
+    const t0 = now();
+    let last = 0;
+    const info = await runJob("load", { rung: rungById(registry, id), threads }, {
+      onProgress: ({ loaded, total }) => { const pct = Math.round(100 * loaded / total); if (pct >= last + 10) { last = pct; log(`download ${pct}%`); } },
+    });
+    return { ...info, loadSeconds: +((now() - t0) / 1000).toFixed(1) };
+  },
+
+  async unload() { return runJob("unload", {}); },
+
+  async roundtrip(id, opts = {}) {
+    const rung = rungById(registry, id);
+    const o = { prompt: PROMPT, payloadHex: "a7", profile: 0, tau: 2.0, temperature: 0.7, ...opts };
+    const counts = { tokens: 0, carriers: 0 };
+    let start = null;
+    const t0 = now();
+    const emb = await runJob("embed", { rung, opts: o }, {
+      onEvent: e => {
+        if (e.type === "start") start = e;
+        if (e.type === "token") { counts.tokens++; if (e.carrier) counts.carriers++; }
+        if (e.type === "progress" && e.frac === 0) log(`embed: ${e.copies} frame(s) at carrier ${e.carriers}`);
+      },
+    });
+    const embedSec = (now() - t0) / 1000;
+    log(`embed: ${counts.tokens} tokens, ${counts.carriers} carriers, frames ${emb.framesPlanted.toFixed(2)}, retokenizes ${emb.retokenizes}, seed ${emb.seed}`);
+    const card = markCard(emb.text, emb.lens, emb.fingerprint, emb.textHash);
+    const t1 = now();
+    let decCarriers = 0;
+    const dec = await runJob("decode", { rung, text: card, opts: { tau: o.tau } }, {
+      onEvent: e => { if (e.type === "token" && e.carrier) decCarriers++; if (e.type === "frame") log(`decode: frame locked, payload ${e.payload}`); },
+    });
+    const decodeSec = (now() - t1) / 1000;
+    return {
+      rung: id, opts: o, maxNew: start?.max_new,
+      embed: { tokens: counts.tokens, carriers: counts.carriers, carrierRate: +(counts.carriers / counts.tokens).toFixed(3), framesPlanted: +emb.framesPlanted.toFixed(2), retokenizes: emb.retokenizes, seed: emb.seed, fingerprint: emb.fingerprint, seconds: +embedSec.toFixed(1), tokPerSec: +(counts.tokens / embedSec).toFixed(2) },
+      decode: { valid: dec.valid, payload: dec.payload, match: dec.payload === o.payloadHex, carriers: decCarriers, frames: dec.frames, cardParsed: !!dec.card, altered: dec.altered, fpMismatch: dec.fpMismatch, seconds: +decodeSec.toFixed(1) },
+      text: emb.text,
+    };
+  },
+
+  // a full per-token record of one seeded write and its read, for the page's
+  // precomputed (no-download) states; save the returned object as snapshot.json
+  async snapshot(id, opts = {}) {
+    const rung = rungById(registry, id);
+    const o = { prompt: PROMPT, payloadHex: "a7", profile: 0, tau: 2.0, temperature: 0.7, seed: 20260904, ...opts };
+    const write = { tokens: [], start: null };
+    const emb = await runJob("embed", { rung, opts: o }, {
+      onEvent: e => { if (e.type === "start") write.start = e; if (e.type === "token") write.tokens.push({ id: e.id, piece: e.piece, rank: e.rank, entropy: e.entropy, carrier: e.carrier, bit: e.bit }); },
+    });
+    const card = markCard(emb.text, emb.lens, emb.fingerprint, emb.textHash);
+    const read = { tokens: [], frames: [], spans: null };
+    const dec = await runJob("decode", { rung, text: card, opts: { tau: o.tau } }, {
+      onEvent: e => { if (e.type === "token") read.tokens.push({ id: e.id, piece: e.piece, rank: e.rank, carrier: e.carrier, bit: e.bit ?? null }); if (e.type === "frame") read.frames.push({ at: read.tokens.length, payload: e.payload }); if (e.type === "done") read.spans = e.spans; },
+    });
+    return {
+      generated: new Date().toISOString(), rung: id, fingerprint: emb.fingerprint, engine: rung.engine,
+      opts: o, frameBits: write.start.frame_bits, maxNew: write.start.max_new,
+      write: { text: emb.text, ids: emb.ids, textHash: emb.textHash, framesPlanted: emb.framesPlanted, tokens: write.tokens },
+      card,
+      read: { valid: dec.valid, payload: dec.payload, carriers: dec.carriers, frames: dec.frames, spans: read.spans, frameEvents: read.frames, tokens: read.tokens },
+    };
+  },
+
+  // the same seed must reproduce the same text
+  async seedRepro(id, seed = 12345) {
+    const a = await this.roundtrip(id, { seed, maxNew: 120 });
+    const b = await this.roundtrip(id, { seed, maxNew: 120 });
+    return { sameText: a.text === b.text, seed };
+  },
+
+  // cancel mid-embed: the job must end with cancelled, not hang or error
+  async cancelTest(id) {
+    const rung = rungById(registry, id);
+    let tokens = 0;
+    const p = runJob("embed", { rung, opts: { prompt: PROMPT, payloadHex: "a7", profile: 0, maxNew: 400 } }, {
+      onEvent: e => { if (e.type === "token") { tokens++; if (tokens === 20) runJob("cancel", {}); } },
+    });
+    const t0 = now();
+    const r = await p;
+    return { cancelled: !!r.cancelled, tokensBeforeCancel: tokens, secondsToStop: +((now() - t0) / 1000).toFixed(1) };
+  },
+
+  // altered text must be reported as such before any "no frame"
+  async alteredText(id) {
+    const rung = rungById(registry, id);
+    const emb = await runJob("embed", { rung, opts: { prompt: PROMPT, payloadHex: "a7", profile: 0, maxNew: 200, temperature: 0 } });
+    const altered = emb.text.replace(/ /g, " "); // non-breaking spaces
+    const card = markCard(emb.text, emb.lens, emb.fingerprint, emb.textHash);
+    const intact = await runJob("decode", { rung, text: card, opts: {} });
+    const edited = card.replace(emb.text, altered); // text edited, footer untouched
+    const dec = await runJob("decode", { rung, text: edited, opts: {} });
+    return { intact: { altered: intact.altered, valid: intact.valid }, edited: { altered: dec.altered, valid: dec.valid, fpMismatch: dec.fpMismatch } };
+  },
+};
+
+window.engine = engine;
+log("ready");
+</script>
