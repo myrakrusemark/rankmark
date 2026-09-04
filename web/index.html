@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rankmark</title>
+<style>
+  :root{
+    --bg:#faf9f6;--card:#fff;--border:#e2e0da;--text:#1a1a18;--muted:#6b6a64;
+    --b0:#c6efce;--b0t:#1e5631;--b1:#ffeb9c;--b1t:#6b5300;--b2:#ffc7ce;--b2t:#7a1f28;--b3:#d9d2f5;--b3t:#3c3489;
+    --ok:#1d7a44;--bad:#b3362e;--accent:#3a5fa8;--bit0:#2f8f57;--bit1:#c07d1a;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{--bg:#191917;--card:#22221f;--border:#3a3934;--text:#eceae4;--muted:#98968e;
+      --b0:#1e4a2c;--b0t:#a8e2b8;--b1:#4d3f08;--b1t:#f0d878;--b2:#54222a;--b2t:#f2aab2;--b3:#332d5e;--b3t:#c3bbf0;
+      --ok:#5fce8f;--bad:#f08c85;--accent:#8fb0ee;--bit0:#5fce8f;--bit1:#e0a94a}
+  }
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
+  main{max-width:880px;margin:2rem auto;padding:0 1rem}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.3rem}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  h1{font-size:17px;font-weight:600;margin:0;display:flex;gap:8px;align-items:center}
+  label{font-size:12px;color:var(--muted)}
+  input,select,textarea,button{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+  textarea{width:100%;box-sizing:border-box;resize:vertical;font-family:ui-monospace,monospace;font-size:13px}
+  button{cursor:pointer;background:var(--card)}
+  button:hover{border-color:var(--muted)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button:disabled{opacity:.5;cursor:default}
+  .mode{padding:6px 14px;font-size:13px}
+  .mode.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  #stream{font-family:ui-monospace,monospace;font-size:13px;line-height:2.1;margin:10px 0;white-space:pre-wrap;word-break:break-word}
+  .tok{padding:1px 0}
+  .tok.bit0{border-bottom:2px solid var(--bit0)}
+  .tok.bit1{border-bottom:2px solid var(--bit1)}
+  #verdict{min-height:24px;font-size:14px;margin:12px 0 2px;font-weight:500}
+  .legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:6px}
+  .legend .tok{padding:2px 6px}
+  #attr{margin-top:10px;font-size:13px}
+  #attr div{display:flex;gap:10px;padding:6px 8px;border-radius:6px;align-items:baseline}
+  .hint{font-size:12px;color:var(--muted);margin:10px 0 0}
+  .num{width:70px}
+  #tip{position:fixed;display:none;pointer-events:none;z-index:10;background:var(--card);
+    border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;
+    font-family:ui-monospace,monospace;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap}
+  details.adv{margin-top:12px}
+  details.adv summary{cursor:pointer;font-size:12px;color:var(--muted);user-select:none;
+    list-style-position:inside}
+  details.adv summary:hover{color:var(--text)}
+  details.adv .inner{margin-top:8px;padding:10px 12px;background:var(--bg);
+    border:1px solid var(--border);border-radius:8px}
+  #bits{display:flex;width:100%;height:26px;margin:12px 0;border:1px solid var(--border);
+    border-radius:6px;overflow:hidden;background:var(--bg)}
+  .bit{flex:1 1 0;min-width:0;height:100%;background:transparent;transition:background .12s}
+  .bit.k-sync{background:var(--accent)}
+  .bit.k-header{background:var(--b1)}
+  .bit.k-payload,.bit.k-woven{background:var(--b0)}
+  .bit.k-checksum{background:var(--b3)}
+  .bit.k-parity{background:var(--b2)}
+  .bit.v1[class*="k-"]{filter:brightness(.68) saturate(1.15)}
+  @media(prefers-color-scheme:dark){.bit.v1[class*="k-"]{filter:brightness(1.55) saturate(1.1)}}
+  .bit.forming{opacity:.5}
+  #foundMsg{margin:14px 0;padding:14px 16px;border:1px solid var(--ok);border-radius:10px;background:var(--card)}
+  #foundMsg .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  #foundMsg .txt{font-size:22px;font-weight:600;margin:3px 0;word-break:break-word}
+  #foundMsg .by{font-size:12px;color:var(--muted)}
+  #hideForm,#revealForm{overflow:hidden;transition:max-height .38s ease, opacity .28s ease;max-height:1200px}
+  #hideForm.collapsed,#revealForm.collapsed{max-height:0;opacity:0;margin:0;pointer-events:none}
+  #hideSummary,#revealSummary{display:flex;gap:10px;align-items:baseline;font-size:14px;
+    color:var(--muted);padding:2px 0 4px}
+  #hideSummary b,#revealSummary b{color:var(--text);font-weight:600}
+  .link{cursor:pointer;color:var(--accent);font-size:13px}
+  .link:hover{text-decoration:underline}
+  .prog{height:6px;background:var(--bg);border:1px solid var(--border);border-radius:99px;overflow:hidden}
+  .prog > div{height:100%;width:0;background:var(--accent);transition:width .25s ease;border-radius:99px}
+  .prog.full > div{background:var(--ok)}
+  .card{position:relative;z-index:1}
+  .drawer{position:relative;z-index:0;margin:0 22px;background:var(--card);
+    border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;
+    padding:1.1rem 1.3rem;animation:drawer .38s ease}
+  #hideDrawer .caption{font-size:12px;color:var(--muted);margin:2px 0 8px}
+  @keyframes drawer{from{opacity:0;transform:translateY(-28px)}to{opacity:1;transform:none}}
+  .btn-wide{width:100%;box-sizing:border-box;justify-content:center}
+  #modelbar{font-size:12px;color:var(--muted);margin:0 0 12px;display:flex;gap:8px;align-items:center}
+  #modelbar .dot{width:7px;height:7px;border-radius:99px;background:var(--muted)}
+  #modelbar.ready .dot{background:var(--ok)}
+  #modelbar.loading .dot{background:var(--b1t)}
+</style>
+</head>
+<body>
+<main>
+<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+  <h1>rankmark <span style="font-weight:400;color:var(--muted);font-size:13px">the model is the key &middot; runs entirely in your browser</span></h1>
+  <span style="flex:1"></span>
+  <button class="mode on" id="mEmbed">hide</button>
+  <button class="mode" id="mDecode">reveal</button>
+</div>
+
+<div id="modelbar"><span class="dot"></span><span id="modelStatus">models load on first use — nothing is sent to a server</span></div>
+<div id="verdict"></div>
+
+<!-- HIDE -->
+<div id="pEmbed">
+  <div class="card" id="hideCard">
+   <div id="hideSummary" style="display:none">
+     <span>hiding <b id="sumMsg"></b> in <b id="sumCover"></b></span>
+     <span style="flex:1"></span>
+     <span class="link" id="btnNewHide">new message</span>
+   </div>
+   <div id="hideForm">
+    <div style="margin-bottom:10px">
+      <label>your secret message</label><br>
+      <input id="msg" style="width:100%;box-sizing:border-box" placeholder="meet me at noon" maxlength="40">
+    </div>
+    <div style="margin-bottom:10px">
+      <label>generate with &mdash; a chat model takes an instruction, a base model a cover story</label><br>
+      <select id="lensE" style="width:100%;box-sizing:border-box"></select>
+    </div>
+    <div>
+      <label id="promptLabel">cover story &mdash; the visible text will start like this</label><br>
+      <input id="prompt" style="width:100%;box-sizing:border-box" value="The history of cryptography begins with">
+    </div>
+    <input id="payload" type="hidden" value="">
+    <input id="tauE" type="hidden" value="2.0">
+    <details class="adv" id="advE">
+      <summary>advanced</summary>
+      <div class="inner">
+        <div class="row">
+          <div style="flex:1;min-width:240px">
+            <label>durability &mdash; sturdier packets survive more editing, but need longer text</label><br>
+            <select id="profE" style="width:100%;box-sizing:border-box">
+              <option value="0" selected>lean &mdash; smallest, most fragile</option>
+              <option value="1">standard &mdash; balanced</option>
+              <option value="2">robust &mdash; survives heavy editing</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint">Each hidden bit is the parity of the chosen word's rank. <b>Durability</b> adds error-correction so the message survives edits, at the cost of needing more text per copy. The AI keeps writing until at least one full copy is embedded, then stops on its own.</p>
+      </div>
+    </details>
+    <button class="primary btn-wide" id="btnEmbed" style="margin-top:14px">Hide in text &rarr;</button>
+   </div>
+  </div>
+
+  <div id="hideDrawer" class="drawer" style="display:none">
+    <div class="prog" id="hideProg"><div id="progBar"></div></div>
+    <div class="caption" id="hideCaption">starting&hellip;</div>
+    <div id="stream"></div>
+    <div class="legend" id="legendE">
+      <span><span class="tok bit0">underline</span> carries a 0</span>
+      <span><span class="tok bit1">underline</span> carries a 1</span>
+      <span>no underline = no hidden bit here &middot; hover any word for details</span>
+      <span style="flex:1"></span>
+      <button id="btnCopy" style="font-size:12px;padding:4px 10px;display:none">copy text</button>
+    </div>
+  </div>
+</div>
+
+<!-- REVEAL -->
+<div id="pDecode" style="display:none">
+  <div class="card" id="revealCard">
+   <div id="revealSummary" style="display:none">
+     <span id="revSummaryText">reading the pasted text</span>
+     <span style="flex:1"></span>
+     <span class="link" id="btnNewReveal">paste new text</span>
+   </div>
+   <div id="revealForm">
+    <label>paste text that might have a hidden message</label>
+    <textarea id="intext" rows="6" placeholder="paste text here (or hide a message first — the result lands here automatically)"></textarea>
+    <details class="adv" id="advD">
+      <summary>advanced &mdash; read through one specific lens</summary>
+      <div class="inner">
+        <div class="row">
+          <div><label>read through</label><br><select id="lensD"></select></div>
+          <div><label>&tau; gate (nats)</label><br><input id="tauD" class="num" type="number" value="2.0" min="0.5" max="6" step="0.1"></div>
+          <span style="flex:1"></span>
+          <button id="btnAttr">attribute (all lenses)</button>
+        </div>
+        <p class="hint">Re-reads the text through the chosen model's logits, recovers each token's rank, re-applies the entropy gate, and looks for a checksum-valid frame. With this panel closed, reveal tries every lens on its own.</p>
+      </div>
+    </details>
+    <div class="row" style="margin-top:14px">
+      <button class="primary btn-wide" id="btnDecode">Reveal the message &rarr;</button>
+    </div>
+   </div>
+  </div>
+
+  <div id="revealOut" class="drawer" style="display:none">
+  <div id="bits"></div>
+  <div id="foundMsg" style="display:none"></div>
+  <div class="legend" id="legendD">
+    <span><span class="bit k-sync" style="width:auto;padding:0 6px">sync</span> start knock</span>
+    <span><span class="bit k-header" style="width:auto;padding:0 6px">header</span> length + author tag</span>
+    <span><span class="bit k-payload" style="width:auto;padding:0 6px">payload</span> your message</span>
+    <span><span class="bit k-checksum" style="width:auto;padding:0 6px">checksum</span> the proof seal</span>
+    <span><span class="bit k-parity" style="width:auto;padding:0 6px">parity</span> repair data</span>
+    <span><span class="bit" style="width:auto;padding:0 6px">plain</span> no frame here</span>
+    <span><span class="bit k-payload" style="width:auto;padding:0 6px">0</span><span class="bit v1 k-payload" style="width:auto;padding:0 6px">1</span> shade is the bit</span>
+    <span>hover a bit to see the word that carries it</span>
+  </div>
+  <div id="attr"></div>
+  </div>
+</div>
+</main>
+
+<script type="module">
+import { MODELS } from "./engine/models.js";
+import { bytesToHex, hexToBytes } from "./engine/bits.js";
+
+const $ = id => document.getElementById(id);
+let lastText = "", running = false;
+
+// All inference runs in a worker so the main thread stays responsive and tokens
+// stream live. runJob() sends one command and pumps engine events to onEvent;
+// it resolves with the final result payload (decode returns the verdict).
+const worker = new Worker("./engine/worker.js", { type: "module" });
+const _jobs = new Map();
+let _reqSeq = 0;
+worker.onmessage = ev => {
+  const { reqId, kind, data } = ev.data;
+  const job = _jobs.get(reqId);
+  if(!job) return;
+  if(kind === "progress") job.onProgress && job.onProgress(data);
+  else if(kind === "ready") job.onReady && job.onReady(data);
+  else if(kind === "event") job.onEvent && job.onEvent(data);
+  else if(kind === "done"){ _jobs.delete(reqId); job.resolve(data); }
+  else if(kind === "error"){ _jobs.delete(reqId); job.reject(new Error(data.message)); }
+};
+function runJob(cmd, args, {onEvent, onProgress, onReady} = {}){
+  const reqId = ++_reqSeq;
+  return new Promise((resolve, reject) => {
+    _jobs.set(reqId, { onEvent, onProgress, onReady, resolve, reject });
+    worker.postMessage({ reqId, cmd, args });
+  });
+}
+
+const isInstruct = name => !!(MODELS[name] && MODELS[name].instruct);
+
+function syncInstructUi(){
+  const inst = isInstruct($("lensE").value);
+  $("promptLabel").innerHTML = inst
+    ? "instruction &mdash; tell the AI what to write about"
+    : "cover story &mdash; the visible text will start like this";
+  $("prompt").placeholder = inst
+    ? "Write a short paragraph about the history of lighthouses."
+    : "";
+}
+
+function loadModels(){
+  const names = Object.keys(MODELS);
+  const groups = [["completion", names.filter(m => !isInstruct(m))],
+                  ["instruct / chat", names.filter(isInstruct)]];
+  for(const sel of [$("lensE"), $("lensD")]){
+    sel.innerHTML = groups.map(([label, ms]) => ms.length
+      ? `<optgroup label="${label}">` + ms.map(m => `<option>${m}</option>`).join("") + `</optgroup>`
+      : "").join("");
+  }
+  $("lensE").onchange = syncInstructUi;
+  syncInstructUi();
+}
+
+function setVerdict(msg, cls){ const v = $("verdict"); v.textContent = msg; v.style.color = cls === "ok" ? "var(--ok)" : cls === "bad" ? "var(--bad)" : "var(--muted)"; }
+function resetView(){ $("stream").innerHTML = ""; $("bits").innerHTML = ""; $("attr").innerHTML = ""; $("btnCopy").style.display = "none"; }
+
+// model download indicator, driven by the worker's forwarded progress events
+function setModelStatus(text, state){
+  $("modelStatus").textContent = text;
+  $("modelbar").className = state || "";
+}
+function modelProgress(name, onReady){
+  return {
+    onProgress: p => {
+      if(p && p.status === "progress" && p.total)
+        setModelStatus(`downloading ${name}: ${Math.round(p.progress)}% (${(p.file||"").split("/").pop()})`, "loading");
+    },
+    onReady: () => { setModelStatus(`${name} ready · cached in your browser`, "ready"); onReady && onReady(); },
+  };
+}
+
+function setProgress(frac, done){
+  $("progBar").style.width = Math.max(0, Math.min(100, Math.round(frac * 100))) + "%";
+  $("hideProg").classList.toggle("full", !!done);
+}
+function collapseHideForm(){
+  const secret = $("msg").value.trim() || payloadText($("payload").value.trim()) || ("0x" + $("payload").value.trim());
+  $("sumMsg").textContent = "“" + secret + "”";
+  const full = $("prompt").value.trim(), cut = full.length > 64;
+  const cover = full.slice(0, 64) + (cut ? "…" : "");
+  $("sumCover").textContent = isInstruct($("lensE").value)
+    ? ("a reply to “" + cover + "”")
+    : ("“" + full.slice(0, 64) + "…”");
+  $("hideForm").classList.add("collapsed");
+  $("hideSummary").style.display = "flex";
+}
+function resetHideForm(){
+  $("hideForm").classList.remove("collapsed");
+  $("hideSummary").style.display = "none";
+  $("hideDrawer").style.display = "none";
+  setProgress(0);
+}
+function showView(kind){
+  $("hideDrawer").style.display = kind === "text" ? "" : "none";
+  $("revealOut").style.display = kind === "bits" ? "" : "none";
+}
+
+const SPAN_LABELS = {sync: "sync — start knock", header: "header — length + author tag",
+  payload: "payload — your message", checksum: "checksum — the proof seal",
+  parity: "parity — repair data", woven: "message + armor (woven together)"};
+
+function addBit(e){
+  const b = document.createElement("span");
+  b.className = "bit v" + e.bit;
+  b.dataset.bit = e.bit;
+  b.dataset.info = `bit ${$("bits").children.length} = ${e.bit} · no frame · carried by “${pieceLabel(e.piece)}”`;
+  b.dataset.piece = e.piece;
+  $("bits").appendChild(b);
+}
+
+function showFound(msg, model, hex){
+  const el = $("foundMsg"); el.innerHTML = "";
+  const lbl = document.createElement("div"); lbl.className = "lbl";
+  lbl.textContent = msg ? "hidden message" : "hidden data";
+  const txt = document.createElement("div"); txt.className = "txt";
+  txt.textContent = msg ? "“" + msg + "”" : "0x" + hex;
+  const by = document.createElement("div"); by.className = "by";
+  by.textContent = "written by " + model;
+  el.append(lbl, txt, by);
+  el.style.display = "";
+}
+
+function collapseRevealForm(){
+  $("revSummaryText").textContent = `reading the pasted text (${$("intext").value.trim().length} characters)`;
+  $("revealForm").classList.add("collapsed");
+  $("revealSummary").style.display = "flex";
+}
+function resetRevealForm(){
+  $("revealForm").classList.remove("collapsed");
+  $("revealSummary").style.display = "none";
+  $("revealOut").style.display = "none";
+  $("foundMsg").style.display = "none";
+}
+
+function paintSpans(spans){
+  const cells = $("bits").children;
+  for(const s of spans || []){
+    for(let i = s.start; i < s.start + s.len && i < cells.length; i++){
+      cells[i].className = "bit v" + cells[i].dataset.bit + " k-" + s.kind;
+      cells[i].dataset.confirmed = "1";
+      cells[i].dataset.info =
+        `bit ${i} = ${cells[i].dataset.bit} · ${SPAN_LABELS[s.kind]} · carried by “${pieceLabel(cells[i].dataset.piece)}”`;
+    }
+  }
+}
+function paintPartial(spans){
+  const cells = $("bits").children;
+  for(const c of cells) if(!c.dataset.confirmed) c.className = "bit v" + c.dataset.bit;
+  for(const s of spans || []){
+    for(let i = s.start; i < s.start + s.len && i < cells.length; i++){
+      if(cells[i].dataset.confirmed) continue;
+      cells[i].className = "bit v" + cells[i].dataset.bit + " k-" + s.kind + " forming";
+      cells[i].dataset.info =
+        `bit ${i} = ${cells[i].dataset.bit} · forming: ${SPAN_LABELS[s.kind]} · “${pieceLabel(cells[i].dataset.piece)}”`;
+    }
+  }
+}
+
+function addToken(e){
+  const s = document.createElement("span");
+  s.className = "tok" + (e.carrier ? " bit" + e.bit : "");
+  s.textContent = e.piece.replace(/\n/g, "↵\n");
+  s.dataset.info = `rank ${e.rank} · H ${e.entropy} nats` + (e.carrier ? ` · bit ${e.bit}` : " · carrier-null");
+  $("stream").appendChild(s);
+}
+
+function pieceLabel(piece){
+  const p = piece.replace(/\n/g, "↵").trim();
+  return p || (piece.includes("↵") || piece.includes("\n") ? "↵" : "␣");
+}
+
+const tip = document.createElement("div"); tip.id = "tip"; document.body.appendChild(tip);
+for(const host of ["stream", "bits"]){
+  $(host).addEventListener("mouseover", e => {
+    const t = e.target.closest(".tok, .bit");
+    if(t && t.dataset.info){ tip.textContent = t.dataset.info; tip.style.display = "block"; }
+  });
+  $(host).addEventListener("mousemove", e => {
+    tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = (e.clientY + 16) + "px";
+  });
+  $(host).addEventListener("mouseout", () => { tip.style.display = "none"; });
+}
+
+function busy(b){ running = b; for(const id of ["btnEmbed","btnDecode","btnAttr"]) $(id).disabled = b; }
+
+function payloadText(hex){
+  try{
+    const s = new TextDecoder("utf-8", {fatal: true}).decode(hexToBytes(hex));
+    return /^[\x20-\x7e -￿]*$/u.test(s) ? s : null;
+  }catch{ return null; }
+}
+
+$("msg").addEventListener("input", () => {
+  $("payload").value = bytesToHex(new TextEncoder().encode($("msg").value));
+});
+
+async function runEmbed(){
+  if(running) return;
+  const msg = $("msg").value.trim();
+  if(msg) $("payload").value = bytesToHex(new TextEncoder().encode(msg));
+  if(!$("payload").value.trim()){ setVerdict("type a secret message first", "bad"); return; }
+  const model = $("lensE").value, instruct = isInstruct(model);
+  const nbytes = $("payload").value.trim().length / 2;
+  busy(true); resetView(); collapseHideForm(); showView("text"); setProgress(0);
+  $("hideCaption").textContent = "loading the model…";
+  setModelStatus(`loading ${model}…`, "loading");
+  let frameBits = 0;
+  try{
+    await runJob("embed", {
+      model,
+      opts: {
+        prompt: $("prompt").value, payloadHex: $("payload").value.trim(),
+        profile: +$("profE").value, tau: +$("tauE").value, instruct,
+      },
+    }, { ...modelProgress(model, () => { $("hideCaption").textContent = "starting…"; setVerdict(""); }),
+      onEvent: e => {
+      if(e.type === "start"){ frameBits = e.frame_bits; }
+      else if(e.type === "token"){ addToken(e); }
+      else if(e.type === "progress"){
+        setProgress(e.frac, false);
+        const bytes = Math.min(e.nbytes, Math.round(e.frac * e.nbytes));
+        $("hideCaption").textContent =
+          `${bytes} / ${e.nbytes} bytes into copy ${e.copies + 1}  ·  ${e.copies} full ${e.copies === 1 ? "copy" : "copies"} saved`;
+      } else if(e.type === "done"){
+        lastText = e.text; $("intext").value = e.text; $("btnCopy").style.display = "";
+        const copies = Math.floor(e.frames_planted);
+        const enough = e.frames_planted >= 1;
+        if(enough){ setProgress(1, true);
+          $("hideCaption").textContent = `saved — ${copies} full ${copies === 1 ? "copy" : "copies"} of your ${nbytes}-byte message hidden in the text`; }
+        setVerdict(enough
+          ? "done — your message is fully hidden in this text. switch to reveal to prove it's there."
+          : "the text came out too short to hold the whole message — try a shorter secret",
+          enough ? "ok" : "bad");
+        if(!e.retokenizes_cleanly && enough)
+          setVerdict("done — one spot came out fragile, but reveal usually still works; try it", "");
+      }
+    }});
+  }catch(err){ console.error(err); setVerdict(err.message, "bad"); }
+  busy(false);
+}
+
+async function runDecode(model, keepAttr){
+  const text = $("intext").value.trim();
+  if(!text){ setVerdict("paste some text first", "bad"); return null; }
+  if(!keepAttr) $("attr").innerHTML = "";
+  $("stream").innerHTML = ""; $("bits").innerHTML = ""; $("btnCopy").style.display = "none";
+  showView("bits");
+  let found = false, verdict = null;
+  try{
+    setModelStatus(`loading ${model}…`, "loading");
+    verdict = await runJob("decode", { model, text, opts: {tau: +$("tauD").value} },
+      { ...modelProgress(model, () => setVerdict(`reading through ${model}…`)),
+      onEvent: e => {
+      if(e.type === "token"){ if(e.carrier) addBit(e); }
+      else if(e.type === "partial"){ paintPartial(e.spans); }
+      else if(e.type === "frame"){
+        found = true; paintSpans(e.spans);
+        showFound(payloadText(e.payload), model, e.payload);
+        setVerdict("✅ found it — still scanning for more copies…", "ok");
+      } else if(e.type === "done"){
+        paintSpans(e.spans);
+        if(e.valid) showFound(e.payload && payloadText(e.payload), model, e.payload);
+        setVerdict(e.valid
+          ? `✅ this text was written by ${model}`
+          : ($("advD").open
+              ? `no valid frame — ${model} cannot read this text (wrong lens, unwatermarked, or edited)`
+              : `${model} didn't write this one…`),
+          e.valid ? "ok" : "bad");
+      }
+    }});
+  }catch(err){ console.error(err); setVerdict(err.message, "bad"); }
+  return verdict;
+}
+
+async function runAttribute(){
+  if(running) return; busy(true);
+  $("attr").innerHTML = "";
+  const models = Object.keys(MODELS);
+  const rows = [];
+  for(const m of models){
+    const v = await runDecode(m, true);
+    if(!v) break;
+    rows.push({...v, lens: m});
+    const d = document.createElement("div");
+    d.innerHTML = `<span style="color:${v.valid ? "var(--ok)" : "var(--bad)"}">${v.valid ? "✓" : "✗"}</span>` +
+      `<span style="font-family:ui-monospace,monospace">${m}</span>` +
+      `<span style="color:var(--muted)">${v.valid ? `payload 0x${v.payload} · ${v.frames} frame(s)` : `${v.carriers} carriers, no valid frame`}</span>`;
+    $("attr").appendChild(d);
+  }
+  const winners = rows.filter(v => v.valid);
+  if(rows.length === models.length){
+    setVerdict(winners.length === 1 ? `ATTRIBUTED: ${winners[0].lens} (payload 0x${winners[0].payload})`
+      : winners.length ? `AMBIGUOUS: ${winners.map(v => v.lens).join(", ")}` : "UNATTRIBUTED — no lens validates",
+      winners.length === 1 ? "ok" : winners.length ? "" : "bad");
+  }
+  busy(false);
+}
+
+async function runAutoFind(){
+  if(running) return; busy(true);
+  $("attr").innerHTML = "";
+  const models = Object.keys(MODELS).sort((a, b) => (b === "gpt2") - (a === "gpt2"));
+  let found = null;
+  for(const m of models){
+    const v = await runDecode(m, true);
+    if(v === null) break;
+    if(v.valid){ found = {v, m}; break; }
+  }
+  if(found){
+    showFound(payloadText(found.v.payload), found.m, found.v.payload);
+    setVerdict(`✅ this text was written by ${found.m}`, "ok");
+  } else if($("intext").value.trim()){
+    setVerdict("❌ no hidden message — none of the models here wrote this text (or it was edited too heavily)", "bad");
+  }
+  busy(false);
+}
+
+function setMode(embed){
+  $("pEmbed").style.display = embed ? "" : "none";
+  $("pDecode").style.display = embed ? "none" : "";
+  $("mEmbed").classList.toggle("on", embed);
+  $("mDecode").classList.toggle("on", !embed);
+  if(!running){ resetHideForm(); resetRevealForm(); setVerdict(""); }
+}
+$("mEmbed").onclick = () => setMode(true);
+$("mDecode").onclick = () => setMode(false);
+$("btnNewHide").onclick = () => { if(!running){ resetHideForm(); setVerdict(""); $("msg").focus(); } };
+$("btnNewReveal").onclick = () => { if(!running){ resetRevealForm(); setVerdict(""); $("intext").focus(); } };
+for(const id of ["advE", "advD"]){
+  try{ if(localStorage["rm_" + id]) $(id).open = true; }catch{}
+  $(id).addEventListener("toggle", () => { try{ localStorage["rm_" + id] = $(id).open ? "1" : ""; }catch{} });
+}
+$("btnEmbed").onclick = runEmbed;
+$("btnDecode").onclick = () => {
+  if(running) return;
+  if(!$("intext").value.trim()){ setVerdict("paste some text first", "bad"); return; }
+  collapseRevealForm(); $("foundMsg").style.display = "none"; showView("bits");
+  if(!$("advD").open){ runAutoFind(); return; }
+  busy(true); runDecode($("lensD").value).finally(() => busy(false));
+};
+$("btnAttr").onclick = runAttribute;
+$("btnCopy").onclick = () => navigator.clipboard.writeText(lastText);
+loadModels();
+</script>
+</body>
+</html>
