@@ -28,7 +28,8 @@ export async function embed(lens, opts, onEvent) {
   const frameBits = frame.length;
   const nbytes = payload.length;
 
-  const context = instruct ? lens.instructContext(prompt) : lens.completionContext(prompt);
+  // tokenizer calls are awaited: a worker-backed lens answers them asynchronously
+  const context = instruct ? await lens.instructContext(prompt) : await lens.completionContext(prompt);
   if (!context.length) throw new Error("prompt tokenized to nothing");
   const eos = lens.eosId;
 
@@ -74,15 +75,15 @@ export async function embed(lens, opts, onEvent) {
   let text, visibleIds;
   if (instruct) {
     visibleIds = genIds;
-    text = lens.decodeTokens(genIds);
+    text = await lens.decodeTokens(genIds);
   } else {
-    const plain = lens.encodeText(prompt);
+    const plain = await lens.encodeText(prompt);
     const bosLen = context.length - plain.length; // 1 if BOS was prepended
     visibleIds = allIds.slice(bosLen).filter(t => t !== eos);
-    text = lens.decodeTokens(visibleIds);
+    text = await lens.decodeTokens(visibleIds);
   }
 
-  const retokenizes = arraysEqual(lens.encodeText(text), visibleIds);
+  const retokenizes = arraysEqual(await lens.encodeText(text), visibleIds);
   const framesPlanted = planted / frameBits;
   onEvent({
     type: "done",
