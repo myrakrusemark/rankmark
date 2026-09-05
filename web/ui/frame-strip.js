@@ -24,6 +24,7 @@ const NOTE = {
 const SPELLED = ["sync", "header", "payload", "checksum", "parity"];
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const toInt = bits => bits.reduce((a, b) => a * 2 + b, 0);
+const FLIGHT_MS = 720;
 
 export class FrameStrip {
   constructor(root) {
@@ -274,9 +275,10 @@ export class FrameStrip {
     document.body.appendChild(el);
     const dx = (b.left + b.width / 2 - 5) - (a.left + a.width / 2 - 5);
     const dy = (b.top + b.height - 4) - (a.top + a.height - 4);
+    // slow enough to follow with the eye; several bits may be in the air at once
     const anim = el.animate(
       [{ transform: "translate(0,0)", opacity: 1 }, { transform: `translate(${dx}px, ${dy}px)`, opacity: 0.9 }],
-      { duration: 240, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" },
+      { duration: FLIGHT_MS, easing: "cubic-bezier(0.45, 0.05, 0.25, 1)", fill: "forwards" },
     );
     anim.onfinish = () => { el.remove(); done(); };
   }
