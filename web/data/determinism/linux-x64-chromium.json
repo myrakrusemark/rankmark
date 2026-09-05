@@ -1,0 +1,68 @@
+{
+ "os": "linux 6.17.0-1022-azure",
+ "arch": "x64",
+ "cpus": 4,
+ "browser": "chromium",
+ "rung": "Qwen3-0.6B-Q8_0",
+ "generated": "2026-09-05T00:39:30.059Z",
+ "env": {
+  "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+  "isolated": true,
+  "memory64": true,
+  "jspi": true,
+  "threads": 4
+ },
+ "load": {
+  "model": "Qwen3-0.6B-Q8_0",
+  "fingerprint": "80862fd5d6e2",
+  "threads": 2,
+  "cache": "none",
+  "weightsSha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+  "nVocab": 151936,
+  "nCtx": 2048,
+  "eog": [
+   128247,
+   151643,
+   151645,
+   151662,
+   151663,
+   151664
+  ],
+  "addBos": false,
+  "loadSeconds": 4.9,
+  "wallSeconds": 4.877
+ },
+ "logitHash": {
+  "hash": "ca3e23e2a6997865",
+  "tokens": 6,
+  "fingerprint": "80862fd5d6e2",
+  "threads": 2
+ },
+ "weights": {
+  "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+  "ok": true
+ },
+ "logitHash1": {
+  "hash": "ca3e23e2a6997865",
+  "tokens": 6,
+  "fingerprint": "80862fd5d6e2",
+  "threads": 1
+ },
+ "write": {
+  "text": "The history of cryptography begins with the use of ciphers and encryptions in ancient civilizations. The first notable example of an ancient cryptographic system is the Caesar cipher, which uses a shift in the alphabet. The Caesar cipher is one of the earliest known ciphers. Since Caesar used 26 letters, the Caesar cipher can be represented as a shift of the alphabet by a certain number of positions. The number of positions is called the shift. The shift can be defined as the number of positions that Caesar used to shift the alphabet. For example, if the shift is 3, then the encrypted message would be the result of shifting each letter in the plain text message by 3 positions in the alphabet. Then, if the plain text message is \"abc\", the cipher would be \"def\". \n\nLet's assume that a person has encrypted a message and wants to know the original message. The encrypted message is a string of letters that can be decrypted using a shift cipher. The problem is to find the original message, given the encrypted message. \n\nLet's analyze the following examples:\n\nExample 1: Encrypted message is \"abfgh\" and the shift is 3. The original message would be \"abc\". Let's analyze the first example.\nExample 2: Encrypted message is \"efgh\" and",
+  "textHash": "b5eb836555d3",
+  "fingerprint": "80862fd5d6e2",
+  "tokens": 260,
+  "carriers": 88,
+  "bits": ".1.1.11..10..0110.101...0...0......00.00...00.00110....01.1.0.............01..01..0011.1.0...0.1....00...........1...00.................1.1......1..1.....11.0.1111..00.1....01..10..01.1.....01......1.....11.1.11.....0....01.1.............0.1.0.100.........00..",
+  "ranks": "0,3,0,1,0,1,3,0,0,1,0,1,0,0,1,47,0,1,3,0,1,0,0,0,0,0,0,0,2,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,20,1,1,10,0,0,0,0,0,1,0,1,0,2,0,0,0,0,1,0,1,0,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0,1,1,0,17,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,1,0,0,0,0,0,1,0,0,0,2,0,1,0,0,0,0,1,0,0,0,23,0,1,0,1,0,0,0,0,3,0,0,1,0,0,0,0,0,3,3,0,2,0,1,3,1,19,0,0,4,0,0,1,0,0,0,0,0,1,0,0,3,0,0,0,0,3,0,1,0,1,0,1,0,0,3,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,9,0,5,1,0,0,0,0,0,0,0,0,0,0,0,7,2,5,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,5,0,8,0,1,0,2,0,0,0,0,0,0,0,0,0,10,0,0,0"
+ },
+ "read": {
+  "valid": true,
+  "payload": "a7",
+  "carriers": 91,
+  "frames": 1
+ },
+ "roundTripSeconds": 117.903,
+ "ok": true
+}

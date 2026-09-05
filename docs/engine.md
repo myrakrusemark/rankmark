@@ -51,8 +51,21 @@ Temperature 0.7 raises the 0.6B carrier rate from 11.6% (greedy) to 31%, so a 1-
 tokens instead of 800, and the text stops looping. The registry's `carrierRate` sizes the budget; 0.6B is measured,
 the others are placeholders until Phase 3 measures them.
 
-Determinism so far: 100 fresh prefills give one logit hash; 1, 2, 4 and 8 threads give the same hash; one-call and
-per-token prefill agree; the same seed reproduces the same text. Cross-machine equality is Phase 3's CI matrix.
+## Determinism: measured
+
+The CI matrix (`.github/workflows/determinism.yml`, records in `web/data/determinism/`) runs a fixed prompt and a
+seeded write-plus-read on GitHub's runners: Linux x86, Linux ARM64, Windows x86 and Apple Silicon macOS, each on
+Chromium, Firefox and WebKit, at the default thread count and at one thread, with the downloaded weights hashed
+against the registry. On 2026-09-05 all twelve produced the same logit row (`ca3e23e2a6997865`), the same text,
+the same ranks and the same carrier bits, and this laptop matches them. A text written on one machine reads on
+another; "portable" is measured, not argued.
+
+What broke it before the pin: WebGPU. wllama offloads every layer to the GPU by default, and the GPU row for the
+same weights hashes differently (`5d21ff2ea08f8319` on this laptop's Intel GPU). The lens sets `n_gpu_layers: 0`
+and the fingerprint records the device.
+
+Local checks on top of that: 100 fresh prefills give one hash; one-call and per-token prefill agree; the same seed
+reproduces the same text; run-to-run and thread count never change bits.
 
 ## Safari
 

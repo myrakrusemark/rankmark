@@ -1,0 +1,16 @@
+12 records, 1 distinct outcome(s)
+
+darwin-arm64-chromium.json         threads  3  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+darwin-arm64-firefox.json          threads  3  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+darwin-arm64-webkit.json           threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+linux-arm64-chromium.json          threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+linux-arm64-firefox.json           threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+linux-arm64-webkit.json            threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+linux-x64-chromium.json            threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+linux-x64-firefox.json             threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+linux-x64-webkit.json              threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+win32-x64-chromium.json            threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+win32-x64-firefox.json             threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+win32-x64-webkit.json              threads  4  mem64 y jspi y iso y  hash ca3e23e2a6997865 (1 thread ca3e23e2a6997865)  weights ok  text b5eb836555d3  88/260 carriers  read valid a7
+
+bit-exact across the whole matrix
