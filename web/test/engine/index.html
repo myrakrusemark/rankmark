@@ -149,7 +149,7 @@ const engine = {
 
   // per-rung measurements: n seeded writes at temperature 0.7, their reads, and
   // reads after cutting the head and the tail of the text
-  async measure(id, n = 2) {
+  async measure(id, n = 2, { cuts = true } = {}) {
     const rung = rungById(registry, id);
     const runs = [];
     for (let i = 0; i < n; i++) {
@@ -170,8 +170,8 @@ const engine = {
       const text = emb.text;
       const headCut = text.slice(text.indexOf(" ", Math.floor(text.length * 0.2)) + 1);
       const tailCut = text.slice(0, text.lastIndexOf(" ", Math.floor(text.length * 0.8)));
-      const head = await runJob("decode", { rung, text: headCut, opts: { tau: 2.0 } });
-      const tail = await runJob("decode", { rung, text: tailCut, opts: { tau: 2.0 } });
+      const head = cuts ? await runJob("decode", { rung, text: headCut, opts: { tau: 2.0 } }) : { valid: null, carriers: null };
+      const tail = cuts ? await runJob("decode", { rung, text: tailCut, opts: { tau: 2.0 } }) : { valid: null, carriers: null };
       runs.push({
         seed: o.seed, maxNew: ev.maxNew, tokens: ev.tokens, endedByEog: ev.tokens < ev.maxNew,
         carriers: ev.carriers, carrierRate: +(ev.carriers / ev.tokens).toFixed(3), firstFrameAt: ev.firstFrameAt,
@@ -188,10 +188,10 @@ const engine = {
 
   // every reader reads the writer's text: carrier-bit agreement by position
   // (same tokenizer family, so ids align), and whether any sibling validates
-  async lineup(writerId, readerIds, seed = 777) {
+  async lineup(writerId, readerIds, seed = 777, maxNew = 200) {
     const writer = rungById(registry, writerId);
     const w = [];
-    const emb = await runJob("embed", { rung: writer, opts: { prompt: PROMPT, payloadHex: "a7", profile: 0, temperature: 0.7, seed } }, {
+    const emb = await runJob("embed", { rung: writer, opts: { prompt: PROMPT, payloadHex: "a7", profile: 0, temperature: 0.7, seed, maxNew } }, {
       onEvent: e => { if (e.type === "token") w.push({ id: e.id, carrier: e.carrier, bit: e.bit }); },
     });
     const results = [];
@@ -217,10 +217,12 @@ const engine = {
     return { writer: writerId, seed, text: emb.text, results };
   },
 
-  async campaign(ids = registry.rungs.map(r => r.id)) {
-    const out = { generated: new Date().toISOString(), engine: registry.engine, env: window.engine.results.probe || null, measurements: {}, lineups: [] };
-    for (const id of ids) { out.measurements[id] = await this.measure(id, 2); log(`measured ${id}`); }
-    for (const wId of ids) { out.lineups.push(await this.lineup(wId, ids.filter(x => x !== wId))); }
+  // plan: [{id, n, cuts}] in order; the lineup covers every plan rung as writer and reader
+  async campaign(plan = registry.rungs.map(r => ({ id: r.id, n: 2, cuts: true })), lineupTokens = 200) {
+    const out = { generated: new Date().toISOString(), engine: registry.engine, env: window.engine.results.probe || null, plan, lineupTokens, measurements: {}, lineups: [] };
+    for (const p of plan) { out.measurements[p.id] = await this.measure(p.id, p.n, { cuts: p.cuts }); log(`measured ${p.id}`); }
+    const ids = plan.map(p => p.id);
+    for (const wId of ids) { out.lineups.push(await this.lineup(wId, ids.filter(x => x !== wId), 777, lineupTokens)); }
     return out;
   },
 
