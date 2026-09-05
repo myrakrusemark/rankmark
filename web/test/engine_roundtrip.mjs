@@ -38,13 +38,14 @@ class FakeLens {
   decodeOne(id) { return String.fromCharCode(64 + (id % VOCAB)); }
   get bosId() { return 0; }
   async completionContext(p) { return [0, ...(await this.encodeText(p))]; }
-  async run(seedId, maxNew, decide, { stopOn } = {}) {
+  async run(seedId, maxNew, decide, { stopOn, stopWhen } = {}) {
     const ids = [seedId];
     for (let i = 0; i < maxNew; i++) {
       const logits = fakeLogits(ids[ids.length - 1]);
       const id = decide(logits);
       ids.push(id);
       if (stopOn && stopOn.has(id)) break;
+      if (stopWhen && stopWhen(id)) break;
     }
     return ids;
   }

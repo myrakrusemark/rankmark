@@ -187,14 +187,16 @@ export class Lens {
   // Prefill is the seed alone; every later token is chosen by decide() from the
   // previous step's logits and fed back as a single step. stopOn ends the run
   // early when decide() returns one of those ids (the encoder passes the
-  // end-of-generation set). Returns [seedId, ...stepped].
-  async run(seedId, maxNew, decide, { stopOn } = {}) {
+  // end-of-generation set); stopWhen(id) can end it after any token.
+  // Returns [seedId, ...stepped].
+  async run(seedId, maxNew, decide, { stopOn, stopWhen } = {}) {
     const stepped = [];
     let logits = await this.step([seedId], true);
     for (let i = 0; i < maxNew; i++) {
       const id = decide(logits);
       stepped.push(id);
       if (stopOn && stopOn.has(id)) break;
+      if (stopWhen && stopWhen(id)) break;
       if (i + 1 < maxNew) logits = await this.step([id]);
     }
     return [seedId, ...stepped];

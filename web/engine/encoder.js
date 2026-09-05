@@ -103,7 +103,16 @@ export async function embed(lens, opts, onEvent) {
     return choice.tokenId;
   };
 
-  const allIds = await lens.run(context[0], replay.length + maxNew, decide, { stopOn: eog });
+  // once a whole frame is in, end the passage at the next sentence boundary
+  // rather than running out the budget; a few words past the seal keep the
+  // last bits off the very end of the text
+  let sinceFrame = 0;
+  const stopWhen = id => {
+    if (planted < frameBits) return false;
+    sinceFrame++;
+    return sinceFrame >= 6 && /[.!?]["')\]]?\s*$/.test(lens.decodeOne(id));
+  };
+  const allIds = await lens.run(context[0], replay.length + maxNew, decide, { stopOn: eog, stopWhen });
   const plain = await lens.encodeText(prompt);
   const bosLen = context.length - plain.length; // 1 if BOS was prepended
   const visibleIds = allIds.slice(bosLen).filter(t => !eog.has(t));

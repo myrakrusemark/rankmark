@@ -108,7 +108,7 @@ export class WritePanel {
             const s = (performance.now() - t0) / 1000;
             const rate = tokens / Math.max(s, 0.001);
             const need = Math.max(0, Math.ceil((frameBits - planted) / Math.max(carriers / tokens, 0.05)));
-            meter.textContent = `${rate.toFixed(1)} words/s · ${carriers} of ${frameBits} bits · ${planted >= frameBits ? "frame planted, finishing the passage" : `about ${Math.ceil(need / Math.max(rate, 0.1))} s to go`}`;
+            meter.textContent = `${rate.toFixed(1)} words/s · ${Math.min(planted, frameBits)} of ${frameBits} bits · ${planted >= frameBits ? "frame planted, finishing the sentence" : `about ${Math.ceil(need / Math.max(rate, 0.1))} s to go`}`;
           }
         },
       });
