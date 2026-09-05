@@ -87,7 +87,6 @@ async function fetchBlob(url, total, onProgress) {
     loaded += value.byteLength;
     onProgress?.({ loaded, total: total || Number(res.headers.get("content-length")) || loaded });
   }
-  // one part: WebKit cannot stream a Blob made of hundreds of chunks at this size
   const all = new Uint8Array(loaded);
   let off = 0;
   for (const c of chunks) { all.set(c, off); off += c.byteLength; }
@@ -97,7 +96,33 @@ async function fetchBlob(url, total, onProgress) {
     const digest = await crypto.subtle.digest("SHA-256", all);
     sha256 = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
   }
-  return { blob: new Blob([all]), sha256 };
+  return { blob: new MemorySource(all), sha256 };
+}
+
+// Blob-shaped view over one buffer. wllama reads a model through size, slice()
+// and stream(); a real Blob this large goes through WebKit's blob loader, which
+// fails ("too much data buffered"), so the bytes are served from memory instead.
+class MemorySource {
+  constructor(bytes) { this.bytes = bytes; this.size = bytes.byteLength; }
+  slice(start = 0, end = this.size) {
+    const bytes = this.bytes;
+    return {
+      size: end - start,
+      arrayBuffer: async () => bytes.slice(start, end).buffer,
+    };
+  }
+  stream() {
+    const bytes = this.bytes;
+    const step = 4 * 1024 * 1024;
+    let pos = 0;
+    return new ReadableStream({
+      pull(ctrl) {
+        if (pos >= bytes.byteLength) { ctrl.close(); return; }
+        ctrl.enqueue(bytes.slice(pos, Math.min(pos + step, bytes.byteLength)));
+        pos += step;
+      },
+    });
+  }
 }
 
 export function currentLens() { return current; }
