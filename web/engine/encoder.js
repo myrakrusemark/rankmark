@@ -63,7 +63,7 @@ export async function embed(lens, opts, onEvent) {
   // budget from the measured carrier rate (one frame plus slack), capped by the
   // context window; the ban keeps the run going until a frame is planted
   const rate = lens.rung?.carrierRate || 0.12;
-  const need = Math.ceil((frameBits / rate) * 2.0);   // the run stops at the first sentence end past the seal, so slack is free on a normal text
+  const need = Math.ceil((frameBits / rate) * 3.0);   // the run stops at the first sentence end past the seal, so slack is free on a normal text
   const cap = Math.max(64, (lens.nCtx ?? 2048) - context.length - 8);
   const maxNew = Math.min(opts.maxNew || need, cap);
 

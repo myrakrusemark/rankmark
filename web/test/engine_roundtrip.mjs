@@ -84,7 +84,7 @@ ok(s3.text !== s1.text, "a different seed gives different text");
 // --- budget: maxNew follows the carrier rate, capped by the context --------
 c = collect();
 await embed(lens, { prompt: "x", payloadHex: "2a", profile: 0, temperature: 0 }, c.on);
-ok(c.ev.start.max_new === Math.ceil((c.ev.start.frame_bits / 0.5) * 2.0), `max_new from the carrier rate (got ${c.ev.start.max_new})`);
+ok(c.ev.start.max_new === Math.ceil((c.ev.start.frame_bits / 0.5) * 3.0), `max_new from the carrier rate (got ${c.ev.start.max_new})`);
 const tiny = new FakeLens("gpt2"); tiny.nCtx = 100;
 c = collect();
 await embed(tiny, { prompt: "x", payloadHex: "2a", profile: 0, temperature: 0 }, c.on);
