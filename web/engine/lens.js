@@ -87,13 +87,17 @@ async function fetchBlob(url, total, onProgress) {
     loaded += value.byteLength;
     onProgress?.({ loaded, total: total || Number(res.headers.get("content-length")) || loaded });
   }
-  const blob = new Blob(chunks);
+  // one part: WebKit cannot stream a Blob made of hundreds of chunks at this size
+  const all = new Uint8Array(loaded);
+  let off = 0;
+  for (const c of chunks) { all.set(c, off); off += c.byteLength; }
+  chunks.length = 0;
   let sha256 = null;
-  if (blob.size < 2 ** 31) {
-    const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  if (loaded < 2 ** 31) {
+    const digest = await crypto.subtle.digest("SHA-256", all);
     sha256 = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
   }
-  return { blob, sha256 };
+  return { blob: new Blob([all]), sha256 };
 }
 
 export function currentLens() { return current; }
