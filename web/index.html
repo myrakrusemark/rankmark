@@ -32,7 +32,7 @@
   <div class="prose">
     <p>On August 14, Anthropic posted a short note saying that future Claude models will write text that carries a watermark. Google has done this in Gemini since 2024. The reason is a European law that, from this August, requires text from these systems to be marked in a way software can detect. The odd part is that nobody can point at the mark. Copy a paragraph out of Claude and read it as many times as you like; there is nothing there.</p>
     <p>The mark lives in a decision you never see. A language model does not write words the way a person types them. At every step it gives a score to every token it knows, about 150,000 pieces of words for the models on this page, and then something has to pick one from the top of that list. Usually the pick is the highest score, and sometimes, on purpose, it is the second or third, because a model that always takes the top word repeats itself. How far down the list the pick can wander is a setting called temperature.</p>
-    <p>Try it below. Give the model an opening, set a temperature, and start it. The sentence grows one word at a time, and the list beside it is the model's top eight for the next word, with the one it took. At a temperature of 0 it always takes #1; the higher you set it, the further down the list the pick can wander.</p>
+    <p>Try it below. Give the model an opening, set a temperature, and start it. The sentence grows one word at a time, and the list beside it is the model's top eight for the next word, with the one it took. Temperature is how chaotic that choice is. At 0 the model always takes #1 and the sentence comes out the same every time; turn it up and the pick wanders further down the list, so the words get more surprising and, past a point, worse.</p>
   </div>
   <p id="mode-note" class="note warn" hidden></p>
   <aside class="autoload off" id="autoload" hidden data-live-only aria-live="polite">
@@ -78,34 +78,44 @@
   <div class="prose">
     <p>You cannot see inside Claude, but you can see inside an open model, and that is enough to build the same idea without a key. This page runs Qwen3, an open model from Alibaba, entirely in your browser. At every free choice, first place means a 0 and second place means a 1, and that is the whole channel. Around your message goes a frame, which opens with a fixed pattern of bits to knock with, so a reader can find the start anywhere in the text. Then come a label with the message length and a short fingerprint of the model, the message itself, a checksum to seal it, and a little repair data.</p>
     <p>I designed this version and directed the AI coding agents that built it, mostly to find out how far the idea goes without a key. Further than I expected, with one honest difference from the labs' schemes that section five gets to.</p>
-    <p>Try it. The opening line is yours to change, and so is the message. The smallest model is the default because it writes in about a minute; the bigger ones are slower and surer of themselves, which leaves fewer free choices to hide in. Then watch the two columns: the words as they are written, and the frame's bits leaving the strip for the words that carry them.</p>
+    <p>Try it. The opening line is yours to change, and so is the message. The smallest model is the default because it writes in about a minute; the bigger ones are slower and surer of themselves, which leaves fewer free choices to hide in. Then watch the two columns: the words as they are written, and the frame's bits leaving the strip for the words that carry them, each in the color of the part of the frame it belongs to.</p>
+    <p>Temperature has a second job here. At any one step it does not change which words are free choices, because the gate looks at the model's own scores before the dial is applied. But a hotter model takes stranger words, stranger words lead into sentences it cannot predict, and those have more free choices in them. A higher temperature makes more room for bits and worse text; a cold model settles into stock phrases and runs out of places to hide anything. The default of 0.7 is about where the small model stops repeating itself without talking nonsense.</p>
   </div>
   <div class="station" id="st-write">
     <div class="st-head"><span>write with a mark</span><span class="meter" data-meter></span></div>
-    <div class="inputs">
-      <div class="field"><label for="st-prompt">Opening text</label><textarea id="st-prompt" data-prompt>It was late in the harbor when the last boat came in, and</textarea></div>
-      <div class="field"><label for="st-tag">Your message</label><input id="st-tag" type="text" data-tag value="hello" maxlength="16" autocomplete="off"><div class="hint" data-tag-hint></div></div>
-      <div class="btn-row">
-        <button type="button" class="btn primary" data-run data-live-only>Write</button>
-        <button type="button" class="btn" data-stop hidden>Stop</button>
-        <button type="button" class="btn" data-replay>Watch a recorded run</button>
+    <div class="two row-inputs">
+      <div class="pair">
+        <div class="field">
+          <div class="label-row"><label for="st-tag">Your message</label><span class="hint" data-tag-hint></span></div>
+          <input id="st-tag" type="text" data-tag value="hello" maxlength="16" autocomplete="off">
+        </div>
+        <div class="field">
+          <div class="label-row"><label for="st-temp">Temperature</label><span class="hint" data-temp-out>0.7</span></div>
+          <div class="range-box"><input id="st-temp" type="range" data-temp min="0" max="1.5" step="0.1" value="0.7"></div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="label-row" aria-hidden="true">&nbsp;</div>
+        <button type="button" class="btn primary wide" data-run data-live-only>Write</button>
+        <button type="button" class="btn wide" data-stop hidden>Stop</button>
+        <div class="progress" style="margin-top: 8px"><span class="line"><i></i></span><b>0%</b></div>
       </div>
     </div>
-    <div class="progress"><span class="line"><i></i></span><b>0%</b></div>
     <div class="two">
       <div>
-        <div class="text-head"><span data-head></span></div>
-        <div id="st-write-text" role="log" aria-live="off"></div>
-      </div>
-      <div>
-        <div class="strip-head"><span>the frame</span><span>one cell per bit</span></div>
-        <div id="st-write-strip"></div>
-        <p class="strip-note" data-strip-note>Write, and the frame appears here, then leaves for the words one bit at a time.</p>
+        <label class="box-label" id="st-box-label" for="st-write-text">Write anything here; the model continues it, with your message hidden in the words it picks.</label>
+        <div id="st-write-text" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="st-box-label" spellcheck="false" data-box-edit>It was late in the harbor when the last boat came in, and</div>
+        <div class="text-head" style="margin: 8px 0 0"><span data-head></span></div>
         <div class="card" data-card hidden style="margin-top: 12px">
           <div class="foot" data-card-foot style="border: 0; margin: 0; padding: 0"></div>
           <div data-card-text hidden></div>
           <div class="btn-row" style="margin-top: 8px"><button type="button" class="btn" data-copy>Copy the marked text</button></div>
         </div>
+      </div>
+      <div>
+        <div class="strip-head"><span>the frame</span><span>one cell per bit</span></div>
+        <div id="st-write-strip"></div>
+        <p class="strip-note" data-strip-note>Write, and the frame appears here, then leaves for the words one bit at a time.</p>
       </div>
     </div>
   </div>

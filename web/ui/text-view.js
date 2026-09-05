@@ -15,7 +15,8 @@ function tooltip() {
 export class TextView {
   constructor(root, { emptyText = "", boxed = true } = {}) {
     this.root = root;
-    this.root.classList.add(boxed ? "text" : "tokens", "empty");
+    this.root.classList.add(boxed ? "text" : "tokens");
+    if (!this.root.textContent.trim()) this.root.classList.add("empty");
     this.root.dataset.empty = emptyText;
     this.tokens = [];
     this.root.addEventListener("mouseover", e => this.show(e.target));
@@ -27,6 +28,16 @@ export class TextView {
   clear() { this.root.innerHTML = ""; this.root.classList.add("empty"); this.tokens = []; }
 
   setPlain(text) { this.clear(); this.root.classList.remove("empty"); this.root.textContent = text; }
+
+  // the opening the visitor typed, kept in place ahead of the words the model adds
+  prime(text) {
+    this.clear();
+    this.root.classList.remove("empty");
+    const s = document.createElement("span");
+    s.className = "opening";
+    s.textContent = text;
+    this.root.appendChild(s);
+  }
 
   // append a token event; returns its element
   append(e, { reveal = true } = {}) {

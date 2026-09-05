@@ -18,6 +18,7 @@ export class WritePanel {
     this.q("[data-run]").addEventListener("click", () => this.run());
     this.q("[data-stop]").addEventListener("click", () => this.engine.cancel());
     this.q("[data-tag]").addEventListener("input", () => this.renderTag());
+    this.q("[data-temp]")?.addEventListener("input", () => { const o = this.q("[data-temp-out]"); if (o) o.textContent = Number(this.q("[data-temp]").value).toFixed(1); });
     for (const b of root.querySelectorAll(".seg button")) b.addEventListener("click", () => { this.profile = Number(b.dataset.profile); this.renderProfile(); });
     this.renderTag();
     this.renderProfile();
@@ -48,6 +49,9 @@ export class WritePanel {
     this.q("[data-run]").hidden = on;
     this.q("[data-stop]").hidden = !on;
     this.root.querySelectorAll("input, textarea, select, .seg button").forEach(el => { el.disabled = on; });
+    // the one-box layout: the opening box locks while the model writes into it
+    const box = this.q("[data-box-edit]");
+    if (box) { box.contentEditable = String(!on); if (on) box.blur(); }
   }
 
   progress(p) {
@@ -63,8 +67,10 @@ export class WritePanel {
     const bytes = this.tagBytes();
     if (!bytes.length) { this.q("[data-tag]").focus(); return; }
     if (bytes.length > (rung.tagCapBytes ?? 8)) { this.q("[data-tag]").focus(); return; }
-    const prompt = this.q("[data-prompt]").value.trim();
-    if (!prompt) { this.q("[data-prompt]").focus(); return; }
+    // the opening comes from the one box when there is one, else the textarea
+    const box = this.q("[data-box-edit]");
+    const prompt = (box ? box.textContent : this.q("[data-prompt]").value).trim();
+    if (!prompt) { (box || this.q("[data-prompt]")).focus(); return; }
     if (!(await this.picker.consent(rung))) return;
 
     const temperature = Number(this.q("[data-temp]")?.value ?? 0.7);
@@ -73,7 +79,7 @@ export class WritePanel {
     if (seedRaw) opts.seed = Number(seedRaw) >>> 0;
 
     this.setBusy(true);
-    this.view.clear();
+    if (box) this.view.prime(prompt); else this.view.clear();
     this.strip.reset();
     const cardEl = this.q("[data-card]"); if (cardEl) cardEl.hidden = true;
     const head = this.q("[data-head]");

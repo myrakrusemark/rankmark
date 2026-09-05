@@ -59,35 +59,6 @@ const stWrite = new WritePanel($("#st-write"), {
   },
 });
 
-// recorded run for the write station (and phones)
-const stReplay = new Replay({ strip: stWriteStrip, view: stWriteView, callouts: quiet });
-const stReplayBtn = $("#st-write [data-replay]");
-if (snapshot) {
-  stReplayBtn.addEventListener("click", async () => {
-    if (stReplayBtn.disabled) return;
-    stReplayBtn.disabled = true;
-    if (engine) await engine.cancel();
-    try { await stReplay.write(snapshot, $("#st-write [data-head]")); } finally { stReplayBtn.disabled = false; }
-    $("#st-write [data-card-foot]").textContent = snapshot.card.slice(snapshot.write.text.length + 2);
-    $("#st-write [data-card]").hidden = false;
-    $("#st-write [data-copy]").onclick = async () => { try { await navigator.clipboard.writeText(snapshot.card); } catch { /* blocked */ } };
-    stRead.load(snapshot.card);
-    stEv.load(snapshot.card);
-    stEv.reference = snapshot.write.tokens.map(t => ({ id: t.id, carrier: t.carrier, bit: t.bit }));
-    if (!engine) {
-      // no model here: the read station replays the recorded read
-      const rr = new Replay({ strip: stReadStrip, view: stReadView, callouts: quiet });
-      $("#st-read [data-run]").hidden = true;
-      const btn = document.createElement("button");
-      btn.type = "button"; btn.className = "btn primary"; btn.textContent = "Watch it read back";
-      $("#st-read .btn-row").prepend(btn);
-      btn.onclick = async () => { stRead.annotate(null); await rr.read(snapshot, $("#st-read [data-head]")); stRead.verdict("ok", `A frame planted with <b>${snapshot.rung.replace(/-Q.*$/, "")}</b> validates in this text.`); };
-    }
-  });
-} else {
-  stReplayBtn.hidden = true;
-}
-
 renderLineup($("#st-lineup [data-lineup-bars]"), new URL("../data/measurements.json", import.meta.url));
 
 // ---- the full tool at the bottom -------------------------------------------
@@ -144,7 +115,7 @@ if (snapshot) {
 // ---- mode ---------------------------------------------------------------------
 if (!canRun) {
   const why = !hw.isolated ? "This page is not cross-origin isolated, so the engine cannot use threads here."
-    : narrow ? "On a phone the download is 0.6 GB or more and the model runs at under one word a second, so this page replays a recorded run instead. Open it on a laptop to run your own."
+    : narrow ? "On a phone the download is 0.6 GB or more and the model runs at under one word a second, so the examples on this page do not run here. Open it on a laptop to try them."
     : "No model in the ladder fits this browser.";
   for (const p of document.querySelectorAll("[data-live-only]")) p.hidden = true;
   const note = $("#mode-note");

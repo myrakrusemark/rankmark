@@ -28,7 +28,21 @@
 
 /* ranked choice */
 .ranked .sentence { font-size: 18px; line-height: 1.6; min-height: 3.2em; padding: 14px 16px; background: var(--ground); border: 1px solid var(--line); border-radius: var(--radius-sm); white-space: pre-wrap; }
-.ranked .box-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
+.station .row-inputs { margin-bottom: 4px; align-items: end; }
+.station .row-inputs .field { margin: 0; }
+.station .label-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 5px; min-height: 19px; }
+.station .label-row label { margin: 0; }
+.station .label-row .hint { margin: 0; }
+.station .row-inputs input[type="text"], .station .row-inputs .btn.wide, .station .row-inputs .range-box { height: 44px; box-sizing: border-box; }
+.station .pair { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 12px; align-items: end; }
+.station .range-box { display: flex; align-items: center; }
+.station .range-box input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.station .box-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-2); margin: 12px 0 6px; }
+.station .field + .box-label { margin-top: 14px; }
+/* a box that is the opening and the output: typed in, locked while the model writes, open again after */
+.text[contenteditable="true"] { cursor: text; transition: border-color var(--t-fast) var(--ease-snap); }
+.text[contenteditable="true"]:focus { outline: none; border-color: var(--accent); }
+.text .opening { color: var(--muted); }
 .ranked .sentence .muted { color: var(--muted); }
 .ranked .sentence[contenteditable="true"] { cursor: text; transition: border-color var(--t-fast) var(--ease-snap); }
 .ranked .sentence[contenteditable="true"]:focus { outline: none; border-color: var(--accent); }
