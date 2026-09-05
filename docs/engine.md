@@ -32,24 +32,30 @@ compares `t` to the pasted text (a difference is reported as "altered in transit
 `f` to its own lens (a difference names the mismatch instead of reporting "no frame"). Without a footer the reader
 makes no claim about either.
 
-## Measurements (this laptop: i5-1135G7, 8 threads, Chrome 145, 2026-09-04)
+## Measurements (this laptop: i5-1135G7, 8 threads, headless Chromium, CPU only, 2026-09-05)
 
-Correction, later the same day: these numbers were taken in a headed Chrome with WebGPU, and wllama offloads
-every layer to the GPU by default (`n_gpu_layers` 99999), so they are GPU-assisted. The lens now pins
-`n_gpu_layers: 0`; the GPU and CPU paths produce different logit rows (hash `5d21ff2ea08f8319` on the Intel GPU vs
-`ca3e23e2a6997865` on CPU, same weights, same build), which is exactly why the site is CPU-only. CPU figures from
-the measurement campaign replace this table when it finishes; expect 0.6B near 4 to 5 tok/s and 8B well under 1.
+The first numbers (2026-09-04) were taken in a headed Chrome with WebGPU, and wllama offloads every layer to the
+GPU by default (`n_gpu_layers` 99999), so they were GPU-assisted and about 1.5 to 3 times faster than these. The lens
+now pins `n_gpu_layers: 0`; the GPU and CPU paths produce different logit rows (hash `5d21ff2ea08f8319` on the
+Intel GPU vs `ca3e23e2a6997865` on CPU, same weights, same build), which is why the site is CPU-only. The table
+is the measurement campaign (`web/test/ci/campaign.mjs`, records in `web/data/measurements.json`): one seeded
+write of a 1-byte lean frame (79 bits) at temperature 0.7 and tau 2.0, then its read.
 
-| Rung | Load (first visit, incl. download) | Single-step speed | Notes |
-|---|---|---|---|
-| Qwen3-0.6B Q8_0, 0.64 GB | 15 s | 7 tok/s | Round trip at temp 0.7: 796 tokens, 31% carriers, 3.5 frames, tag read back; embed 112 s, decode 82 s |
-| Qwen3-1.7B Q8_0, 1.83 GB | 71 s | 3.7 tok/s | deterministic |
-| Qwen3-4B Q4_K_M, 2.5 GB single file | 95 s | ~5 tok/s prefill | loads without splitting on the memory64 build |
-| Qwen3-8B Q4_K_M, 5.03 GB single file | 145 s (load alone 16 s) | 2.0 tok/s | first proof of the 8 GiB heap; 5% carriers greedy, text quality good |
+| Rung | Speed | Carrier rate at tau 2.0 | Write | Read |
+|---|---|---|---|---|
+| Qwen3-0.6B Q8_0, 0.64 GB | 4.8 tok/s | 40% | 330 tokens, 1.9 frames, 69 s | valid, 42 s; survives a tail cut, not a head cut |
+| Qwen3-1.7B Q8_0, 1.83 GB | 2.1 tok/s | 7% | 770 tokens (budget cap), 0.75 frames, 6.2 min | no frame, 5.5 min |
+| Qwen3-4B Q4_K_M, 2.5 GB | 1.0 tok/s | 6% | 770 tokens, 0.62 frames, 13 min | no frame, 9.6 min |
+| Qwen3-8B Q4_K_M, 5.03 GB | 0.6 tok/s | 6% | 770 tokens, 0.68 frames, 22 min | no frame, 28 min |
 
-Temperature 0.7 raises the 0.6B carrier rate from 11.6% (greedy) to 31%, so a 1-byte lean frame needs about 330
-tokens instead of 800, and the text stops looping. The registry's `carrierRate` sizes the budget; 0.6B is measured,
-the others are placeholders until Phase 3 measures them.
+The bigger rungs are more confident, so at tau 2.0 fewer than one word in twelve carries a bit and a frame does
+not fit inside the budget. tau is per rung in the registry; the entropy profile pass (`MODE=entropy`) records each
+rung's carrier rate at eight gates so tau can be set where about a fifth of the words carry.
+
+Sibling reads (writer at tau 2.0, 200 tokens, seed 777; each other rung reading the same text) never validate.
+Bit agreement on the words both models treat as carriers runs 53 to 71%, against 50% for a coin, and the two models
+rarely agree on which words are carriers at all (the 4B text has 21 carrier words for the 4B, 76 for the 0.6B).
+That is the lineup section's point: a sibling model gets most easy words right and orders the near-ties differently.
 
 ## Determinism: measured
 

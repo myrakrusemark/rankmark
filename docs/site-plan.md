@@ -49,8 +49,24 @@ n=1 attribution evidence in `out/attribution.json`).
 
 ## 2. The page
 
-**Top strip.** Name, one sentence ("Watch a language model hide a tag in its own words, then read it back"), the model
-picker showing what this machine can run, and two links: "How this works" (scrolls down) and "Run it locally".
+Revised 2026-09-05: the page is an essay, "The watermark you can't see", with the tool's parts placed inside the
+sections that explain them, and the full three-tab tool (as it stood) at the bottom. Each section is a few
+paragraphs and one station, a working input in the text like a sound button in a children's book. A sticky model
+bar (shared by every station and the tool) sits under the title. No hero, no scroll reveals; motion only where data
+moves.
+
+| Section | Station | What the visitor does |
+|---|---|---|
+| 1. The model chooses every word from a list | `#st-ranked` | A sentence grows a word at a time beside the model's ranked list for the next word with the odds at the chosen temperature. Plays from `snapshot.ranked`; "run it live" samples 24 tokens with the loaded model. |
+| 2. Where the labs hide the mark | none | Anthropic's SynthID-Text deployment, keyed, detector held by the lab; why the key, not the model, is what keeps the detector theirs. |
+| 3. You can do this yourself | `#st-write` | Opening text (harbor default), a message ("hello" default), the model writing with bits flowing from the frame strip into the words. Replay of the recorded run for phones. |
+| 4. Read it back | `#st-read` | The marked text, carried over, read by the same model: bits pulled out word by word, the frame locks, the message returns. |
+| 5. Edit it, and it still tells | `#st-evidence` | Edit buttons (cut the start, cut the end, swap words) re-run the read; the meter shows planted vs survived bits and a z-score, so a partial frame is still evidence of the model. |
+| 6. Whose text is it | `#st-lineup` | Sibling agreement bars from `measurements.json`: a different model orders the near-ties differently. |
+| 7. What the key buys | none | Keyed vs keyless, what survives paraphrase, forgeability, limits. |
+| The tool | `#tool` | The full Write / Read / Run it locally tool, unchanged. |
+
+The earlier plan for the tool page follows; its tabs, callouts and copy survive at the bottom of the essay.
 
 **The tool, three tabs.**
 
