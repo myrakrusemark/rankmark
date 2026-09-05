@@ -105,6 +105,10 @@ details.adv .field { margin-top: 10px; }
 .strip .bit.spent { transform: scaleY(0.5); }
 .strip .bit.next { box-shadow: 0 0 0 1px var(--seg); }
 .strip .bit.dead { background: var(--warn); opacity: 1; }
+.strip .fseg-letters { margin-top: 6px; font: 600 15px/1.3 var(--font-mono); letter-spacing: 0.1em; }
+.strip .fseg-letters span { transition: color var(--t-move) var(--ease-out), opacity var(--t-move) var(--ease-out); }
+.strip .fseg-letters .lit { color: var(--seg); }
+.strip .fseg-letters .dim { color: var(--muted); opacity: 0.4; }
 .strip .fseg-note { font-size: 12.5px; line-height: 1.4; color: var(--muted); margin: 5px 0 0; }
 .strip .seal { position: absolute; inset: 0 -8px -4px; border: 1.5px solid var(--ok); border-radius: 6px; pointer-events: none; opacity: 0;
   clip-path: inset(0 100% 0 0); }

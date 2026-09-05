@@ -93,13 +93,13 @@ export class ReadPanel {
             }
           }
           if (e.type === "partial") this.strip.paintSpans(e.spans);
-          if (e.type === "frame" && !locked) { locked = true; this.strip.lockSpans(e.spans); if (!quiet) this.callouts.once("locked", this.strip.root); }
+          if (e.type === "frame" && !locked) { locked = true; this.strip.lockSpans(e.spans, hexToText(e.payload)); if (!quiet) this.callouts.once("locked", this.strip.root); }
         },
       });
       if (res.cancelled) { head.textContent = "stopped"; return null; }
       head.textContent = `${this.view.tokens.length} words, ${carriers} carry bits`;
       if (res.valid) {
-        this.strip.lockSpans(res.spans || []);
+        this.strip.lockSpans(res.spans || [], hexToText(res.payload));
         this.verdict("ok", `A frame planted with <b>${rung.id.replace(/-Q.*$/, "")}</b> validates in this text.<span class="tag">${hexToText(res.payload)}</span>`);
       } else if (this.q("[data-verdict]").hidden) {
         this.verdict("no", `No frame validates under <b>${rung.id.replace(/-Q.*$/, "")}</b>. That means one of: unmarked text, another model wrote it, or the words were changed after writing.`);

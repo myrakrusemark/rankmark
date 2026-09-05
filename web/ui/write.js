@@ -82,6 +82,9 @@ export class WritePanel {
     if (box) this.view.prime(prompt); else this.view.clear();
     this.strip.reset();
     const cardEl = this.q("[data-card]"); if (cardEl) cardEl.hidden = true;
+    // the copy button shows from the start, disabled until the text is done
+    const copyBtn = this.q("[data-copy]");
+    if (copyBtn) { copyBtn.dataset.label ??= copyBtn.textContent; copyBtn.hidden = false; copyBtn.disabled = true; copyBtn.textContent = "Generating…"; }
     const head = this.q("[data-head]");
     const meter = this.q("[data-meter]");
     head.textContent = "";
@@ -98,6 +101,7 @@ export class WritePanel {
           if (e.type === "start") {
             frameBits = e.frame_bits; contextTokens = e.context_tokens;
             this.strip.setLayout(e.layout, e.frame_bits);
+            this.strip.setMessage(tagText);
             this.q("[data-strip-note]").innerHTML = `<b>${e.frame_bits} bits</b> to plant: the knock, a label, your message, its seal${e.layout.some(s => s.kind === "parity" || s.kind === "woven") ? ", and repair data" : ""}.`;
           }
           if (e.type === "token") {
@@ -120,7 +124,7 @@ export class WritePanel {
           }
         },
       });
-      if (res.cancelled) { head.textContent = "stopped"; meter.textContent = ""; return; }
+      if (res.cancelled) { head.textContent = "stopped"; meter.textContent = ""; if (copyBtn) copyBtn.hidden = true; return; }
       this.result = res;
       head.textContent = `${tokens} words, ${carriers} carry bits, ${res.framesPlanted.toFixed(1)} copies of the frame`;
       meter.textContent = "";
@@ -130,13 +134,20 @@ export class WritePanel {
         this.q("[data-card-foot]").textContent = card.slice(res.text.length + 2);
         cardEl.hidden = false;
       }
-      const copy = this.q("[data-copy]"); if (copy) copy.onclick = async () => { try { await navigator.clipboard.writeText(card); copy.textContent = "Copied"; setTimeout(() => copy.textContent = "Copy the marked text", 1500); } catch { /* clipboard blocked */ } };
+      const copy = this.q("[data-copy]");
+      if (copy) {
+        const label = copy.dataset.label;
+        copy.disabled = false;
+        copy.textContent = label;
+        copy.onclick = async () => { try { await navigator.clipboard.writeText(card); copy.textContent = "Copied"; setTimeout(() => copy.textContent = label, 1500); } catch { /* clipboard blocked */ } };
+      }
       const rd = this.q("[data-read]"); if (rd) rd.onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "read" });
       const br = this.q("[data-break]"); if (br) br.onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "break" });
       this.onDone?.({ card, text: res.text, tag: tagText, mode: "done", tokens: this.tokensOut, result: res });
       if (cardEl) this.callouts.once("done", cardEl);
     } catch (err) {
       head.textContent = `could not write: ${err.message}`;
+      if (copyBtn) copyBtn.hidden = true;
     } finally {
       this.setBusy(false);
       this.q(".progress").classList.remove("on");

@@ -31,13 +31,42 @@ export class FrameStrip {
     this.pulled = [];   // reading: the word each cell came from, in order
     this.frameBits = 0;
     this.filled = 0;
+    this.message = "";  // the letters under the message bar, lit as their bytes land
+    this.lit = "";
+    this.payloadPlanted = 0;
+    this.decoder = new TextDecoder();
+  }
+
+  setMessage(text) {
+    this.message = text || "";
+    this.msgBytes = new TextEncoder().encode(this.message);
+    this.renderLetters();
+  }
+
+  // under the message bar: the letters, dim until their eight bits are in
+  renderLetters() {
+    const el = this.segs.querySelector('.fseg[data-kind="payload"] .fseg-letters');
+    if (!el) return;
+    if (!this.message) { el.hidden = true; return; }
+    const litCount = [...this.lit].length;
+    el.hidden = false;
+    el.innerHTML = [...this.message].map((ch, i) => `<span class="${i < litCount ? "lit" : "dim"}">${ch === " " ? "␣" : escapeHtml(ch)}</span>`).join("");
+  }
+
+  onPayloadBit() {
+    this.payloadPlanted++;
+    if (this.payloadPlanted % 8) return;
+    const b = this.msgBytes?.[this.payloadPlanted / 8 - 1];
+    if (b === undefined) return;
+    this.lit += this.decoder.decode(new Uint8Array([b]), { stream: true });
+    this.renderLetters();
   }
 
   section(kind, count) {
     const s = document.createElement("section");
     s.className = "fseg";
     s.dataset.kind = kind;
-    s.innerHTML = `<div class="fseg-head"><b>${LABEL[kind] ?? kind}</b><span data-count>${count} bit${count === 1 ? "" : "s"}</span></div><div class="row"></div><p class="fseg-note">${NOTE[kind] ?? ""}</p>`;
+    s.innerHTML = `<div class="fseg-head"><b>${LABEL[kind] ?? kind}</b><span data-count>${count} bit${count === 1 ? "" : "s"}</span></div><div class="row"></div><div class="fseg-letters" hidden></div><p class="fseg-note">${NOTE[kind] ?? ""}</p>`;
     return s;
   }
 
@@ -48,6 +77,9 @@ export class FrameStrip {
     this.segs.innerHTML = "";
     this.cells = [];
     this.pulled = [];
+    this.lit = "";
+    this.payloadPlanted = 0;
+    this.decoder = new TextDecoder();
     for (const seg of layout) {
       const s = this.section(seg.kind, seg.len);
       const row = s.querySelector(".row");
@@ -61,10 +93,20 @@ export class FrameStrip {
       }
       this.segs.appendChild(s);
     }
+    this.renderLetters();
     this.markNext();
   }
 
-  reset() { for (const c of this.cells) c.className = "bit"; this.filled = 0; this.root.classList.remove("sealed", "locked"); this.markNext(); }
+  reset() {
+    for (const c of this.cells) c.className = "bit";
+    this.filled = 0;
+    this.lit = "";
+    this.payloadPlanted = 0;
+    this.decoder = new TextDecoder();
+    this.root.classList.remove("sealed", "locked");
+    this.renderLetters();
+    this.markNext();
+  }
 
   markNext() {
     for (const c of this.cells) c.classList.remove("next");
@@ -89,6 +131,7 @@ export class FrameStrip {
     this.fly(cell, tokenEl, bit, cell.dataset.kind, () => {
       cell.classList.add(bit ? "v1" : "v0", "spent");
       tokenEl?.classList.add("in");
+      if (cell.dataset.kind === "payload") this.onPayloadBit();
     });
     this.filled++;
     if (this.filled === this.frameBits) this.root.classList.add("sealed");
@@ -128,7 +171,7 @@ export class FrameStrip {
 
   // a checksum-valid frame: the read row regroups into the frame's sections,
   // bits outside the frame stay aside, and the words take their colors
-  lockSpans(spans) {
+  lockSpans(spans, message = "") {
     if (!spans.length) { this.root.classList.add("locked", "sealed"); return; }
     const sorted = [...spans].sort((a, b) => a.start - b.start);
     const first = sorted[0].start, last = sorted[sorted.length - 1].start + sorted[sorted.length - 1].len;
@@ -143,6 +186,7 @@ export class FrameStrip {
     place("outside", this.cells.slice(0, first), 0);
     for (const s of sorted) place(s.kind, this.cells.slice(s.start, s.start + s.len), s.start);
     place("outside", this.cells.slice(last), last);
+    if (message) { this.message = message; this.lit = message; this.renderLetters(); }
     this.root.classList.add("locked", "sealed");
   }
 
@@ -168,3 +212,5 @@ export class FrameStrip {
     anim.onfinish = () => { el.remove(); done(); };
   }
 }
+
+function escapeHtml(s) { return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
