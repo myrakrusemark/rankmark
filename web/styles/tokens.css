@@ -1,0 +1,71 @@
+/* Design tokens. Light editorial ground, one warm accent, two families.
+   Motion personality: surgical. Three curves, nothing else. */
+:root {
+  --ground: #FAFAF9;
+  --surface: #F3F2EF;
+  --surface-2: #ECEAE6;
+  --ink: #1A1A1A;
+  --ink-2: #4A4744;
+  --muted: #6F6B66;
+  --line: rgba(26, 26, 26, 0.10);
+  --line-strong: rgba(26, 26, 26, 0.22);
+  --accent: #B8781A;
+  --accent-ink: #7A4E0E;
+  --accent-soft: rgba(184, 120, 26, 0.12);
+  --ok: #2E6F4E;
+  --ok-soft: rgba(46, 111, 78, 0.12);
+  --warn: #9A3E2A;
+  --warn-soft: rgba(154, 62, 42, 0.10);
+
+  --font-display: "Outfit", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --measure: 65ch;
+  --gutter: clamp(16px, 4vw, 40px);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-fast: 150ms;
+  --t-move: 240ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #151412;
+    --surface: #1D1B18;
+    --surface-2: #26231F;
+    --ink: #EDEAE4;
+    --ink-2: #C9C4BC;
+    --muted: #8F8981;
+    --line: rgba(237, 234, 228, 0.12);
+    --line-strong: rgba(237, 234, 228, 0.26);
+    --accent: #D89A3C;
+    --accent-ink: #F0C27A;
+    --accent-soft: rgba(216, 154, 60, 0.16);
+    --ok: #6FBF92;
+    --ok-soft: rgba(111, 191, 146, 0.14);
+    --warn: #E0836C;
+    --warn-soft: rgba(224, 131, 108, 0.14);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #151412;
+  --surface: #1D1B18;
+  --surface-2: #26231F;
+  --ink: #EDEAE4;
+  --ink-2: #C9C4BC;
+  --muted: #8F8981;
+  --line: rgba(237, 234, 228, 0.12);
+  --line-strong: rgba(237, 234, 228, 0.26);
+  --accent: #D89A3C;
+  --accent-ink: #F0C27A;
+  --accent-soft: rgba(216, 154, 60, 0.16);
+  --ok: #6FBF92;
+  --ok-soft: rgba(111, 191, 146, 0.14);
+  --warn: #E0836C;
+  --warn-soft: rgba(224, 131, 108, 0.14);
+}

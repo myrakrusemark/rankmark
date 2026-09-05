@@ -1,0 +1,134 @@
+// Write: the model continues your opening text and hides your tag in its
+// word choices. The strip on the right holds the frame; each bit leaves it
+// for the word that carries it.
+
+import { frameLenBits, PROFILES } from "../engine/framing.js";
+import { markCard } from "../engine/fingerprint.js";
+
+const utf8 = new TextEncoder();
+const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+
+export class WritePanel {
+  constructor(root, { engine, picker, callouts, strip, view, onDone }) {
+    Object.assign(this, { root, engine, picker, callouts, strip, view, onDone });
+    this.q = s => root.querySelector(s);
+    this.profile = 0;
+    this.running = false;
+    this.result = null;
+    this.q("[data-run]").addEventListener("click", () => this.run());
+    this.q("[data-stop]").addEventListener("click", () => this.engine.cancel());
+    this.q("[data-tag]").addEventListener("input", () => this.renderTag());
+    for (const b of root.querySelectorAll(".seg button")) b.addEventListener("click", () => { this.profile = Number(b.dataset.profile); this.renderProfile(); });
+    this.renderTag();
+    this.renderProfile();
+  }
+
+  tagBytes() { return utf8.encode(this.q("[data-tag]").value.trim()); }
+
+  renderTag() {
+    const n = this.tagBytes().length;
+    const cap = this.picker.rung.tagCapBytes ?? 8;
+    const hint = this.q("[data-tag-hint]");
+    hint.textContent = n === 0 ? `up to ${cap} bytes with this model` : `${n} byte${n === 1 ? "" : "s"} of ${cap}`;
+    hint.classList.toggle("warn", n > cap);
+    this.renderProfile();
+  }
+
+  renderProfile() {
+    const n = Math.max(1, this.tagBytes().length);
+    for (const b of this.root.querySelectorAll(".seg button")) {
+      const p = Number(b.dataset.profile);
+      b.setAttribute("aria-pressed", String(p === this.profile));
+      b.querySelector("small").textContent = `${frameLenBits(n, p)} bits`;
+    }
+  }
+
+  setBusy(on) {
+    this.running = on;
+    this.q("[data-run]").hidden = on;
+    this.q("[data-stop]").hidden = !on;
+    this.root.querySelectorAll("input, textarea, select, .seg button").forEach(el => { el.disabled = on; });
+  }
+
+  progress(p) {
+    const box = this.q(".progress");
+    box.classList.add("on");
+    const frac = p.total ? p.loaded / p.total : 0;
+    box.querySelector("i").style.transform = `scaleX(${frac})`;
+    box.querySelector("b").textContent = `${Math.round(frac * 100)}%`;
+  }
+
+  async run() {
+    const rung = this.picker.rung;
+    const bytes = this.tagBytes();
+    if (!bytes.length) { this.q("[data-tag]").focus(); return; }
+    if (bytes.length > (rung.tagCapBytes ?? 8)) { this.q("[data-tag]").focus(); return; }
+    const prompt = this.q("[data-prompt]").value.trim();
+    if (!prompt) { this.q("[data-prompt]").focus(); return; }
+    if (!(await this.picker.consent(rung))) return;
+
+    const temperature = Number(this.q("[data-temp]").value);
+    const seedRaw = this.q("[data-seed]").value.trim();
+    const opts = { prompt, payloadHex: hex(bytes), profile: this.profile, temperature };
+    if (seedRaw) opts.seed = Number(seedRaw) >>> 0;
+
+    this.setBusy(true);
+    this.view.clear();
+    this.strip.reset();
+    this.q("[data-card]").hidden = true;
+    const head = this.q("[data-head]");
+    const meter = this.q("[data-meter]");
+    head.textContent = "";
+    meter.textContent = "";
+    let tokens = 0, carriers = 0, t0 = 0, frameBits = 0, contextTokens = 0, sawCarrier = { 0: false, 1: false }, sawNull = false, sawFirst = false, planted = 0;
+    const tagText = this.q("[data-tag]").value.trim();
+
+    try {
+      const res = await this.engine.run("embed", { rung, opts }, {
+        onProgress: p => this.progress(p),
+        onReady: () => { this.q(".progress").classList.remove("on"); head.textContent = `${rung.id.replace(/-Q.*$/, "")} is writing`; t0 = performance.now(); },
+        onEvent: e => {
+          if (e.type === "start") {
+            frameBits = e.frame_bits; contextTokens = e.context_tokens;
+            this.strip.setLayout(e.layout, e.frame_bits);
+            this.q("[data-strip-note]").innerHTML = `<b>${e.frame_bits} bits</b> to plant: the knock, a label, your tag, its seal${e.layout.some(s => s.kind === "parity" || s.kind === "woven") ? ", and repair data" : ""}.`;
+          }
+          if (e.type === "token") {
+            tokens++;
+            const el = this.view.append(e);
+            if (!sawFirst) { sawFirst = true; this.callouts.once("first", el); }
+            if (e.carrier) {
+              carriers++;
+              this.strip.plant(e.bit, el);
+              if (!sawCarrier[e.bit]) { sawCarrier[e.bit] = true; this.callouts.once(e.bit ? "carrier1" : "carrier0", el); }
+              planted++;
+              if (planted === (this.strip.cells.findIndex(c => c.dataset.kind !== "sync"))) this.callouts.once("knock", this.strip.root);
+              if (planted === frameBits) this.callouts.once("seal", this.strip.root);
+            } else if (!sawNull && tokens > 3) { sawNull = true; this.callouts.once("skipped", el); }
+            const s = (performance.now() - t0) / 1000;
+            const rate = tokens / Math.max(s, 0.001);
+            const need = Math.max(0, Math.ceil((frameBits - planted) / Math.max(carriers / tokens, 0.05)));
+            meter.textContent = `${rate.toFixed(1)} words/s · ${carriers} of ${frameBits} bits · ${planted >= frameBits ? "frame planted, finishing the passage" : `about ${Math.ceil(need / Math.max(rate, 0.1))} s to go`}`;
+          }
+        },
+      });
+      if (res.cancelled) { head.textContent = "stopped"; meter.textContent = ""; return; }
+      this.result = res;
+      head.textContent = `${tokens} words, ${carriers} carry bits, ${res.framesPlanted.toFixed(1)} copies of the frame`;
+      meter.textContent = "";
+      const card = markCard(res.text, res.lens, res.fingerprint, res.textHash);
+      this.q("[data-card-text]").textContent = res.text;
+      this.q("[data-card-foot]").textContent = card.slice(res.text.length + 2);
+      this.q("[data-card]").hidden = false;
+      this.q("[data-copy]").onclick = async () => { try { await navigator.clipboard.writeText(card); this.q("[data-copy]").textContent = "Copied"; setTimeout(() => this.q("[data-copy]").textContent = "Copy the marked text", 1500); } catch { /* clipboard blocked */ } };
+      this.q("[data-read]").onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "read" });
+      this.q("[data-break]").onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "break" });
+      this.callouts.once("done", this.q("[data-card]"));
+    } catch (err) {
+      head.textContent = `could not write: ${err.message}`;
+    } finally {
+      this.setBusy(false);
+      this.q(".progress").classList.remove("on");
+    }
+  }
+}
