@@ -111,6 +111,9 @@ details.adv .field { margin-top: 10px; }
 .strip .fseg-letters .dim { color: var(--muted); opacity: 0.4; }
 .strip .fseg-letters .sep { color: var(--muted); opacity: 0.6; }
 .strip .fseg[data-kind="sync"] .fseg-letters { letter-spacing: 0.22em; }
+.strip .read-message { margin: 10px 0 2px; font: 600 26px/1.25 var(--font-mono); letter-spacing: 0.08em; word-break: break-all; }
+.strip .read-message .lit { color: var(--seg-payload); }
+.strip .read-message .dim { color: var(--muted); opacity: 0.4; }
 .strip .fseg-note { font-size: 12.5px; line-height: 1.4; color: var(--muted); margin: 5px 0 0; }
 /* the seal: when the frame completes, a green wash wipes across the strip behind the
    sections, a brighter band on its leading edge, and the border draws with it */
@@ -142,7 +145,6 @@ details.adv .field { margin-top: 10px; }
 [data-kind="parity"], [data-seg="parity"] { --seg: var(--seg-parity); }
 [data-kind="woven"], [data-seg="woven"] { --seg: var(--seg-woven); }
 [data-kind="read"] { --seg: var(--accent); }
-[data-kind="outside"] { --seg: var(--muted); }
 
 /* callouts: one card at a time, anchored near what it explains */
 .callout {

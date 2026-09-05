@@ -10,7 +10,7 @@
 
 const LABEL = {
   sync: "knock", header: "label", payload: "your message", checksum: "seal", parity: "repair",
-  woven: "message, seal and repair, woven", read: "bits read", outside: "outside the frame",
+  woven: "message, seal and repair, woven", read: "bits read",
 };
 const NOTE = {
   sync: "A fixed pattern of bits. A reader scans for it, so the frame can start anywhere in the text.",
@@ -20,7 +20,6 @@ const NOTE = {
   parity: "Parity bits that put right a few bits a reader gets wrong.",
   woven: "Your message, its seal and repair data, interleaved so damage spreads thin.",
   read: "One cell per word that carries a bit, in the order they are read.",
-  outside: "Bits from words before or after the frame; the reader ignores them.",
 };
 const SPELLED = ["sync", "header", "payload", "checksum", "parity"];
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -175,8 +174,10 @@ export class FrameStrip {
     this.markNext();
   }
 
-  // reading: the strip has no layout yet; it grows one cell per carrier in a
-  // single row and the bit under the word is pulled back into it
+  // reading: the strip has no layout yet; it grows one line of cells, one per
+  // carrier, and the bit under the word is pulled back into it. As the parser
+  // makes out the frame, cells and words take the section colors, and the
+  // message spells out in big type as its bytes come in.
   growMode() {
     this.frameBits = Infinity;
     this.filled = 0;
@@ -186,12 +187,18 @@ export class FrameStrip {
     this.pulled = [];
     this.clearLanded();
     this.readRow = this.section("read", 0);
+    this.readRow.querySelector(".fseg-note").remove();
+    this.readMsg = document.createElement("div");
+    this.readMsg.className = "read-message";
+    this.readMsg.hidden = true;
+    this.readRow.appendChild(this.readMsg);
     this.segs.appendChild(this.readRow);
   }
   pull(bit, tokenEl) {
     const cell = document.createElement("i");
     cell.className = "bit";
     cell.dataset.kind = "";
+    cell.dataset.bit = bit;
     this.readRow.querySelector(".row").appendChild(cell);
     this.cells.push(cell);
     this.pulled.push(tokenEl);
@@ -199,36 +206,56 @@ export class FrameStrip {
     this.fly(tokenEl, cell, bit, "", () => cell.classList.add(bit ? "v1" : "v0"));
   }
 
-  // tentative labelling while reading: recolour cells by kind as the parser
-  // guesses the frame arriving at the tail
-  paintSpans(spans) {
-    if (this.root.classList.contains("locked")) return;
+  // color cells and words by the frame the parser currently makes out
+  colorSpans(spans) {
     for (const c of this.cells) c.dataset.kind = "";
-    for (const s of spans) for (let i = 0; i < s.len; i++) { const c = this.cells[s.start + i]; if (c) c.dataset.kind = s.kind; }
+    for (const t of this.pulled) if (t) delete t.dataset.seg;
+    for (const s of spans) for (let i = 0; i < s.len; i++) {
+      const c = this.cells[s.start + i];
+      if (!c) continue;
+      c.dataset.kind = s.kind;
+      const t = this.pulled[s.start + i];
+      if (t) t.dataset.seg = s.kind;
+    }
   }
 
-  // a checksum-valid frame: the read row regroups into the frame's sections,
-  // bits outside the frame stay aside, the words take their colors, and every
-  // section spells out what it carried
+  // the message so far, from the bytes of the payload span that are complete
+  spellRead(spans, message = "") {
+    const p = spans.find(s => s.kind === "payload");
+    if (!p) { this.readMsg.hidden = true; return; }
+    const nBytes = Math.floor(p.len / 8);
+    let text = message;
+    if (!text) {
+      const bytes = [];
+      for (let b = 0; b < nBytes; b++) {
+        const bits = [];
+        for (let i = 0; i < 8; i++) { const c = this.cells[p.start + b * 8 + i]; if (!c) break; bits.push(Number(c.dataset.bit)); }
+        if (bits.length < 8) break;
+        bytes.push(toInt(bits));
+      }
+      text = new TextDecoder().decode(new Uint8Array(bytes), { stream: true });
+    }
+    const pending = Math.max(0, nBytes - new TextEncoder().encode(text).length);
+    this.readMsg.hidden = false;
+    this.readMsg.innerHTML = [...text].map(ch => `<span class="lit">${escapeHtml(ch === " " ? "␣" : ch)}</span>`).join("")
+      + Array.from({ length: pending }, () => `<span class="dim">·</span>`).join("");
+  }
+
+  // tentative labelling while reading, on every carrier
+  paintSpans(spans) {
+    if (this.root.classList.contains("locked")) return;
+    this.colorSpans(spans);
+    this.spellRead(spans);
+  }
+
+  // a checksum-valid frame: the colors are final, the message is the one the
+  // checksum vouches for
   lockSpans(spans, message = "") {
-    if (!spans.length) { this.root.classList.add("locked", "sealed"); return; }
-    const sorted = [...spans].sort((a, b) => a.start - b.start);
-    const first = sorted[0].start, last = sorted[sorted.length - 1].start + sorted[sorted.length - 1].len;
-    this.segs.innerHTML = "";
-    this.clearLanded();
-    const place = (kind, cells, from) => {
-      if (!cells.length) return;
-      const s = this.section(kind, cells.length);
-      const row = s.querySelector(".row");
-      cells.forEach((c, i) => { c.dataset.kind = kind; c.classList.add("locked"); row.appendChild(c); const t = this.pulled[from + i]; if (t && kind !== "outside") t.dataset.seg = kind; });
-      if (kind !== "outside") this.landed[kind] = cells.map(c => (c.classList.contains("v1") ? 1 : 0));
-      this.segs.appendChild(s);
-    };
-    place("outside", this.cells.slice(0, first), 0);
-    for (const s of sorted) place(s.kind, this.cells.slice(s.start, s.start + s.len), s.start);
-    place("outside", this.cells.slice(last), last);
-    if (message) { this.message = message; this.lit = message; }
-    this.renderAll();
+    if (spans.length) {
+      this.colorSpans(spans);
+      for (const c of this.cells) c.classList.add("locked");
+      this.spellRead(spans, message);
+    }
     this.root.classList.add("locked", "sealed");
   }
 
