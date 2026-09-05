@@ -11,6 +11,11 @@ import { fingerprint } from "./fingerprint.js";
 export { entropyOf, rankOf, sortedTokenIds };
 
 const WASM = new URL("../vendor/wllama/wllama.wasm", import.meta.url).href;
+// wasm32 + Asyncify build for browsers without JSPI or Memory64 (Safari); picked by wllama itself
+const COMPAT = {
+  worker: new URL("../vendor/wllama-compat/wllama.js", import.meta.url).href,
+  wasm: new URL("../vendor/wllama-compat/wllama.wasm", import.meta.url).href,
+};
 const utf8 = new TextDecoder();
 
 export class Cancelled extends Error {
@@ -30,9 +35,11 @@ export async function loadLens(rung, { onProgress, threads } = {}) {
   if (current && current.rung.id === rung.id && current.threads === nThreads) return current;
   await unloadLens();
   const w = new Wllama({ default: WASM }, { parallelDownloads: 3, suppressNativeLog: true });
+  w.setCompat(COMPAT);
   await w.loadModelFromUrl(fileUrl(rung), {
     n_ctx: rung.nCtx ?? 2048,
     n_threads: nThreads,
+    n_gpu_layers: 0,   // CPU only: wllama offloads to WebGPU by default, and GPU bits differ from CPU bits
     flash_attn: false, // one attention kernel, pinned; auto could pick differently per build
     warmup: false,
     progressCallback: onProgress,
@@ -76,7 +83,7 @@ export class Lens {
       model: this.rung.id,
       sha256: this.rung.sha256,
       quant: this.rung.quant,
-      threads: this.threads,
+      device: "wasm-cpu",
       flashAttn: false,
       nCtx: this.nCtx,
     };

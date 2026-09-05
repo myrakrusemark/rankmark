@@ -1,8 +1,11 @@
 // A lens fingerprint names everything that decides a logit row: engine build,
-// weights, quantization, thread count, attention kernel. Two lenses with the
-// same fingerprint read each other's text; a mismatch is diagnosable by field.
+// weights, quantization, attention kernel, context size. Thread count is left
+// out on purpose: ggml partitions matmuls by output row, so it does not change
+// bits (measured 1/2/4/8 identical), and a reader on a different core count
+// must not report a mismatch. Two lenses with the same fingerprint read each
+// other's text; a mismatch is diagnosable by field.
 
-const FIELDS = ["engine", "model", "sha256", "quant", "threads", "flashAttn", "nCtx"];
+const FIELDS = ["engine", "model", "sha256", "quant", "device", "flashAttn", "nCtx"];
 
 async function shortSha(bytes, n) {
   const digest = await crypto.subtle.digest("SHA-256", bytes);

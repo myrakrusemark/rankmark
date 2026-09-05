@@ -34,6 +34,12 @@ makes no claim about either.
 
 ## Measurements (this laptop: i5-1135G7, 8 threads, Chrome 145, 2026-09-04)
 
+Correction, later the same day: these numbers were taken in a headed Chrome with WebGPU, and wllama offloads
+every layer to the GPU by default (`n_gpu_layers` 99999), so they are GPU-assisted. The lens now pins
+`n_gpu_layers: 0`; the GPU and CPU paths produce different logit rows (hash `5d21ff2ea08f8319` on the Intel GPU vs
+`ca3e23e2a6997865` on CPU, same weights, same build), which is exactly why the site is CPU-only. CPU figures from
+the measurement campaign replace this table when it finishes; expect 0.6B near 4 to 5 tok/s and 8B well under 1.
+
 | Rung | Load (first visit, incl. download) | Single-step speed | Notes |
 |---|---|---|---|
 | Qwen3-0.6B Q8_0, 0.64 GB | 15 s | 7 tok/s | Round trip at temp 0.7: 796 tokens, 31% carriers, 3.5 frames, tag read back; embed 112 s, decode 82 s |
