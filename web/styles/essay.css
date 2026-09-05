@@ -37,6 +37,7 @@
 .station .pair { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 12px; align-items: end; }
 .station .range-box { display: flex; align-items: center; }
 .station .range-box input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.station .temp-note { font-size: 13px; line-height: 1.5; color: var(--muted); margin: 10px 0 4px; max-width: 70ch; }
 .station .box-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-2); margin: 12px 0 6px; }
 .station .field + .box-label { margin-top: 14px; }
 /* a box that is the opening and the output: typed in, locked while the model writes, open again after */
