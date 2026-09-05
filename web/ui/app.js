@@ -158,59 +158,91 @@ window.rankmark = { engine, picker, registry, hw, snapshot };
 
 // ---- the model that loads on arrival ------------------------------------------
 // the examples need a model, so the small one starts loading as soon as the page
-// can run one: a card says so, with a progress bar and a cancel button. A rung
-// the visitor already downloaded and picked before loads instead of the small one.
+// can run one (or the rung the visitor downloaded and picked before). A card says
+// so, with a progress bar, a cancel button and the ladder: picking another rung
+// cancels this download and starts that one.
 async function autoload() {
   const card = $("#autoload");
   if (!card || hw.saveData) return;
-  const rung = picker.cached.has(picker.rung.id) ? picker.rung : registry.rungs[0];
-  if (!hw.rungs.find(r => r.id === rung.id)?.ok) return;
-  if (rung !== picker.rung) { picker.select.value = rung.id; picker.renderStatus(); picker.onChange?.(rung); }
-  const name = rung.id.replace(/-Q.*$/, "");
-  const fromCache = picker.cached.has(rung.id);
   const q = s => card.querySelector(s);
-  const msg = q("[data-al-msg]"), fill = q("[data-al-fill]"), pct = q("[data-al-pct]"), bar = q(".al-bar"), cancel = q("[data-al-cancel]");
-  msg.textContent = fromCache
-    ? `${name} is loading from this browser's storage so they run on your own computer.`
-    : `A small model, ${name} (${GB(rung.bytes)}), is downloading into this browser so they run on your own computer. Nothing you type leaves the page.`;
-  bar.classList.toggle("wait", fromCache);
-  card.hidden = false;
-  requestAnimationFrame(() => card.classList.remove("off"));
+  const msg = q("[data-al-msg]"), fill = q("[data-al-fill]"), pct = q("[data-al-pct]"), bar = q(".al-bar"), cancel = q("[data-al-cancel]"), list = q("[data-al-list]");
+  const name = r => r.id.replace(/-Q.*$/, "");
+  const needs = r => `${Math.ceil(r.heapGB + 2)} GB free memory${r.heapGB >= 5 ? " (a 16 GB machine)" : ""}${r.memory64 ? ", Chrome 133+ or Firefox 134+" : ""}`;
+  let current = null, job = null, hideTimer = null;
   const hide = () => { card.classList.add("off"); setTimeout(() => { card.hidden = true; }, 400); };
-  picker.granted.add(rung.id);
-  let cancelled = false;
-  cancel.onclick = async () => {
-    cancelled = true;
-    picker.granted.delete(rung.id);
-    hide();
+  const show = () => { clearTimeout(hideTimer); card.hidden = false; requestAnimationFrame(() => card.classList.remove("off")); };
+  const renderList = state => {
+    list.innerHTML = registry.rungs.map(r => {
+      const p = hw.rungs.find(x => x.id === r.id);
+      const on = r === current;
+      const detail = p?.ok
+        ? `${GB(r.bytes)} · ${needs(r)} · about ${picker.minutes(r, picker.writeTokens(r))} min to write a short message${picker.cached.has(r.id) ? " · downloaded" : ""}`
+        : `${GB(r.bytes)} · ${p?.reasons[0] ?? "cannot run here"}`;
+      return `<li><button type="button" data-al-pick="${r.id}" aria-pressed="${on}" ${p?.ok ? "" : "disabled"}><b>${name(r)}</b>${on && state ? `<i>${state}</i>` : ""}<span>${detail}</span></button></li>`;
+    }).join("");
+  };
+  // a download has no abort hook: kill the worker and drop the partial file
+  const stop = async () => {
+    if (!job) return;
+    job = null;
+    picker.granted.delete(current.id);
     engine.restart();
-    await picker.dropPartial(rung);
+    await picker.dropPartial(current);
     await picker.scanCache();
   };
-  try {
-    const res = await engine.run("load", { rung }, {
+  const start = async rung => {
+    await stop();
+    current = rung;
+    if (rung.id !== picker.select.value) { picker.select.value = rung.id; picker.select.dispatchEvent(new Event("change")); }
+    const fromCache = picker.cached.has(rung.id);
+    msg.textContent = fromCache
+      ? `${name(rung)} is loading from this browser's storage so they run on your own computer.`
+      : `${name(rung)} (${GB(rung.bytes)}) is downloading into this browser so they run on your own computer. Nothing you type leaves the page.`;
+    bar.classList.toggle("wait", fromCache);
+    fill.style.transform = "scaleX(0)";
+    pct.textContent = "";
+    cancel.textContent = "Cancel";
+    renderList(fromCache ? "loading" : "downloading");
+    show();
+    picker.granted.add(rung.id);
+    const mine = engine.run("load", { rung }, {
       onProgress: p => {
-        if (!p.total) return;
+        if (job !== mine || !p.total) return;
         const f = Math.min(1, p.loaded / p.total);
         fill.style.transform = `scaleX(${f})`;
         pct.textContent = f >= 1 ? "starting the model" : `${Math.round(f * 100)}% of ${GB(rung.bytes)}`;
       },
     });
-    if (cancelled || res?.cancelled) return;
+    job = mine;
+    let res;
+    try { res = await mine; } catch (err) {
+      if (job !== mine) return;
+      job = null;
+      picker.granted.delete(rung.id);
+      bar.classList.remove("wait");
+      msg.textContent = `The download did not finish (${err.message}). Each example asks again when you run it.`;
+      cancel.textContent = "Close";
+      renderList("");
+      return;
+    }
+    if (job !== mine || res?.cancelled) return;
+    job = null;
     bar.classList.remove("wait");
     fill.style.transform = "scaleX(1)";
     pct.textContent = "";
-    cancel.hidden = true;
-    cancel.onclick = null;
-    msg.textContent = `${name} is ready. Every example on this page runs on your computer.`;
-    await picker.scanCache();
-    setTimeout(hide, 4000);
-  } catch (err) {
-    if (cancelled) return;
-    picker.granted.delete(rung.id);
-    bar.classList.remove("wait");
-    msg.textContent = `The download did not finish (${err.message}). Each example asks again when you run it.`;
+    msg.textContent = `${name(rung)} is ready. Every example on this page runs on your computer.`;
     cancel.textContent = "Close";
-    cancel.onclick = hide;
-  }
+    await picker.scanCache();
+    renderList("ready");
+    hideTimer = setTimeout(hide, 10000);
+  };
+  cancel.addEventListener("click", async () => { hide(); await stop(); });
+  list.addEventListener("click", e => {
+    const b = e.target.closest("[data-al-pick]");
+    if (!b || b.disabled) return;
+    const r = registry.rungs.find(x => x.id === b.dataset.alPick);
+    if (r && r !== current) start(r);
+  });
+  const first = picker.cached.has(picker.rung.id) ? picker.rung : registry.rungs[0];
+  if (hw.rungs.find(r => r.id === first.id)?.ok) start(first);
 }
