@@ -21,6 +21,8 @@ const log = (...a) => {
 };
 const now = () => performance.now();
 const PROMPT = "The history of cryptography begins with";
+const STORY = "It was late in the harbor when the last boat came in, and";
+const hex = s => [...new TextEncoder().encode(s)].map(b => b.toString(16).padStart(2, "0")).join("");
 
 const worker = new Worker("../../engine/worker.js", { type: "module" });
 const pending = new Map();
@@ -128,10 +130,16 @@ const engine = {
   // precomputed (no-download) states; save the returned object as snapshot.json
   async snapshot(id, opts = {}) {
     const rung = rungById(registry, id);
-    const o = { prompt: PROMPT, payloadHex: "a7", profile: 0, tau: 2.0, temperature: 0.7, seed: 20260904, ...opts };
+    // the essay's write station defaults: the harbor opening and the message "hello"
+    const o = { prompt: STORY, payloadHex: hex("hello"), profile: 0, tau: rung.tau ?? 2.0, temperature: 0.7, seed: 20260905, ...opts };
     const write = { tokens: [], start: null };
     const emb = await runJob("embed", { rung, opts: o }, {
-      onEvent: e => { if (e.type === "start") write.start = e; if (e.type === "token") write.tokens.push({ id: e.id, piece: e.piece, rank: e.rank, entropy: e.entropy, carrier: e.carrier, bit: e.bit }); },
+      onEvent: e => { if (e.type === "start") write.start = e; if (e.type === "token") write.tokens.push({ id: e.id, piece: e.piece, rank: e.rank, entropy: e.entropy, carrier: e.carrier, bit: e.bit, top: e.top }); },
+    });
+    // the ranked-choice station: a plain sample of the same opening, every step's list
+    const ranked = { prompt: STORY, temperature: 0.7, seed: 20260905, steps: [] };
+    await runJob("sample", { rung, opts: { prompt: STORY, maxNew: 24, temperature: 0.7, seed: ranked.seed } }, {
+      onEvent: e => { if (e.type === "token") ranked.steps.push({ piece: e.piece, rank: e.rank, entropy: e.entropy, top: e.top }); },
     });
     const card = markCard(emb.text, emb.lens, emb.fingerprint, emb.textHash);
     const read = { tokens: [], frames: [], spans: null };
@@ -144,6 +152,7 @@ const engine = {
       write: { text: emb.text, ids: emb.ids, textHash: emb.textHash, framesPlanted: emb.framesPlanted, tokens: write.tokens },
       card,
       read: { valid: dec.valid, payload: dec.payload, carriers: dec.carriers, frames: dec.frames, spans: read.spans, frameEvents: read.frames, tokens: read.tokens },
+      ranked,
     };
   },
 
