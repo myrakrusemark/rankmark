@@ -33,7 +33,14 @@
 @keyframes blink { to { visibility: hidden; } }
 .ranked ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .ranked li { display: grid; grid-template-columns: 34px minmax(80px, 140px) 1fr 44px; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; padding: 4px 8px; border-radius: 5px; transition: background-color var(--t-fast) var(--ease-snap); }
+.ranked li { transition: background-color var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out); }
 .ranked li.took { background: var(--accent-soft); }
+.ranked li.took .piece { color: var(--ink); font-weight: 600; }
+.ranked ol.chosen li:not(.took) { opacity: 0.45; }
+.ranked .list-head { font: 11px/1.4 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.ranked ol:empty::before { content: "run it live to see the list"; font: 13px var(--font-body); color: var(--muted); }
+/* the chosen word travels from its row into the sentence */
+.fly-word { position: fixed; z-index: 20; pointer-events: none; font-size: 18px; line-height: 1.6; color: var(--ink); background: var(--accent-soft); border-radius: 4px; padding: 0 3px; white-space: pre; }
 .ranked li .rank { color: var(--muted); }
 .ranked li .bar { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
 .ranked li .bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform var(--t-move) var(--ease-out); }
