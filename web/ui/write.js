@@ -98,7 +98,7 @@ export class WritePanel {
           if (e.type === "start") {
             frameBits = e.frame_bits; contextTokens = e.context_tokens;
             this.strip.setLayout(e.layout, e.frame_bits);
-            this.q("[data-strip-note]").innerHTML = `<b>${e.frame_bits} bits</b> to plant: the knock, a label, your tag, its seal${e.layout.some(s => s.kind === "parity" || s.kind === "woven") ? ", and repair data" : ""}.`;
+            this.q("[data-strip-note]").innerHTML = `<b>${e.frame_bits} bits</b> to plant: the knock, a label, your message, its seal${e.layout.some(s => s.kind === "parity" || s.kind === "woven") ? ", and repair data" : ""}.`;
           }
           if (e.type === "token") {
             tokens++;
