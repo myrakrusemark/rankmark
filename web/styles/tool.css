@@ -112,10 +112,17 @@ details.adv .field { margin-top: 10px; }
 .strip .fseg-letters .sep { color: var(--muted); opacity: 0.6; }
 .strip .fseg[data-kind="sync"] .fseg-letters { letter-spacing: 0.22em; }
 .strip .fseg-note { font-size: 12.5px; line-height: 1.4; color: var(--muted); margin: 5px 0 0; }
-.strip .seal { position: absolute; inset: 0 -8px -4px; border: 1.5px solid var(--ok); border-radius: 6px; pointer-events: none; opacity: 0;
-  clip-path: inset(0 100% 0 0); }
-.strip.sealed .seal { opacity: 1; animation: draw 420ms var(--ease-out) forwards; }
+/* the seal: when the frame completes, a green wash wipes across the strip behind the
+   sections, a brighter band on its leading edge, and the border draws with it */
+.strip .segs { position: relative; z-index: 1; }
+.strip .seal { position: absolute; inset: 0 -8px -4px; z-index: 0; border: 1.5px solid var(--ok); border-radius: 6px; pointer-events: none; opacity: 0;
+  background: var(--ok-soft); clip-path: inset(0 100% 0 0); overflow: hidden; }
+.strip .seal::after { content: ""; position: absolute; top: 0; bottom: 0; left: -20%; width: 20%; opacity: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ok) 38%, transparent), transparent); }
+.strip.sealed .seal { opacity: 1; animation: draw 560ms var(--ease-out) forwards; }
+.strip.sealed .seal::after { animation: sweep 560ms var(--ease-out) forwards; }
 @keyframes draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes sweep { 0% { left: -20%; opacity: 1; } 85% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
 .fly { position: fixed; z-index: 20; width: 10px; height: 4px; border-radius: 2px; background: var(--seg); pointer-events: none; }
 .fly.b0 { opacity: 0.5; }
 .strip-note { font-size: 13px; color: var(--ink-2); }
