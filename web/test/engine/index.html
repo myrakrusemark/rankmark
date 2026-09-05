@@ -147,6 +147,83 @@ const engine = {
     };
   },
 
+  // per-rung measurements: n seeded writes at temperature 0.7, their reads, and
+  // reads after cutting the head and the tail of the text
+  async measure(id, n = 2) {
+    const rung = rungById(registry, id);
+    const runs = [];
+    for (let i = 0; i < n; i++) {
+      const o = { prompt: PROMPT, payloadHex: "a7", profile: 0, tau: 2.0, temperature: 0.7, seed: 1000 + i };
+      const ev = { tokens: 0, carriers: 0, firstFrameAt: null, maxNew: null };
+      const t0 = now();
+      const emb = await runJob("embed", { rung, opts: o }, {
+        onEvent: e => {
+          if (e.type === "start") ev.maxNew = e.max_new;
+          if (e.type === "token") { ev.tokens++; if (e.carrier) ev.carriers++; }
+          if (e.type === "progress" && e.copies === 1 && e.frac === 0 && ev.firstFrameAt === null) ev.firstFrameAt = ev.tokens;
+        },
+      });
+      const embedSec = (now() - t0) / 1000;
+      const t1 = now();
+      const dec = await runJob("decode", { rung, text: emb.text, opts: { tau: 2.0 } });
+      const decodeSec = (now() - t1) / 1000;
+      const text = emb.text;
+      const headCut = text.slice(text.indexOf(" ", Math.floor(text.length * 0.2)) + 1);
+      const tailCut = text.slice(0, text.lastIndexOf(" ", Math.floor(text.length * 0.8)));
+      const head = await runJob("decode", { rung, text: headCut, opts: { tau: 2.0 } });
+      const tail = await runJob("decode", { rung, text: tailCut, opts: { tau: 2.0 } });
+      runs.push({
+        seed: o.seed, maxNew: ev.maxNew, tokens: ev.tokens, endedByEog: ev.tokens < ev.maxNew,
+        carriers: ev.carriers, carrierRate: +(ev.carriers / ev.tokens).toFixed(3), firstFrameAt: ev.firstFrameAt,
+        framesPlanted: +emb.framesPlanted.toFixed(2), embedSec: +embedSec.toFixed(1), tokPerSec: +(ev.tokens / embedSec).toFixed(2),
+        decodeSec: +decodeSec.toFixed(1), readValid: dec.valid, readPayload: dec.payload,
+        headCut: { valid: head.valid, carriers: head.carriers }, tailCut: { valid: tail.valid, carriers: tail.carriers },
+        text,
+      });
+      log(`measure ${id} run ${i}: ${ev.tokens} tok, ${ev.carriers} carriers, ${(ev.tokens / embedSec).toFixed(2)} tok/s, read ${dec.valid}, head ${head.valid}, tail ${tail.valid}`);
+    }
+    const mean = k => +(runs.reduce((a, r) => a + r[k], 0) / runs.length).toFixed(3);
+    return { rung: id, runs, summary: { carrierRate: mean("carrierRate"), tokPerSec: mean("tokPerSec"), framesPlanted: mean("framesPlanted"), readValid: runs.every(r => r.readValid), headCutValid: runs.filter(r => r.headCut.valid).length, tailCutValid: runs.filter(r => r.tailCut.valid).length, endedByEog: runs.filter(r => r.endedByEog).length } };
+  },
+
+  // every reader reads the writer's text: carrier-bit agreement by position
+  // (same tokenizer family, so ids align), and whether any sibling validates
+  async lineup(writerId, readerIds, seed = 777) {
+    const writer = rungById(registry, writerId);
+    const w = [];
+    const emb = await runJob("embed", { rung: writer, opts: { prompt: PROMPT, payloadHex: "a7", profile: 0, temperature: 0.7, seed } }, {
+      onEvent: e => { if (e.type === "token") w.push({ id: e.id, carrier: e.carrier, bit: e.bit }); },
+    });
+    const results = [];
+    for (const rid of readerIds) {
+      const r = [];
+      const dec = await runJob("decode", { rung: rungById(registry, rid), text: emb.text, opts: { tau: 2.0 } }, {
+        onEvent: e => { if (e.type === "token") r.push({ id: e.id, carrier: e.carrier, bit: e.bit ?? null, rank: e.rank }); },
+      });
+      const gen = r.slice(r.length - w.length);
+      let both = 0, agree = 0, writerOnly = 0, readerOnly = 0, idMismatch = 0, rankSum = 0;
+      for (let i = 0; i < w.length && i < gen.length; i++) {
+        const a = w[i], b = gen[i];
+        if (a.id !== b.id) idMismatch++;
+        if (a.carrier && b.carrier) { both++; if (a.bit === b.bit) agree++; }
+        else if (a.carrier) writerOnly++;
+        else if (b.carrier) readerOnly++;
+        rankSum += b.rank;
+      }
+      const res = { reader: rid, valid: dec.valid, payload: dec.payload, writerCarriers: w.filter(t => t.carrier).length, bothCarrier: both, bitAgreement: both ? +(agree / both).toFixed(3) : null, writerOnly, readerOnly, idMismatch, meanRank: +(rankSum / Math.max(1, gen.length)).toFixed(2) };
+      results.push(res);
+      log(`lineup ${writerId} -> ${rid}: valid ${res.valid}, agreement ${res.bitAgreement} over ${both}, mean rank ${res.meanRank}`);
+    }
+    return { writer: writerId, seed, text: emb.text, results };
+  },
+
+  async campaign(ids = registry.rungs.map(r => r.id)) {
+    const out = { generated: new Date().toISOString(), engine: registry.engine, env: window.engine.results.probe || null, measurements: {}, lineups: [] };
+    for (const id of ids) { out.measurements[id] = await this.measure(id, 2); log(`measured ${id}`); }
+    for (const wId of ids) { out.lineups.push(await this.lineup(wId, ids.filter(x => x !== wId))); }
+    return out;
+  },
+
   // the same seed must reproduce the same text
   async seedRepro(id, seed = 12345) {
     const a = await this.roundtrip(id, { seed, maxNew: 120 });
