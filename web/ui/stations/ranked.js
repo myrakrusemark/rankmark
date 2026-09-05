@@ -65,13 +65,12 @@ export class RankedChoice {
   renderList() {
     const t = this.temp();
     this.q("[data-temp-out]").textContent = t.toFixed(1);
-    const list = this.q("[data-list]"), cap = this.q("[data-caption]"), head = this.q("[data-list-head]");
+    const list = this.q("[data-list]"), head = this.q("[data-list-head]");
     const step = this.steps[this.shown];
     if (!step) {
       list.innerHTML = "";
       list.classList.remove("chosen");
       head.textContent = "the model's top 8 for the next word";
-      cap.textContent = this.engine ? "The sentence starts when the model is in." : "No recorded run is available.";
       return;
     }
     const p = this.odds(step.top, t);
@@ -84,13 +83,6 @@ export class RankedChoice {
         <span class="bar"><i style="transform: scaleX(${clamp(p[k], 0, 1)})"></i></span>
         <span class="pct">${Math.round(p[k] * 100)}%</span>
       </li>`).join("");
-    const ent = Number(step.entropy).toFixed(2);
-    let text;
-    if (!this.chosen) text = `Which word comes next? At ${t.toFixed(1)}, #1 has a ${Math.round(p[0] * 100)}% chance. Entropy here: ${ent} nats.`;
-    else if (t <= 0) text = `At 0 it always takes #1. This run (at ${this.recordedTemp}) took #${step.rank + 1}.`;
-    else text = `At ${t.toFixed(1)}, #${step.rank + 1} had a ${Math.round(p[step.rank] * 100)}% chance, and it took it. Entropy here: ${ent} nats.`;
-    if (this.chosen && this.i >= this.steps.length && !this.busy) text += " The sentence is written.";
-    cap.textContent = text;
   }
 
   // land word k: show its list, light the pick after a beat, fly it into the sentence
