@@ -5,6 +5,9 @@
 //
 //   node campaign.mjs            # plan from PLAN env or the default below
 //   OUT=web/data/measurements.json PROFILE=~/.cache/rankmark-playwright-profile
+//   MODE=entropy                 # carrier rate per gate, per rung
+//   MODE=snapshot                # regenerate web/data/snapshot.json with the plan's first rung
+//   FORCE=1                      # re-measure rungs already recorded
 
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
@@ -74,8 +77,22 @@ try {
     process.exit(0);
   }
 
+  // MODE=snapshot: the recorded run the page replays, written by the first rung in the plan
+  if (process.env.MODE === "snapshot") {
+    const SNAP = process.env.SNAP || join(webRoot, "data", "snapshot.json");
+    log("snapshot", PLAN[0].id);
+    const snap = await page.evaluate(id => window.engine.snapshot(id), PLAN[0].id);
+    writeFileSync(SNAP, JSON.stringify(snap));
+    log("saved", SNAP, "write", snap.write.tokens.length, "tokens, read valid", snap.read.valid, "ranked", snap.ranked.steps.length, "steps");
+    await page.evaluate(() => window.engine.unload());
+    await ctx.close();
+    server.kill();
+    process.exit(snap.read.valid ? 0 : 1);
+  }
+
+  // FORCE=1 re-measures rungs already in the file (after a tau change, say)
   for (const p of PLAN) {
-    if (out.measurements[p.id]) { log("skip measured", p.id); continue; }
+    if (out.measurements[p.id] && !process.env.FORCE) { log("skip measured", p.id); continue; }
     log("measure", p.id);
     out.measurements[p.id] = await page.evaluate(p => window.engine.measure(p.id, p.n, { cuts: p.cuts }), p);
     save();

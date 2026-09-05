@@ -183,7 +183,7 @@ const engine = {
     const rung = rungById(registry, id);
     const runs = [];
     for (let i = 0; i < n; i++) {
-      const o = { prompt: PROMPT, payloadHex: "a7", profile: 0, tau: 2.0, temperature: 0.7, seed: 1000 + i };
+      const o = { prompt: PROMPT, payloadHex: "a7", profile: 0, tau: rung.tau ?? 2.0, temperature: 0.7, seed: 1000 + i };
       const ev = { tokens: 0, carriers: 0, firstFrameAt: null, maxNew: null };
       const t0 = now();
       const emb = await runJob("embed", { rung, opts: o }, {
@@ -195,13 +195,13 @@ const engine = {
       });
       const embedSec = (now() - t0) / 1000;
       const t1 = now();
-      const dec = await runJob("decode", { rung, text: emb.text, opts: { tau: 2.0 } });
+      const dec = await runJob("decode", { rung, text: emb.text, opts: { tau: o.tau } });
       const decodeSec = (now() - t1) / 1000;
       const text = emb.text;
       const headCut = text.slice(text.indexOf(" ", Math.floor(text.length * 0.2)) + 1);
       const tailCut = text.slice(0, text.lastIndexOf(" ", Math.floor(text.length * 0.8)));
-      const head = cuts ? await runJob("decode", { rung, text: headCut, opts: { tau: 2.0 } }) : { valid: null, carriers: null };
-      const tail = cuts ? await runJob("decode", { rung, text: tailCut, opts: { tau: 2.0 } }) : { valid: null, carriers: null };
+      const head = cuts ? await runJob("decode", { rung, text: headCut, opts: { tau: o.tau } }) : { valid: null, carriers: null };
+      const tail = cuts ? await runJob("decode", { rung, text: tailCut, opts: { tau: o.tau } }) : { valid: null, carriers: null };
       runs.push({
         seed: o.seed, maxNew: ev.maxNew, tokens: ev.tokens, endedByEog: ev.tokens < ev.maxNew,
         carriers: ev.carriers, carrierRate: +(ev.carriers / ev.tokens).toFixed(3), firstFrameAt: ev.firstFrameAt,
@@ -227,7 +227,8 @@ const engine = {
     const results = [];
     for (const rid of readerIds) {
       const r = [];
-      const dec = await runJob("decode", { rung: rungById(registry, rid), text: emb.text, opts: { tau: 2.0 } }, {
+      const reader = rungById(registry, rid);
+      const dec = await runJob("decode", { rung: reader, text: emb.text, opts: { tau: reader.tau ?? 2.0 } }, {
         onEvent: e => { if (e.type === "token") r.push({ id: e.id, carrier: e.carrier, bit: e.bit ?? null, rank: e.rank }); },
       });
       const gen = r.slice(r.length - w.length);
