@@ -11,7 +11,7 @@ No server, no WebGPU.
 | `registry.json` | The ladder: repo, revision, file, sha256, quant, heap, tier, tag cap, carrier rate, plus the engine build. A lens id is frozen once texts carry it. |
 | `models.js` | Loads the registry, resolves a rung to its Hugging Face URL (single file; the memory64 build has no 2 GB limit). |
 | `lens.js` | One resident lens. `loadLens(rung)`, `run(seed, maxNew, decide, {stopOn})`, `encodeText`, `decodeTokens`, `decodeOne`, `cancel`. Pins `flash_attn: false`, `n_ctx` 2048, threads = min(8, cores/2) when cross-origin isolated. |
-| `encoder.js` | `embed(lens, opts, onEvent)`: greedy or same-parity temperature sampling (port of `channel.py`), the end-of-generation set banned until one frame is planted, token budget `ceil(frameBits / carrierRate * 1.3)` capped by the context. |
+| `encoder.js` | `embed(lens, opts, onEvent)`: greedy or same-parity temperature sampling (port of `channel.py`), the end-of-generation set banned until one frame is planted, token budget `ceil(frameBits / carrierRate * 2.0)` capped by the context, and a stop at the first sentence end past the seal. |
 | `decoder.js` | `decode(lens, text, opts, onEvent)`: teacher-forced single steps, soft bits, frame parse. |
 | `sampling.js` | mulberry32 seeded RNG, softmax sampling. The JS sampler is its own reference; a seed reproduces a browser run, not a Python one. |
 | `fingerprint.js` | Lens fingerprint (engine commit, model, sha256, quant, threads, attention kernel, n_ctx), text hash, mark card build and parse. |
@@ -41,12 +41,18 @@ Intel GPU vs `ca3e23e2a6997865` on CPU, same weights, same build), which is why 
 is the measurement campaign (`web/test/ci/campaign.mjs`, records in `web/data/measurements.json`): one seeded
 write of a 1-byte lean frame (79 bits) at temperature 0.7 and tau 2.0, then its read.
 
-| Rung | Speed | Carrier rate at tau 2.0 | Write | Read |
-|---|---|---|---|---|
-| Qwen3-0.6B Q8_0, 0.64 GB | 4.8 tok/s | 40% | 330 tokens, 1.9 frames, 69 s | valid, 42 s; survives a tail cut, not a head cut |
-| Qwen3-1.7B Q8_0, 1.83 GB | 2.1 tok/s | 7% | 770 tokens (budget cap), 0.75 frames, 6.2 min | no frame, 5.5 min |
-| Qwen3-4B Q4_K_M, 2.5 GB | 1.0 tok/s | 6% | 770 tokens, 0.62 frames, 13 min | no frame, 9.6 min |
-| Qwen3-8B Q4_K_M, 5.03 GB | 0.6 tok/s | 6% | 770 tokens, 0.68 frames, 22 min | no frame, 28 min |
+| Rung | Speed | tau | Carriers | Write | Read |
+|---|---|---|---|---|---|
+| Qwen3-0.6B Q8_0, 0.64 GB | 4.8 tok/s | 2.0 | 40% | 330 tokens, 1.9 frames, 69 s | valid, 42 s; survives a tail cut, not a head cut |
+| Qwen3-1.7B Q8_0, 1.83 GB | 1.5 to 2.1 tok/s | 1.25 | 56% | 140 tokens, 1.1 frames, 1.5 min | valid, 1.3 min; neither cut survives |
+| Qwen3-4B Q4_K_M, 2.5 GB | 0.7 to 1.0 tok/s | 1.0 | 68% | 124 tokens, 1.2 frames, 2.8 min | valid, 1.9 min |
+| Qwen3-8B Q4_K_M, 5.03 GB | 0.5 to 0.6 tok/s | 1.0 | 59% | 125 tokens, 1.0 frames, 4.4 min | valid, 3.9 min |
+
+The first pass ran every rung at tau 2.0: the 1.7B, 4B and 8B carried 6 to 9% of words and stopped at 0.6 to 0.75
+of a frame after 770 tokens. The rows above are the second pass at the per-rung tau chosen below; the slower speeds
+in the ranges were measured while page tests overlapped the run. The realized carrier rates at tau 1.0 to 1.25 are
+well above what the entropy profiles predicted (31 to 44%), most likely because forcing rank parity at more
+positions pushes the text into less predictable continuations, so later words are less certain too.
 
 The bigger rungs are more confident, so at tau 2.0 fewer than one word in twelve carries a bit and a frame does
 not fit inside the budget. tau is per rung in the registry. The entropy profile pass (`MODE=entropy`, results under
@@ -56,13 +62,14 @@ eight gates:
 | Rung | mean entropy (nats) | tau 0.75 | tau 1.0 | tau 1.25 | tau 1.5 | tau 2.0 | chosen tau | registry rate |
 |---|---|---|---|---|---|---|---|---|
 | 0.6B | 1.97 | 65% | 60% | 57% | 52% | 46% | 2.0 | 0.40 |
-| 1.7B | 1.18 | 58% | 51% | 44% | 37% | 19% | 1.25 | 0.35 |
-| 4B | 0.78 | 39% | 31% | 23% | 17% | 9% | 1.0 | 0.25 |
-| 8B | 0.78 | 44% | 32% | 24% | 17% | 7% | 1.0 | 0.25 |
+| 1.7B | 1.18 | 58% | 51% | 44% | 37% | 19% | 1.25 | 0.45 |
+| 4B | 0.78 | 39% | 31% | 23% | 17% | 9% | 1.0 | 0.45 |
+| 8B | 0.78 | 44% | 32% | 24% | 17% | 7% | 1.0 | 0.45 |
 
-The registry rate is discounted below the profile because longer texts drift into confident territory (the 0.6B
-measured 40% over 330 tokens against 46% on the profile, and one story write at seed 20260905 carried only 21%).
-That write also exposed the budget rule: with 1.3 times the expected tokens it stopped at 71 of 103 bits. The
+The registry rate sizes the budget and the minutes shown to the visitor. It sits between the profile and the second
+pass: longer texts drift into confident territory (the 0.6B measured 40% over 330 tokens against 46% on the
+profile, and one story write at seed 20260905 carried only 21%), so the rate is held under the short-text
+measurement. That story write also exposed the budget rule: with 1.3 times the expected tokens it stopped at 71 of 103 bits. The
 encoder now allows 2.0 times; a write stops at the first sentence end past the seal, so the slack costs nothing on a
 normal text. The recorded run in `web/data/snapshot.json` is a 1.7B write at tau 1.25: 217 tokens, 107 carriers
 (49%), the 103-bit frame planted once and read back.

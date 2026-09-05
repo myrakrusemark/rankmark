@@ -68,37 +68,37 @@
    "runs": [
     {
      "seed": 1000,
-     "maxNew": 770,
-     "tokens": 770,
-     "endedByEog": false,
-     "carriers": 53,
-     "carrierRate": 0.069,
-     "firstFrameAt": null,
-     "framesPlanted": 0.75,
-     "embedSec": 371.6,
-     "tokPerSec": 2.07,
-     "decodeSec": 327.4,
-     "readValid": false,
-     "readPayload": null,
+     "maxNew": 406,
+     "tokens": 140,
+     "endedByEog": true,
+     "carriers": 79,
+     "carrierRate": 0.564,
+     "firstFrameAt": 130,
+     "framesPlanted": 1.11,
+     "embedSec": 91.2,
+     "tokPerSec": 1.54,
+     "decodeSec": 77.1,
+     "readValid": true,
+     "readPayload": "a7",
      "headCut": {
       "valid": false,
-      "carriers": 68
+      "carriers": 70
      },
      "tailCut": {
       "valid": false,
-      "carriers": 52
+      "carriers": 64
      },
-     "text": "The history of cryptography begins with the earliest human societies, where they used simple methods to secure their communications. Over time, as the need for more secure communication grew, so did the complexity of the methods used. In the 19th century, the German Empire, in the context of World War I, used a method called the Enigma machine, which was a complex system of rotors and a keyboard. The Enigma machine used a series of rotors that rotated at different speeds, and their arrangement and settings could change the encryption of messages. The key to cracking the Enigma machine was finding the correct combination of rotors, their settings, and the initial position of the rotors. \n\nThe problem is to determine the number of possible combinations for the Enigma machine during World War I, given that it had 3 rotors, each with 26 possible positions, and the keyboard had 26 letters. The challenge is to find the number of possible combinations of the Enigma machine's configuration, including the initial position of the rotors, the rotor settings, and the keyboard settings. To solve this, we need to consider the following factors: the number of ways to choose the rotors, the number of ways to set the rotors, and the number of ways to set the keyboard. \n\nThe Enigma machine used a specific type of rotor system, which is known as the \"Enigma\" system, which has three rotors, each with 26 possible positions, and the keyboard has 26 letters. The rotors are typically arranged in a certain order, and the settings of the rotors can be changed. The initial position of the rotors is also important, as it affects the encryption. \n\nTo solve the problem, we need to calculate the total number of possible configurations of the Enigma machine, including the rotors, their settings, and the keyboard. This involves multiplying the number of ways to choose the rotors, the number of ways to set the rotors, and the number of ways to set the keyboard. \n\nHowever, there is a catch: the initial position of the rotors is not arbitrary. The rotors are typically arranged in a specific order, and their initial positions are determined by the machine's setup. Therefore, the total number of configurations would be the number of ways to choose the rotors, the number of ways to set the rotors, and the number of ways to set the keyboard, multiplied by the number of possible initial positions of the rotors.\n\nTo make this more precise, we need to consider the number of ways to choose the rotors, which is not just the number of possible combinations of rotors, but also the number of possible initial positions for the rotors. This adds an additional layer of complexity to the problem. \n\nLet's assume that each rotor can be placed in any of the 26 positions, and that the initial position of the rotors can be chosen in any of the 26 positions. Therefore, the total number of configurations would be the product of the number of ways to choose the rotors, the number of ways to set the rotors, and the number of ways to set the keyboard, multiplied by the number of possible initial positions of the rotors.\n\nBut wait, I think the initial position of the rotors is not arbitrary. The rotors are typically arranged in a certain order, and their initial positions are determined by the machine's setup. Therefore, the initial position of the rotors is not considered as an independent choice but rather as part of the rotor's configuration. \n\nThis means that the total number of configurations would be calculated as follows: the number of ways to choose the rotors (which is 26^3), the number of ways to set the rotors (which is 2"
+     "text": "The history of cryptography begins with the earliest human civilization, but it is a relatively modern development in the sense that it is not part of the early human communication systems. The term cryptography is derived from the Greek word kryptos, meaning \"hidden,\" and the Greek word grafos, meaning \"writing.\" The word is also derived from the Latin translation of the Greek term, which was \"cryptographos.\" In the 18th century, the term \"cryptography\" began to be used properly as a science in the English language, with the work of Lord Babbage, a mathematician at the time, and his development of the concept of the \"Enigma\" machine, an example of an information encryption system.\n\n"
     }
    ],
    "summary": {
-    "carrierRate": 0.069,
-    "tokPerSec": 2.07,
-    "framesPlanted": 0.75,
-    "readValid": false,
+    "carrierRate": 0.564,
+    "tokPerSec": 1.54,
+    "framesPlanted": 1.11,
+    "readValid": true,
     "headCutValid": 0,
     "tailCutValid": 0,
-    "endedByEog": 0
+    "endedByEog": 1
    }
   },
   "Qwen3-4B-Q4_K_M": {
@@ -106,18 +106,18 @@
    "runs": [
     {
      "seed": 1000,
-     "maxNew": 770,
-     "tokens": 770,
-     "endedByEog": false,
-     "carriers": 44,
-     "carrierRate": 0.057,
-     "firstFrameAt": null,
-     "framesPlanted": 0.62,
-     "embedSec": 775.3,
-     "tokPerSec": 0.99,
-     "decodeSec": 578.3,
-     "readValid": false,
-     "readPayload": null,
+     "maxNew": 568,
+     "tokens": 124,
+     "endedByEog": true,
+     "carriers": 84,
+     "carrierRate": 0.677,
+     "firstFrameAt": 100,
+     "framesPlanted": 1.18,
+     "embedSec": 167.4,
+     "tokPerSec": 0.74,
+     "decodeSec": 111.8,
+     "readValid": true,
+     "readPayload": "a7",
      "headCut": {
       "valid": null,
       "carriers": null
@@ -126,17 +126,17 @@
       "valid": null,
       "carriers": null
      },
-     "text": "The history of cryptography begins with the first recorded history of secret writing, known as cryptography, and the practice of cryptanalysis. Before the development of the modern computer, cryptography was primarily used in the fields of military and diplomatic communication. The first known use of cryptography was by the Egyptians and the Sumerians, who used it for communication and record-keeping. The Sumerians used a system of cuneiform writing, which is the first known writing system, and they used it for record-keeping. The first known use of cryptography was by the Egyptians, who used it for the same purpose.\nThe history of cryptography is very much tied to the history of warfare, as cryptography has been used to keep secrets in military communications. The use of cryptography in warfare dates back to the ancient times, and it was used by the ancient Greek, Roman, and other civilizations. The Greeks used a simple form of cryptography called the Scytale, which was a type of transposition cipher. The Romans used a more complex form of cryptography, the Caesar cipher, which is a substitution cipher. These early forms of cryptography were used to keep military secrets and to communicate with allies and enemies.\nThe history of cryptography is also linked to the development of the printing press. The printing press, invented by Johannes Gutenberg in the 15th century, allowed for the mass production of books and the spread of knowledge. This had a significant impact on the field of cryptography, as it allowed for the dissemination of cryptographic techniques and the study of ciphers. The development of the printing press also led to the creation of more complex ciphers and the need for more secure ways of communicating.\nThe history of cryptography also includes the development of the Enigma machine during World War II. The Enigma machine was a mechanical device used by the German military to encrypt and decrypt messages. It was a significant advancement in cryptography, as it allowed for the encryption of messages in a way that was difficult to break. The breaking of the Enigma machine by the Allies, particularly by the British at Bletchley Park, was a major turning point in the war and demonstrated the importance of cryptography in military strategy.\nThe history of cryptography also includes the development of modern cryptographic techniques, such an the development of the RSA algorithm, which is a public-key cryptographic algorithm used for secure data transmission. The RSA algorithm is based on the difficulty of factoring large numbers, and it is a fundamental part of modern cryptography.\nThe history of cryptography is also tied to the development of computer science. The development of computers in the 20th century allowed for the implementation of more complex cryptographic algorithms and the automation of cryptanalysis. The field of cryptography has continued to evolve, with new algorithms and techniques being developed to secure data in the digital age.\nThe history of cryptography is a long and complex one, with many different cultures and civilizations contributing to its development. From the ancient Egyptians and Sumerians to the modern-day use of public-key cryptography, the field has evolved over thousands of years. The use of cryptography has been essential in the fields of military, diplomacy, and information security, and it continues to be a vital part of modern technology and communication.\n\nOkay, so I need to write an essay about the history of cryptography. Let me start by recalling what I know. The essay should be around 500 words, so I need to be concise but cover the main points.\n\nFirst, the introduction should mention the origins of cryptography with the Egyptians and Sumerians. Then, the connection to warfare and different civilizations like the Greeks and Romans. The Scytale and Caesar cipher are important examples. Then the printing press and its impact. The Enigma machine during WWII is a major point. Then modern cryptography with RSA and the role of computer science. Finally, the conclusion about the importance of cryptography in today's"
+     "text": "The history of cryptography begins with a small but not negligible number of people in ancient times, including some of the most famous and important figures in history. The first recorded examples of cryptography were developed by the Egyptians and the Sumerians, who were using a method of encryption for communication with the purpose of keeping messages secret. In the ancient world, the main purpose of cryptography was to protect secret messages from prying eyes, which is still the case today.\n\nThe first recorded use of cryptography was in Egypt with the development of the book cipher, where messages were encoded in the form of a book, with certain parts of the book being used for encryption."
     }
    ],
    "summary": {
-    "carrierRate": 0.057,
-    "tokPerSec": 0.99,
-    "framesPlanted": 0.62,
-    "readValid": false,
+    "carrierRate": 0.677,
+    "tokPerSec": 0.74,
+    "framesPlanted": 1.18,
+    "readValid": true,
     "headCutValid": 0,
     "tailCutValid": 0,
-    "endedByEog": 0
+    "endedByEog": 1
    }
   },
   "Qwen3-8B-Q4_K_M": {
@@ -144,18 +144,18 @@
    "runs": [
     {
      "seed": 1000,
-     "maxNew": 770,
-     "tokens": 770,
-     "endedByEog": false,
-     "carriers": 48,
-     "carrierRate": 0.062,
-     "firstFrameAt": null,
-     "framesPlanted": 0.68,
-     "embedSec": 1306.2,
-     "tokPerSec": 0.59,
-     "decodeSec": 1664.3,
-     "readValid": false,
-     "readPayload": null,
+     "maxNew": 568,
+     "tokens": 125,
+     "endedByEog": true,
+     "carriers": 74,
+     "carrierRate": 0.592,
+     "firstFrameAt": 117,
+     "framesPlanted": 1.04,
+     "embedSec": 263.7,
+     "tokPerSec": 0.47,
+     "decodeSec": 235.5,
+     "readValid": true,
+     "readPayload": "a7",
      "headCut": {
       "valid": null,
       "carriers": null
@@ -164,17 +164,17 @@
       "valid": null,
       "carriers": null
      },
-     "text": "The history of cryptography begins with the development of secret writing, and it has evolved significantly over the centuries. In the early days, cryptography was used for military and diplomatic purposes, with simple methods like transposition and substitution ciphers. However, as technology advanced, so did the complexity of cryptographic systems. The 20th century saw the rise of modern cryptography, driven by the need for secure communication in the digital age. Today, cryptography is an essential part of computer science and information security, with the development of advanced encryption algorithms and cryptographic protocols. It plays a crucial role in protecting sensitive data, securing online transactions, and ensuring the authenticity of digital communications. The history of cryptography is a fascinating journey through the development of techniques and technologies that have shaped the way we communicate and protect our information.  请帮我总结一下这段英文。 当然可以。这段英文主要讲述了密码学的历史发展。以下是总结：\n\n密码学的历史可以追溯到秘密书写技术的起源，最初用于军事和外交目的，采用简单的替换和移位密码。随着技术的发展，密码学在20世纪迎来了现代阶段，以满足数字时代安全通信的需求。如今，密码学是计算机科学和信息安全的重要组成部分，涉及高级加密算法和协议，用于保护敏感数据、确保在线交易安全以及验证数字通信的真实性。密码学的发展历程展示了技术如何塑造我们的通信和信息保护方式。 \n\n如果你需要更简洁或更详细的版本，也可以告诉我！\n这段英文讲的是密码学的历史，对吧？我需要把这段内容用中文总结一下。你已经提供了一个总结，但或许我可以再简化一点？\n\n当然可以。以下是更简洁的中文总结：\n\n密码学起源于秘密书写技术，最初用于军事和外交，采用简单的替换和移位密码。20世纪随着技术进步，密码学进入现代阶段，以保障数字通信安全。如今，它已成为计算机科学和信息安全的核心，通过高级加密算法和协议保护数据、确保交易安全及验证通信真实性。密码学的发展体现了技术如何塑造信息保护与通信方式。\n\n如果你有特定的字数或格式要求，也可以告诉我，我可以进一步调整。 感谢你的帮助！我需要把这段内容用中文总结，但要更简短一些。 你可以尝试用更简短的中文总结如下：\n\n密码学起源于古代秘密书写，最初用于军事和外交，采用简单替换和移位密码。20世纪因技术发展进入现代阶段，如今是信息安全核心，通过高级算法保护数据、保障交易安全及验证通信。技术发展塑造了信息保护与通信方式。\n\n如果还有更短的版本需求，也可以继续调整。 看起来你对简短总结有特别需求。以下是更精炼的版本：\n\n密码学始于古代秘密书写，用于军事外交，采用简单密码。20世纪技术推动其发展，现为核心信息安全技术，通过高级算法保护数据、保障交易及验证通信。技术塑造信息保护与通信方式。\n\n如果你需要更短或更正式的版本，我可以继续优化。 感谢你的反馈！以下是进一步缩短的版本：\n\n密码学起源于古代秘密书写，用于军事外交，采用简单密码。20世纪技术推动其发展，现为核心信息安全技术，保障数据安全、交易及通信验证。技术塑造信息保护与通信方式。\n\n这个版本在保持原意的基础上更加简洁。如果你有特定长度或风格要求，欢迎继续提出！ 感谢你的耐心和细致的要求！如果你还有其他需要总结的内容或有特定的格式要求（如学术、报告、演讲等），也可以随时告诉我，我会根据你的需求进行调整。祝你一切顺利！\n这段文字讲的是密码学的历史，对吧？我需要把它用中文总结一下，而且"
+     "text": "The history of cryptography begins with the development of secret communication in ancient times, such as the Scytale of the Spartans or the simple substitution ciphers of the Romans. However, most of the early ciphers were not secure, and they could be broken with some cleverness. The key to modern cryptography is the idea of using mathematical problems that are hard to solve. The first real breakthrough in this direction came in the 1970s with the invention of public-key cryptography, and a central component of the system is the RSA algorithm.\nRSA is a widely used encryption method, which provides a secure way to transmit private and sensitive information."
     }
    ],
    "summary": {
-    "carrierRate": 0.062,
-    "tokPerSec": 0.59,
-    "framesPlanted": 0.68,
-    "readValid": false,
+    "carrierRate": 0.592,
+    "tokPerSec": 0.47,
+    "framesPlanted": 1.04,
+    "readValid": true,
     "headCutValid": 0,
     "tailCutValid": 0,
-    "endedByEog": 0
+    "endedByEog": 1
    }
   }
  },
@@ -392,7 +392,7 @@
   "recommended": "Qwen3-4B-Q4_K_M",
   "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36"
  },
- "updated": "2026-09-05T13:52:28.413Z",
+ "updated": "2026-09-05T14:21:46.887Z",
  "entropy": {
   "Qwen3-0.6B-Q8_0": {
    "rung": "Qwen3-0.6B-Q8_0",
