@@ -16,3 +16,4 @@ web/test/ci/node_modules/
 web/test/ci/out/
 ci-out/
 web/dist/
+.wrangler/

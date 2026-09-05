@@ -48,10 +48,10 @@ details.adv .field { margin-top: 10px; }
 
 /* the read box: a textarea until you read, then the annotated words in place.
    white-space normal on the box itself, or the markup's indentation renders as blank lines */
-#read-box { padding: 0; white-space: normal; }
-#read-box textarea.paste { padding: 20px 22px; min-height: 240px; }
+.text[data-box], #read-box { padding: 0; white-space: normal; }
+.text[data-box] textarea.paste, #read-box textarea.paste { padding: 20px 22px; min-height: 240px; }
 .tokens { white-space: pre-wrap; overflow-wrap: anywhere; }
-#read-box #read-text { padding: 20px 22px; min-height: 240px; cursor: text; }
+.text[data-box] .tokens, #read-box #read-text { padding: 20px 22px; min-height: 240px; cursor: text; }
 .tok[data-seed] { color: var(--muted); }
 
 /* progress: an expanding line and a number, nothing else */
