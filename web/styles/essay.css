@@ -29,6 +29,10 @@
 /* ranked choice */
 .ranked .sentence { font-size: 18px; line-height: 1.6; min-height: 3.2em; padding: 14px 16px; background: var(--ground); border: 1px solid var(--line); border-radius: var(--radius-sm); white-space: pre-wrap; }
 .ranked .sentence .muted { color: var(--muted); }
+.ranked .sentence[contenteditable="true"] { cursor: text; transition: border-color var(--t-fast) var(--ease-snap); }
+.ranked .sentence[contenteditable="true"]:focus { outline: none; border-color: var(--accent); }
+.ranked .sentence[contenteditable="false"] { background: var(--surface); }
+.ranked .sentence:empty::before { content: attr(data-empty); color: var(--muted); }
 .ranked .caret { display: inline-block; width: 2px; height: 1em; background: var(--accent); vertical-align: -0.15em; margin-left: 2px; animation: blink 1s steps(2) infinite; }
 @keyframes blink { to { visibility: hidden; } }
 .ranked ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }

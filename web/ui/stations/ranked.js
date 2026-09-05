@@ -27,12 +27,18 @@ export class RankedChoice {
     this.running = false;
     this.visible = false;
     this.waiters = [];
-    const prompt = this.q("[data-prompt]"), btn = this.q("[data-start]");
-    prompt.value = this.prompt;
+    // one box: the opening is typed here, the words land here, and it opens
+    // for editing again when the run is over
+    const box = this.q("[data-sentence]"), btn = this.q("[data-start]");
+    box.textContent = this.prompt;   // filled once, on page load
+    box.addEventListener("paste", e => {
+      e.preventDefault();
+      document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+    });
     if (engine) {
       this.ready(false, "Loading the model");   // app.js enables it when the model is in
     } else {
-      prompt.readOnly = true;
+      box.contentEditable = "false";
       btn.textContent = "Watch a recorded run";
       btn.disabled = !this.recorded;
     }
@@ -68,9 +74,9 @@ export class RankedChoice {
 
   renderSource() { this.q("[data-source]").textContent = this.source; }
 
-  renderSentence() {
+  renderSentence(caret = true) {
     const done = this.steps.slice(0, this.i).map(s => s.piece).join("");
-    this.q("[data-sentence]").innerHTML = `<span class="muted">${escapeHtml(this.prompt)}</span><span data-done>${escapeHtml(done)}</span><span class="caret"></span>`;
+    this.q("[data-sentence]").innerHTML = `<span class="muted">${escapeHtml(this.prompt)}</span><span data-done>${escapeHtml(done)}</span>${caret ? '<span class="caret"></span>' : ""}`;
   }
 
   showList(k, chosen) { this.shown = k; this.chosen = chosen; this.renderList(); }
@@ -142,17 +148,19 @@ export class RankedChoice {
   async start() {
     if (this.running) return;
     this.running = true;
-    const btn = this.q("[data-start]");
+    const btn = this.q("[data-start]"), box = this.q("[data-sentence]");
     btn.disabled = true;
     this.steps = [];
     this.i = 0;
-    this.q("[data-sentence]").hidden = false;
+    box.contentEditable = "false";   // locked while it writes
+    box.blur();
     try {
       if (this.engine) await this.live(btn);
       else await this.replay();
     } finally {
       this.running = false;
-      if (this.engine) this.ready(true);
+      this.renderSentence(false);
+      if (this.engine) { box.contentEditable = "true"; this.ready(true); }
       else { btn.disabled = false; btn.textContent = "Watch it again"; }
       this.renderSource();
     }
@@ -165,7 +173,8 @@ export class RankedChoice {
     const rung = this.picker.rung;
     if (!(await this.consent(rung))) return;
     const name = rung.id.replace(/-Q.*$/, "");
-    this.prompt = this.q("[data-prompt]").value.trim() || this.prompt;
+    // whatever is in the box is the opening; a second run continues from the text as it stands
+    this.prompt = this.q("[data-sentence]").textContent.replace(/\s+$/, "") || this.prompt;
     this.renderSentence();
     this.showList(0, false);
     this.source = `${name}, writing on this computer`;
