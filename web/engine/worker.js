@@ -11,6 +11,7 @@ import { parseMarkCard, textHash } from "./fingerprint.js";
 async function ensureLens(args, reqId) {
   const lens = await loadLens(args.rung, {
     threads: args.threads,
+    viaBlob: !!args.viaBlob,
     onProgress: p => self.postMessage({ reqId, kind: "progress", data: p }),
   });
   self.postMessage({ reqId, kind: "ready", data: info(lens) });
@@ -20,6 +21,7 @@ async function ensureLens(args, reqId) {
 function info(lens) {
   return lens ? {
     model: lens.name, fingerprint: lens.fp, threads: lens.threads,
+    cache: lens.cache, weightsSha256: lens.weightsSha256,
     nVocab: lens.nVocab, nCtx: lens.nCtx, eog: [...lens.eogIds], addBos: lens.addBos,
   } : null;
 }

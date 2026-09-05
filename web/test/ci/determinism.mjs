@@ -50,8 +50,9 @@ try {
   }));
   console.log("env", JSON.stringify(record.env));
 
+  // no OPFS cache in CI: ephemeral profiles have small quotas (WebKit, macOS runners)
   const t0 = Date.now();
-  record.load = await page.evaluate(id => window.engine.load(id), rung);
+  record.load = await page.evaluate(id => window.engine.load(id, undefined, { viaBlob: true }), rung);
   record.load.wallSeconds = (Date.now() - t0) / 1000;
   console.log("loaded", JSON.stringify(record.load));
 
@@ -59,16 +60,19 @@ try {
     window.engine.runJob("logitHash", { rung: window.engine.registry.rungs.find(r => r.id === id), prompt }), { id: rung, prompt: PROMPT });
   console.log("logit hash", JSON.stringify(record.logitHash));
 
-  // the same row single-threaded: separates a kernel difference from a scheduling one
-  record.logitHash1 = await page.evaluate(({ id, prompt }) =>
-    window.engine.runJob("logitHash", { rung: window.engine.registry.rungs.find(r => r.id === id), prompt, threads: 1 }), { id: rung, prompt: PROMPT });
-  console.log("logit hash, 1 thread", JSON.stringify(record.logitHash1));
-
   // the weights this browser actually downloaded, against the registry
-  record.weights = await page.evaluate(id => window.engine.hashCachedModel(id), rung);
+  const want = await page.evaluate(id => window.engine.registry.rungs.find(r => r.id === id).sha256, rung);
+  record.weights = { sha256: record.load.weightsSha256, ok: record.load.weightsSha256 ? record.load.weightsSha256 === want : null };
   console.log("weights", JSON.stringify(record.weights));
 
+  // the same row single-threaded: separates a kernel difference from a scheduling one
+  record.logitHash1 = await page.evaluate(({ id, prompt }) =>
+    window.engine.runJob("logitHash", { rung: window.engine.registry.rungs.find(r => r.id === id), prompt, threads: 1, viaBlob: true }), { id: rung, prompt: PROMPT });
+  console.log("logit hash, 1 thread", JSON.stringify(record.logitHash1));
+
   const t1 = Date.now();
+  // back to the default thread count for the write (a reload, still from a Blob)
+  await page.evaluate(id => window.engine.load(id, undefined, { viaBlob: true }), rung);
   const snap = await page.evaluate(({ id, opts }) => window.engine.snapshot(id, opts),
     { id: rung, opts: { prompt: PROMPT, payloadHex: "a7", profile: 0, temperature: 0.7, seed: SEED, maxNew: 260 } });
   record.write = {

@@ -30,25 +30,70 @@ export function defaultThreads() {
   return self.crossOriginIsolated ? Math.max(1, Math.min(8, Math.floor(n / 2))) : 1;
 }
 
-export async function loadLens(rung, { onProgress, threads } = {}) {
+export async function loadLens(rung, { onProgress, threads, viaBlob = false } = {}) {
   const nThreads = threads ?? defaultThreads();
   if (current && current.rung.id === rung.id && current.threads === nThreads) return current;
   await unloadLens();
   const w = new Wllama({ default: WASM }, { parallelDownloads: 3, suppressNativeLog: true });
   w.setCompat(COMPAT);
-  await w.loadModelFromUrl(fileUrl(rung), {
+  const params = {
     n_ctx: rung.nCtx ?? 2048,
     n_threads: nThreads,
     n_gpu_layers: 0,   // CPU only: wllama offloads to WebGPU by default, and GPU bits differ from CPU bits
     flash_attn: false, // one attention kernel, pinned; auto could pick differently per build
     warmup: false,
     progressCallback: onProgress,
-  });
+  };
+  let cache = "opfs";
+  let weightsSha256 = null;
+  const loadViaBlob = async () => {
+    const { blob, sha256 } = await fetchBlob(fileUrl(rung), rung.bytes, onProgress);
+    weightsSha256 = sha256;
+    cache = "none";
+    await w.loadModel([blob], params);
+  };
+  if (viaBlob) {
+    await loadViaBlob();
+  } else {
+    try {
+      await w.loadModelFromUrl(fileUrl(rung), params);
+    } catch (err) {
+      // the origin's storage quota is too small for the file (Safari, private
+      // windows, tiny disks): run from a Blob and just do not cache
+      if (!/quota|transient|out of memory/i.test(String(err && err.message || err))) throw err;
+      await loadViaBlob();
+    }
+  }
   const vocab = await w.getVocab(false);
   const info = w.getLoadedContextInfo();
   current = new Lens(rung, w, vocab, info, nThreads);
+  current.cache = cache;
+  current.weightsSha256 = weightsSha256;
   current.fp = await fingerprint(current.fingerprintParts());
   return current;
+}
+
+// stream a file into a Blob with progress; hash it when it fits one buffer
+async function fetchBlob(url, total, onProgress) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  const reader = res.body.getReader();
+  const chunks = [];
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.byteLength;
+    onProgress?.({ loaded, total: total || Number(res.headers.get("content-length")) || loaded });
+  }
+  const blob = new Blob(chunks);
+  let sha256 = null;
+  if (blob.size < 2 ** 31) {
+    const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+    sha256 = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+  return { blob, sha256 };
 }
 
 export function currentLens() { return current; }

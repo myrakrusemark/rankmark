@@ -64,10 +64,10 @@ const engine = {
 
   async probe() { return probe(registry); },
 
-  async load(id, threads) {
+  async load(id, threads, opts = {}) {
     const t0 = now();
     let last = 0;
-    const info = await runJob("load", { rung: rungById(registry, id), threads }, {
+    const info = await runJob("load", { rung: rungById(registry, id), threads, ...opts }, {
       onProgress: ({ loaded, total }) => { const pct = Math.round(100 * loaded / total); if (pct >= last + 10) { last = pct; log(`download ${pct}%`); } },
     });
     return { ...info, loadSeconds: +((now() - t0) / 1000).toFixed(1) };
