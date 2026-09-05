@@ -34,6 +34,11 @@
     <p>Watch it below. The sentence grows one word at a time; the list beside it is the model's top eight for the next word, with the one it took. Slide the temperature and the odds on the bars change; run it live and the sentence changes with them.</p>
   </div>
   <p id="mode-note" class="note warn" hidden></p>
+  <aside class="autoload off" id="autoload" hidden data-live-only aria-live="polite">
+    <b>This article has working examples.</b> <span data-al-msg></span>
+    <div class="al-bar"><i data-al-fill></i></div>
+    <div class="al-row"><span data-al-pct></span><button type="button" class="btn" data-al-cancel>Cancel</button></div>
+  </aside>
   <div class="model-bar sticky" data-live-only>
     <label for="model">Model</label>
     <select id="model"></select>

@@ -4,7 +4,7 @@
 import { loadRegistry } from "../engine/models.js";
 import { probe } from "../engine/probe.js";
 import { EngineClient } from "./worker-client.js";
-import { ModelPicker } from "./models.js";
+import { ModelPicker, GB } from "./models.js";
 import { FrameStrip } from "./frame-strip.js";
 import { TextView } from "./text-view.js";
 import { Callouts } from "./callouts.js";
@@ -152,5 +152,65 @@ if (!canRun) {
   note.hidden = false;
 } else {
   await picker.scanCache();
+  autoload();
 }
 window.rankmark = { engine, picker, registry, hw, snapshot };
+
+// ---- the model that loads on arrival ------------------------------------------
+// the examples need a model, so the small one starts loading as soon as the page
+// can run one: a card says so, with a progress bar and a cancel button. A rung
+// the visitor already downloaded and picked before loads instead of the small one.
+async function autoload() {
+  const card = $("#autoload");
+  if (!card || hw.saveData) return;
+  const rung = picker.cached.has(picker.rung.id) ? picker.rung : registry.rungs[0];
+  if (!hw.rungs.find(r => r.id === rung.id)?.ok) return;
+  if (rung !== picker.rung) { picker.select.value = rung.id; picker.renderStatus(); picker.onChange?.(rung); }
+  const name = rung.id.replace(/-Q.*$/, "");
+  const fromCache = picker.cached.has(rung.id);
+  const q = s => card.querySelector(s);
+  const msg = q("[data-al-msg]"), fill = q("[data-al-fill]"), pct = q("[data-al-pct]"), bar = q(".al-bar"), cancel = q("[data-al-cancel]");
+  msg.textContent = fromCache
+    ? `${name} is loading from this browser's storage so they run on your own computer.`
+    : `A small model, ${name} (${GB(rung.bytes)}), is downloading into this browser so they run on your own computer. Nothing you type leaves the page.`;
+  bar.classList.toggle("wait", fromCache);
+  card.hidden = false;
+  requestAnimationFrame(() => card.classList.remove("off"));
+  const hide = () => { card.classList.add("off"); setTimeout(() => { card.hidden = true; }, 400); };
+  picker.granted.add(rung.id);
+  let cancelled = false;
+  cancel.onclick = async () => {
+    cancelled = true;
+    picker.granted.delete(rung.id);
+    hide();
+    engine.restart();
+    await picker.dropPartial(rung);
+    await picker.scanCache();
+  };
+  try {
+    const res = await engine.run("load", { rung }, {
+      onProgress: p => {
+        if (!p.total) return;
+        const f = Math.min(1, p.loaded / p.total);
+        fill.style.transform = `scaleX(${f})`;
+        pct.textContent = f >= 1 ? "starting the model" : `${Math.round(f * 100)}% of ${GB(rung.bytes)}`;
+      },
+    });
+    if (cancelled || res?.cancelled) return;
+    bar.classList.remove("wait");
+    fill.style.transform = "scaleX(1)";
+    pct.textContent = "";
+    cancel.hidden = true;
+    cancel.onclick = null;
+    msg.textContent = `${name} is ready. Every example on this page runs on your computer.`;
+    await picker.scanCache();
+    setTimeout(hide, 4000);
+  } catch (err) {
+    if (cancelled) return;
+    picker.granted.delete(rung.id);
+    bar.classList.remove("wait");
+    msg.textContent = `The download did not finish (${err.message}). Each example asks again when you run it.`;
+    cancel.textContent = "Close";
+    cancel.onclick = hide;
+  }
+}

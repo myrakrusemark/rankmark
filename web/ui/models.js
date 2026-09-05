@@ -3,7 +3,7 @@
 
 import { frameLenBits } from "../engine/framing.js";
 
-const GB = b => (b / 1e9).toFixed(b >= 1e9 ? 1 : 2) + " GB";
+export const GB = b => (b / 1e9).toFixed(b >= 1e9 ? 1 : 2) + " GB";
 
 export class ModelPicker {
   constructor({ select, status, cacheList, registry, probe, onChange }) {
@@ -14,6 +14,7 @@ export class ModelPicker {
     this.probe = probe;
     this.onChange = onChange;
     this.cached = new Map();
+    this.granted = new Set();   // rungs the visitor already agreed to (the one loading on arrival)
     let stored = null;
     try { stored = localStorage.getItem("rankmark.rung"); } catch { /* ignore */ }
     this.select.addEventListener("change", () => { try { localStorage.setItem("rankmark.rung", this.select.value); } catch { /* ignore */ } this.renderStatus(); this.onChange?.(this.rung); });
@@ -59,7 +60,7 @@ export class ModelPicker {
 
   // ask before the first download of a rung; returns true when allowed
   async consent(rung) {
-    if (this.cached.has(rung.id)) return true;
+    if (this.cached.has(rung.id) || this.granted.has(rung.id)) return true;
     const dlg = document.getElementById("consent");
     dlg.querySelector("[data-size]").textContent = GB(rung.bytes);
     dlg.querySelector("[data-name]").textContent = rung.id.replace(/-Q.*$/, "");
@@ -102,6 +103,20 @@ export class ModelPicker {
       await dir.removeEntry("__metadata__" + entry.name).catch(() => {});
     } catch { /* ignore */ }
     await this.scanCache();
+  }
+
+  // a cancelled download leaves a short file behind; remove it and its metadata
+  async dropPartial(rung) {
+    try {
+      const root = await navigator.storage.getDirectory();
+      const dir = await root.getDirectoryHandle("cache");
+      for await (const [name, h] of dir.entries()) {
+        if (h.kind !== "file" || name.startsWith("__metadata__") || !name.endsWith("_" + rung.file)) continue;
+        if ((await h.getFile()).size === rung.bytes) continue;
+        await dir.removeEntry(name).catch(() => {});
+        await dir.removeEntry("__metadata__" + name).catch(() => {});
+      }
+    } catch { /* ignore */ }
   }
 
   renderCache() {

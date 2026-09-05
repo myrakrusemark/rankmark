@@ -73,3 +73,19 @@
 /* the full tool at the bottom */
 .tool-section { border-top: 1px solid var(--line); margin-top: 56px; padding-top: 32px; }
 .tool-section h2 { font-size: clamp(24px, 3vw, 34px); margin: 0 0 6px; }
+
+/* the model that loads on arrival: a fixed card with a bar and a cancel button */
+.autoload {
+  position: fixed; right: 20px; bottom: 20px; z-index: 40; width: min(340px, calc(100% - 32px));
+  background: var(--ground); border: 1px solid var(--line-strong); border-left: 3px solid var(--accent); border-radius: var(--radius-sm);
+  padding: 12px 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); font-size: 13.5px; line-height: 1.45; color: var(--ink-2);
+  transition: opacity var(--t-move) var(--ease-out), transform var(--t-move) var(--ease-out);
+}
+.autoload b { color: var(--ink); }
+.autoload.off { opacity: 0; transform: translateY(6px); pointer-events: none; }
+.al-bar { height: 3px; background: var(--line); border-radius: 2px; margin: 10px 0 8px; overflow: hidden; }
+.al-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform 300ms var(--ease-out); }
+.al-bar.wait i { transform: none; width: 30%; animation: al-slide 1.2s var(--ease-in-out) infinite; }
+@keyframes al-slide { from { translate: -100% 0; } to { translate: 340% 0; } }
+.al-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 12px/1.2 var(--font-mono); color: var(--muted); }
+.autoload .btn { padding: 5px 10px; font-size: 12px; }

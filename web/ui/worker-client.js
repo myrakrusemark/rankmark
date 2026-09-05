@@ -3,9 +3,12 @@
 
 export class EngineClient {
   constructor() {
-    this.worker = new Worker(new URL("../engine/worker.js", import.meta.url), { type: "module" });
     this.pending = new Map();
     this.next = 1;
+    this.spawn();
+  }
+  spawn() {
+    this.worker = new Worker(new URL("../engine/worker.js", import.meta.url), { type: "module" });
     this.worker.onmessage = ev => {
       const { reqId, kind, data } = ev.data;
       const p = this.pending.get(reqId);
@@ -25,6 +28,14 @@ export class EngineClient {
       this.pending.set(reqId, { resolve, reject, ...hooks });
       this.worker.postMessage({ reqId, cmd, args });
     });
+  }
+  // a download has no abort hook, so cancelling one kills the worker and
+  // starts a fresh one; every pending job resolves as cancelled
+  restart() {
+    this.worker.terminate();
+    for (const p of this.pending.values()) p.resolve({ cancelled: true });
+    this.pending.clear();
+    this.spawn();
   }
   cancel() { return this.run("cancel"); }
   unload() { return this.run("unload"); }
