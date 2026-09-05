@@ -13,9 +13,9 @@ function tooltip() {
 }
 
 export class TextView {
-  constructor(root, { emptyText = "" } = {}) {
+  constructor(root, { emptyText = "", boxed = true } = {}) {
     this.root = root;
-    this.root.classList.add("text", "empty");
+    this.root.classList.add(boxed ? "text" : "tokens", "empty");
     this.root.dataset.empty = emptyText;
     this.tokens = [];
     this.root.addEventListener("mouseover", e => this.show(e.target));
@@ -38,9 +38,10 @@ export class TextView {
     s.dataset.rank = e.rank;
     if (e.entropy !== undefined) s.dataset.entropy = e.entropy;
     if (e.carrier) s.dataset.bit = e.bit;
-    const info = e.carrier
-      ? `#${e.rank + 1} choice, carries a ${e.bit}`
+    const info = e.seed ? "the first word, never scored"
+      : e.carrier ? `#${e.rank + 1} choice, carries a ${e.bit}`
       : `#${e.rank + 1} choice, carried nothing`;
+    if (e.seed) s.dataset.seed = "1";
     s.setAttribute("aria-label", `${e.piece.trim() || "space"}: ${info}`);
     this.root.appendChild(s);
     this.tokens.push(s);
@@ -55,7 +56,7 @@ export class TextView {
     const t = tooltip();
     const h = el.dataset.entropy !== undefined ? ` · entropy ${el.dataset.entropy}` : "";
     const b = el.dataset.bit !== undefined ? ` · bit ${el.dataset.bit}` : " · no bit";
-    t.textContent = `#${Number(el.dataset.rank) + 1} choice${h}${b}`;
+    t.textContent = el.dataset.seed ? "the first word: the model starts here, so it is never scored" : `#${Number(el.dataset.rank) + 1} choice${h}${b}`;
     const r = el.getBoundingClientRect();
     t.style.left = `${Math.min(r.left, innerWidth - 280)}px`;
     t.style.top = `${r.top - 34}px`;

@@ -49,7 +49,7 @@ $("[data-reset-callouts]")?.addEventListener("click", () => callouts.reset());
 const wStrip = new FrameStrip($("#write-strip"));
 const wView = new TextView($("#write-text"), { emptyText: "The model's text appears here as it writes." });
 const rStrip = new FrameStrip($("#read-strip"));
-const rView = new TextView($("#read-text"), { emptyText: "" });
+const rView = new TextView($("#read-text"), { emptyText: "", boxed: false });
 
 let read;
 const write = new WritePanel($("#panel-write"), {
@@ -76,7 +76,7 @@ if (snapshot) {
     $("#panel-write [data-card-text]").textContent = snapshot.write.text;
     $("#panel-write [data-card-foot]").textContent = card.slice(snapshot.write.text.length + 2);
     $("#panel-write [data-card]").hidden = false;
-    $("#panel-write [data-read]").onclick = async () => { read.load(card); select("read"); await replayRead.read(snapshot, $("#panel-read [data-head]")); read.verdict("ok", `A frame planted with <b>${snapshot.rung.replace(/-Q.*$/, "")}</b> validates in this text.<span class="tag">${snapshot.opts.payloadHex === "a7" ? "0xa7" : snapshot.opts.payloadHex}</span>`); };
+    $("#panel-write [data-read]").onclick = async () => { read.load(card); select("read"); read.annotate(null); await replayRead.read(snapshot, $("#panel-read [data-head]")); read.verdict("ok", `A frame planted with <b>${snapshot.rung.replace(/-Q.*$/, "")}</b> validates in this text.<span class="tag">${snapshot.opts.payloadHex === "a7" ? "0xa7" : snapshot.opts.payloadHex}</span>`); };
     $("#panel-write [data-break]").onclick = $("#panel-write [data-read]").onclick;
     callouts.once("done", $("#panel-write [data-card]"));
   });

@@ -22,6 +22,8 @@ export async function decode(lens, text, opts, onEvent) {
   // single step — the same shape encode used, so the ranks line up
   const seed = bos !== null ? bos : ids[0];
   const targets = bos !== null ? ids : ids.slice(1);
+  // the first visible word is the seed: never scored, so the page can show it unmarked
+  if (bos === null) onEvent({ type: "seed", id: seed, piece: lens.decodeOne(seed) });
 
   const llrs = [];
   let reportedFrames = 0;

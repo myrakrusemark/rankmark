@@ -1,6 +1,7 @@
-// Read: paste marked text, pick the model, and watch the bits come back out
-// of the words into the strip until the frame locks or fails to. Break-it
-// edits the text in place and reads again.
+// Read: one box. Paste marked text into it; reading annotates the same words
+// in place while their bits are pulled into the strip, until a frame locks or
+// the text ends without one. Click the words to edit them; break-it edits the
+// text for you and reads again.
 
 import { parseMarkCard } from "../engine/fingerprint.js";
 
@@ -8,24 +9,47 @@ export class ReadPanel {
   constructor(root, { engine, picker, callouts, strip, view }) {
     Object.assign(this, { root, engine, picker, callouts, strip, view });
     this.q = s => root.querySelector(s);
+    this.ta = this.q("[data-paste]");
     this.original = null;   // the text before any break-it edit
     this.running = false;
     this.q("[data-run]").addEventListener("click", () => this.run());
     this.q("[data-stop]").addEventListener("click", () => this.engine.cancel());
+    this.q("[data-edit]").addEventListener("click", () => this.edit());
+    this.view.root.addEventListener("click", e => { if (!this.running && !e.target.closest("a")) this.edit(); });
     for (const b of root.querySelectorAll("[data-break]")) b.addEventListener("click", () => this.breakIt(b.dataset.break));
     this.q("[data-lineup]").addEventListener("click", () => this.lineup());
+    this.ta.addEventListener("input", () => { this.original = null; });
   }
 
   load(card) {
-    this.q("[data-paste]").value = card;
+    this.ta.value = card;
     this.original = card;
+    this.edit();
+  }
+
+  // show the textarea with the current text
+  edit() {
+    this.ta.hidden = false;
+    this.view.root.hidden = true;
+    this.q("[data-edit]").hidden = true;
+    this.q("[data-foot]").hidden = true;
+  }
+  // show the annotated words in place of the textarea
+  annotate(card) {
+    this.ta.hidden = true;
+    this.view.root.hidden = false;
+    this.q("[data-edit]").hidden = false;
+    const foot = this.q("[data-foot]");
+    if (card) { foot.textContent = `footer: rankmark: ${card.rungId} f=${card.fp}${card.textHash ? " t=" + card.textHash : ""}`; foot.hidden = false; }
+    else foot.hidden = true;
   }
 
   setBusy(on) {
     this.running = on;
     this.q("[data-run]").hidden = on;
     this.q("[data-stop]").hidden = !on;
-    this.root.querySelectorAll("[data-break], [data-lineup], select").forEach(el => { el.disabled = on; });
+    this.q("[data-edit]").disabled = on;
+    this.root.querySelectorAll("[data-break], [data-lineup]").forEach(el => { el.disabled = on; });
   }
 
   verdict(kind, html) {
@@ -36,12 +60,14 @@ export class ReadPanel {
   }
 
   async run({ rung = this.picker.rung, quiet = false } = {}) {
-    const raw = this.q("[data-paste]").value;
-    if (!raw.trim()) { this.q("[data-paste]").focus(); return null; }
+    const raw = this.ta.value;
+    if (!raw.trim()) { this.edit(); this.ta.focus(); return null; }
     if (!(await this.picker.consent(rung))) return null;
     if (this.original === null) this.original = raw;
+    const card = parseMarkCard(raw);
     this.setBusy(true);
     this.view.clear();
+    this.annotate(card);
     this.strip.growMode();
     this.q("[data-verdict]").hidden = true;
     const head = this.q("[data-head]");
@@ -56,6 +82,7 @@ export class ReadPanel {
             if (e.altered) this.verdict("warn", "This text differs from what was written: the footer's hash does not match. Whatever follows is about the edited text.");
             else if (e.fpMismatch) this.verdict("warn", `Written with <b>${e.cardLens}</b>, read with <b>${rung.id}</b>. Only the writer's model can see its own bits.`);
           }
+          if (e.type === "seed") this.view.append({ ...e, carrier: false, rank: null, seed: true });
           if (e.type === "token") {
             const el = this.view.append(e);
             if (e.carrier) {
@@ -72,9 +99,8 @@ export class ReadPanel {
       head.textContent = `${this.view.tokens.length} words, ${carriers} carry bits`;
       if (res.valid) {
         this.strip.lockSpans(res.spans || []);
-        const tag = hexToText(res.payload);
-        this.verdict("ok", `A frame planted with <b>${rung.id.replace(/-Q.*$/, "")}</b> validates in this text.<span class="tag">${tag}</span>`);
-      } else if (!this.q("[data-verdict]").classList.contains("warn") || this.q("[data-verdict]").hidden) {
+        this.verdict("ok", `A frame planted with <b>${rung.id.replace(/-Q.*$/, "")}</b> validates in this text.<span class="tag">${hexToText(res.payload)}</span>`);
+      } else if (this.q("[data-verdict]").hidden) {
         this.verdict("no", `No frame validates under <b>${rung.id.replace(/-Q.*$/, "")}</b>. That means one of: unmarked text, another model wrote it, or the words were changed after writing.`);
       }
       return res;
@@ -89,11 +115,10 @@ export class ReadPanel {
   // edit the text in place, then read again
   async breakIt(kind) {
     if (this.running) await this.engine.cancel();
-    const ta = this.q("[data-paste]");
-    const card = parseMarkCard(ta.value);
-    let text = card ? card.text : ta.value;
-    const foot = card ? ta.value.slice(text.length) : "";
-    if (kind === "undo") { if (this.original !== null) ta.value = this.original; this.strip.reset?.(); return this.run(); }
+    const card = parseMarkCard(this.ta.value);
+    let text = card ? card.text : this.ta.value;
+    const foot = card ? this.ta.value.slice(text.length) : "";
+    if (kind === "undo") { if (this.original !== null) this.ta.value = this.original; return this.run(); }
     if (kind === "sentence") {
       const parts = text.split(/(?<=[.!?])\s+/);
       if (parts.length > 2) { parts.splice(1, 1); text = parts.join(" "); }
@@ -108,7 +133,9 @@ export class ReadPanel {
       }
       text = words.join(" ");
     }
-    ta.value = text + foot;
+    const keep = this.original;
+    this.ta.value = text + foot;
+    this.original = keep;
     const res = await this.run({ quiet: true });
     if (res && !res.valid) { this.strip.kill(); this.callouts.once("dead", this.strip.root); }
     return res;

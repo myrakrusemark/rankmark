@@ -39,10 +39,20 @@ details.adv .field { margin-top: 10px; }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* model row */
-.model { display: flex; flex-direction: column; gap: 6px; }
-.model .status { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
-.model .status.warn { color: var(--warn); }
+/* model bar, shared by write and read */
+.model-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 0 0; }
+.model-bar label { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.model-bar select { border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--ground); padding: 7px 10px; min-width: 260px; }
+.model-bar .status { font-size: 12px; color: var(--muted); font-family: var(--font-mono); flex: 1 1 300px; }
+.model-bar .status.warn { color: var(--warn); }
+
+/* the read box: a textarea until you read, then the annotated words in place.
+   white-space normal on the box itself, or the markup's indentation renders as blank lines */
+#read-box { padding: 0; white-space: normal; }
+#read-box textarea.paste { padding: 20px 22px; min-height: 240px; }
+.tokens { white-space: pre-wrap; overflow-wrap: anywhere; }
+#read-box #read-text { padding: 20px 22px; min-height: 240px; cursor: text; }
+.tok[data-seed] { color: var(--muted); }
 
 /* progress: an expanding line and a number, nothing else */
 .progress { display: none; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
@@ -59,7 +69,7 @@ details.adv .field { margin-top: 10px; }
   padding: 20px 22px; min-height: 240px; font-size: 17px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .text.empty::before { content: attr(data-empty); color: var(--muted); font-size: 15px; }
-.text textarea.paste { width: 100%; min-height: 200px; border: 0; background: none; resize: vertical; padding: 0; line-height: inherit; font-size: inherit; }
+.text textarea.paste { display: block; width: 100%; min-height: 200px; border: 0; background: none; resize: vertical; line-height: inherit; font-size: inherit; font-family: inherit; color: inherit; }
 .text textarea.paste:focus { outline: none; }
 
 .tok { display: inline; border-bottom: 2px solid transparent; padding-bottom: 1px; opacity: 0; transition: opacity var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out); }

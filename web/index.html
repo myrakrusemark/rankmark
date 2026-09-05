@@ -30,16 +30,16 @@
   </div>
 
   <p id="mode-note" class="note warn" hidden></p>
+  <div class="model-bar" data-live-only>
+    <label for="model">Model</label>
+    <select id="model"></select>
+    <div id="model-status" class="status"></div>
+  </div>
 
   <!-- WRITE -->
   <div id="panel-write" class="panel" role="tabpanel" aria-labelledby="tab-write">
     <div class="tool-grid">
       <form class="form" onsubmit="return false">
-        <div class="field model" data-live-only>
-          <label for="model">Model</label>
-          <select id="model"></select>
-          <div id="model-status" class="status"></div>
-        </div>
         <div class="field">
           <label for="prompt">Opening text</label>
           <textarea id="prompt" data-prompt>It was late in the harbor when the last boat came in, and</textarea>
@@ -111,14 +111,11 @@
   <div id="panel-read" class="panel" role="tabpanel" aria-labelledby="tab-read" hidden>
     <div class="tool-grid">
       <form class="form" onsubmit="return false">
-        <div class="field">
-          <label for="paste">Marked text</label>
-          <textarea id="paste" data-paste style="min-height: 180px" placeholder="Paste text written with a mark. Keep the footer line if it has one."></textarea>
-        </div>
         <div class="btn-row">
           <button type="button" class="btn primary wide" data-run data-live-only>Read the marks</button>
           <button type="button" class="btn wide" data-stop hidden>Stop</button>
         </div>
+        <p class="note">Paste marked text into the box, footer and all, then read. The words stay where they are; the bits come out of them.</p>
         <div class="field">
           <label>Break it, then read again</label>
           <div class="breakit">
@@ -137,8 +134,12 @@
       </form>
 
       <div class="text-col">
-        <div class="text-head"><span data-head></span></div>
-        <div id="read-text" role="log" aria-live="off"></div>
+        <div class="text-head"><span data-head></span><span class="meter"><button type="button" data-edit hidden style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Edit the text</button></span></div>
+        <div class="text" id="read-box">
+          <textarea class="paste" id="paste" data-paste placeholder="Paste text written with a mark. Keep the footer line if it has one." aria-label="Marked text"></textarea>
+          <div id="read-text" role="log" aria-live="off" hidden></div>
+        </div>
+        <p class="note mono" data-foot hidden></p>
         <div class="verdict" data-verdict hidden style="margin-top: 14px"></div>
       </div>
 
