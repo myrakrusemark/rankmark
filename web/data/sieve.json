@@ -1,0 +1,62 @@
+{
+ "generated": "2026-09-05T00:11:28.023Z",
+ "trials": 100000,
+ "carriers": 400,
+ "tag": 2,
+ "profiles": {
+  "0": {
+   "name": "lean",
+   "frameBitsFor1Byte": 71,
+   "sources": {
+    "fair": {
+     "falseFrames": 0,
+     "rate": 0
+    },
+    "biased70": {
+     "falseFrames": 0,
+     "rate": 0
+    },
+    "runs": {
+     "falseFrames": 0,
+     "rate": 0
+    }
+   }
+  },
+  "1": {
+   "name": "standard",
+   "frameBitsFor1Byte": 214,
+   "sources": {
+    "fair": {
+     "falseFrames": 0,
+     "rate": 0
+    },
+    "biased70": {
+     "falseFrames": 0,
+     "rate": 0
+    },
+    "runs": {
+     "falseFrames": 0,
+     "rate": 0
+    }
+   }
+  },
+  "2": {
+   "name": "robust",
+   "frameBitsFor1Byte": 328,
+   "sources": {
+    "fair": {
+     "falseFrames": 0,
+     "rate": 0
+    },
+    "biased70": {
+     "falseFrames": 0,
+     "rate": 0
+    },
+    "runs": {
+     "falseFrames": 0,
+     "rate": 0
+    }
+   }
+  }
+ }
+}
