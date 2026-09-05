@@ -51,9 +51,11 @@ n=1 attribution evidence in `out/attribution.json`).
 
 Revised 2026-09-05: the page is an essay, "The watermark you can't see", with the tool's parts placed inside the
 sections that explain them, and the full three-tab tool (as it stood) at the bottom. Each section is a few
-paragraphs and one station, a working input in the text like a sound button in a children's book. A sticky model
-bar (shared by every station and the tool) sits under the title. No hero, no scroll reveals; motion only where data
-moves.
+paragraphs and one station, a working input in the text like a sound button in a children's book. There is no model
+bar: a fixed card in the corner loads the small model on arrival (progress bar, cancel, and the whole ladder behind
+"Want to use a stronger model?" with memory and time per rung), then shrinks to a pill naming the loaded model that
+reopens it. One engine worker and one loaded model serve every station; jobs queue one at a time. No hero, no scroll
+reveals; motion only where data moves. Section one runs on its own when in view and pauses out of view.
 
 | Section | Station | What the visitor does |
 |---|---|---|
