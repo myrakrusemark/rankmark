@@ -57,6 +57,7 @@ try {
   await page.waitForFunction(() => !document.querySelector("#st-write [data-stop]").hidden, null, { timeout: 30000 });
   await page.waitForTimeout(8000);
   await page.screenshot({ path: join(OUT_DIR, "write-running.png") });
+  log("read box while writing:", JSON.stringify(await page.evaluate(() => ({ chars: document.querySelector("#st-read [data-paste]").value.length, head: document.querySelector("#st-read [data-head]").textContent }))));
   await page.waitForFunction(() => document.querySelector("#st-write [data-stop]").hidden, null, { timeout: 600000 });
   const write = await page.evaluate(() => {
     const st = document.querySelector("#st-write");
@@ -71,6 +72,7 @@ try {
     };
   });
   log("write:", JSON.stringify(write));
+  log("read box when done:", JSON.stringify(await page.evaluate(() => { const v = document.querySelector("#st-read [data-paste]").value; return { chars: v.length, footer: v.slice(v.lastIndexOf("\n") + 1, v.lastIndexOf("\n") + 40), head: document.querySelector("#st-read [data-head]").textContent }; })));
   await page.screenshot({ path: join(OUT_DIR, "write-done.png") });
 
   // read station: the card was carried over by onDone

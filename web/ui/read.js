@@ -27,6 +27,14 @@ export class ReadPanel {
     this.edit();
   }
 
+  // the text as it is still being written elsewhere on the page, footer to come
+  preview(text) {
+    if (this.running) return;
+    this.ta.value = text;
+    this.original = null;
+    this.edit();
+  }
+
   // show the textarea with the current text
   edit() {
     this.ta.hidden = false;

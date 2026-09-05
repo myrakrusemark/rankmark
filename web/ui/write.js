@@ -9,8 +9,8 @@ const utf8 = new TextEncoder();
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
 
 export class WritePanel {
-  constructor(root, { engine, picker, callouts, strip, view, onDone }) {
-    Object.assign(this, { root, engine, picker, callouts, strip, view, onDone });
+  constructor(root, { engine, picker, callouts, strip, view, onDone, onText }) {
+    Object.assign(this, { root, engine, picker, callouts, strip, view, onDone, onText });
     this.q = s => root.querySelector(s);
     this.profile = 0;
     this.running = false;
@@ -109,6 +109,7 @@ export class WritePanel {
             tokens++;
             this.tokensOut.push({ id: e.id, carrier: e.carrier, bit: e.bit });
             const el = this.view.append(e);
+            this.onText?.(this.view.root.textContent);
             if (!sawFirst) { sawFirst = true; this.callouts.once("first", el); }
             if (e.carrier) {
               carriers++;

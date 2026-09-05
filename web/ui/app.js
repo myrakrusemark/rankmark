@@ -50,11 +50,15 @@ attachEvidence(stEv, $("#st-evidence [data-evidence]"));
 
 const stWrite = new WritePanel($("#st-write"), {
   engine, picker, callouts: quiet, strip: stWriteStrip, view: stWriteView,
+  // the text flows on into the read and evidence stations: as it is written,
+  // then finished with its footer line, so nothing needs pasting
+  onText: text => { stRead.preview(text); $("#st-read [data-head]").textContent = "the text from section three, still being written"; },
   onDone: ({ card, tokens, mode }) => {
     if (mode !== "done") return;
     stRead.load(card);
     stEv.load(card);
     stEv.reference = tokens;
+    $("#st-read [data-head]").textContent = "the text from section three, with its footer line";
     $("#st-read [data-paste]").placeholder = "";
   },
 });
