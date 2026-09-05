@@ -69,3 +69,31 @@
   --warn: #E0836C;
   --warn-soft: rgba(224, 131, 108, 0.14);
 }
+
+/* the frame's five sections: knock, label, message, seal, repair (woven shares the message color) */
+:root {
+  --seg-sync: #3B6EA8;
+  --seg-header: #2A8C7A;
+  --seg-payload: #B8781A;
+  --seg-checksum: #7A4FA3;
+  --seg-parity: #B04A6E;
+  --seg-woven: #B8781A;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --seg-sync: #7FA7DE;
+    --seg-header: #5FC4B0;
+    --seg-payload: #D89A3C;
+    --seg-checksum: #B48AE0;
+    --seg-parity: #E27A9C;
+    --seg-woven: #D89A3C;
+  }
+}
+:root[data-theme="dark"] {
+  --seg-sync: #7FA7DE;
+  --seg-header: #5FC4B0;
+  --seg-payload: #D89A3C;
+  --seg-checksum: #B48AE0;
+  --seg-parity: #E27A9C;
+  --seg-woven: #D89A3C;
+}

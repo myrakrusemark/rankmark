@@ -75,7 +75,7 @@ details.adv .field { margin-top: 10px; }
 .tok { display: inline; border-bottom: 2px solid transparent; padding-bottom: 1px; opacity: 0; transition: opacity var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out); }
 .tok.in { opacity: 1; }
 .tok.null { border-bottom-color: transparent; }
-.tok.bit0, .tok.bit1 { border-bottom-color: var(--accent); }
+.tok.bit0, .tok.bit1 { border-bottom-color: var(--seg); background: color-mix(in srgb, var(--seg) 13%, transparent); border-radius: 2px 2px 0 0; }
 .tok.bit0 { border-bottom-style: dotted; }        /* hollow: a 0 */
 .tok.bit1 { border-bottom-style: solid; }         /* solid: a 1 */
 .tok.dead { border-bottom-color: var(--warn); opacity: 0.55; }
@@ -90,31 +90,27 @@ details.adv .field { margin-top: 10px; }
 }
 .tip.on { opacity: 1; transform: none; }
 
-/* strip column */
+/* strip column: the frame in sections, one color each */
 .strip-col { display: flex; flex-direction: column; gap: 12px; }
 .strip-head { font-size: 12px; color: var(--muted); font-family: var(--font-mono); display: flex; justify-content: space-between; }
-.strip { position: relative; padding: 10px 0 4px; }
-.strip .row { display: flex; gap: 2px; align-items: flex-end; height: 26px; overflow: hidden; }
-/* long frames and grown reads wrap into rows of fixed cells; the labels give way to a legend */
-.strip.wrap .row { flex-wrap: wrap; height: auto; row-gap: 3px; align-items: flex-start; }
-.strip.wrap .bit { flex: 0 0 5px; height: 10px; }
-.strip.wrap .labels span { border-top: 0; flex: none !important; margin-right: 10px; }
-.strip .bit { flex: 1 1 0; min-width: 2px; height: 14px; background: var(--surface-2); border-radius: 2px; position: relative; transition: background-color var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out); }
-.strip .bit[data-kind="sync"] { background: color-mix(in srgb, var(--ink) 18%, var(--surface-2)); }
-.strip .bit[data-kind="header"] { background: color-mix(in srgb, var(--ink) 10%, var(--surface-2)); }
-.strip .bit.v0 { background: var(--accent); opacity: 0.45; }
-.strip .bit.v1 { background: var(--accent); }
-.strip .bit.spent { transform: scaleY(0.4); }
-.strip .bit.next { box-shadow: 0 0 0 1px var(--accent); }
-.strip .bit.dead { background: var(--warn); }
-.strip .labels { display: flex; gap: 2px; margin-top: 6px; }
-.strip .labels span { font: 10px/1.2 var(--font-mono); color: var(--muted); text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-top: 1px solid var(--line-strong); padding-top: 4px; }
-.strip .seal { position: absolute; inset: 4px -6px -2px; border: 1.5px solid var(--ok); border-radius: 6px; pointer-events: none; opacity: 0;
+.strip { position: relative; padding: 6px 0 4px; }
+.strip .segs { display: flex; flex-direction: column; gap: 12px; }
+.strip .fseg { padding-left: 10px; border-left: 3px solid var(--seg); }
+.strip .fseg-head { display: flex; justify-content: space-between; gap: 8px; font: 12px/1.3 var(--font-mono); color: var(--muted); margin-bottom: 5px; }
+.strip .fseg-head b { color: var(--seg); font-weight: 600; }
+.strip .row { display: flex; flex-wrap: wrap; gap: 2px; }
+.strip .bit { width: 7px; height: 12px; background: var(--surface-2); border-radius: 2px; transition: background-color var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out); }
+.strip .bit.v0 { background: var(--seg); opacity: 0.45; }
+.strip .bit.v1 { background: var(--seg); }
+.strip .bit.spent { transform: scaleY(0.5); }
+.strip .bit.next { box-shadow: 0 0 0 1px var(--seg); }
+.strip .bit.dead { background: var(--warn); opacity: 1; }
+.strip .fseg-note { font-size: 12.5px; line-height: 1.4; color: var(--muted); margin: 5px 0 0; }
+.strip .seal { position: absolute; inset: 0 -8px -4px; border: 1.5px solid var(--ok); border-radius: 6px; pointer-events: none; opacity: 0;
   clip-path: inset(0 100% 0 0); }
 .strip.sealed .seal { opacity: 1; animation: draw 420ms var(--ease-out) forwards; }
 @keyframes draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-.strip.locked .bit { background: var(--ok); }
-.fly { position: fixed; z-index: 20; width: 10px; height: 4px; border-radius: 2px; background: var(--accent); pointer-events: none; }
+.fly { position: fixed; z-index: 20; width: 10px; height: 4px; border-radius: 2px; background: var(--seg); pointer-events: none; }
 .fly.b0 { opacity: 0.5; }
 .strip-note { font-size: 13px; color: var(--ink-2); }
 .strip-note b { color: var(--ink); }
@@ -123,6 +119,17 @@ details.adv .field { margin-top: 10px; }
 .verdict.no { border-color: var(--line-strong); }
 .verdict.warn { border-color: var(--warn); background: var(--warn-soft); }
 .verdict .tag { font-family: var(--font-mono); font-size: 18px; display: block; margin-top: 4px; }
+
+/* the section colors, on sections, cells, flying bits and the words that carry them */
+:root, [data-kind=""], [data-seg=""] { --seg: var(--accent); }
+[data-kind="sync"], [data-seg="sync"] { --seg: var(--seg-sync); }
+[data-kind="header"], [data-seg="header"] { --seg: var(--seg-header); }
+[data-kind="payload"], [data-seg="payload"] { --seg: var(--seg-payload); }
+[data-kind="checksum"], [data-seg="checksum"] { --seg: var(--seg-checksum); }
+[data-kind="parity"], [data-seg="parity"] { --seg: var(--seg-parity); }
+[data-kind="woven"], [data-seg="woven"] { --seg: var(--seg-woven); }
+[data-kind="read"] { --seg: var(--accent); }
+[data-kind="outside"] { --seg: var(--muted); }
 
 /* callouts: one card at a time, anchored near what it explains */
 .callout {
