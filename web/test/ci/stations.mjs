@@ -44,6 +44,9 @@ try {
   for (let i = 0; i < 300 && !(await loaded()); i++) await page.waitForTimeout(1000);
   log("model in:", await loaded());
 
+  // MAXNEW=40 caps the write so the stalled-frame path shows
+  if (process.env.MAXNEW) await page.evaluate(n => { const e = window.rankmark.engine, run = e.run.bind(e); e.run = (cmd, args, hooks) => run(cmd, cmd === "embed" ? { ...args, opts: { ...args.opts, maxNew: n } } : args, hooks); }, Number(process.env.MAXNEW));
+
   // write station
   await page.evaluate(({ opening, message, temp }) => {
     const st = document.querySelector("#st-write");
@@ -72,6 +75,8 @@ try {
     };
   });
   log("write:", JSON.stringify(write));
+  log("notice:", JSON.stringify(await page.evaluate(() => { const n = document.querySelector("#st-write [data-notice]"); return { hidden: n.hidden, text: n.textContent.slice(0, 120), copyHidden: document.querySelector("#st-write [data-copy]").hidden }; })));
+  if (process.env.MAXNEW) { await page.screenshot({ path: join(OUT_DIR, "write-stalled.png") }); log("stalled run done"); await page.evaluate(() => window.rankmark.engine.unload()); await ctx.close(); server.kill(); process.exit(0); }
   log("read box when done:", JSON.stringify(await page.evaluate(() => { const v = document.querySelector("#st-read [data-paste]").value; return { chars: v.length, footer: v.slice(v.lastIndexOf("\n") + 1, v.lastIndexOf("\n") + 40), head: document.querySelector("#st-read [data-head]").textContent }; })));
   await page.screenshot({ path: join(OUT_DIR, "write-done.png") });
 

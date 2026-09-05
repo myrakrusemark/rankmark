@@ -53,7 +53,8 @@ const stWrite = new WritePanel($("#st-write"), {
   // the text flows on into the read and evidence stations: as it is written,
   // then finished with its footer line, so nothing needs pasting
   onText: text => { stRead.preview(text); $("#st-read [data-head]").textContent = "the text from section three, still being written"; },
-  onDone: ({ card, tokens, mode }) => {
+  onDone: ({ card, tokens, mode, planted, frameBits }) => {
+    if (mode === "stalled") { $("#st-read [data-head]").textContent = `the text from section three; its frame stopped at ${planted} of ${frameBits} bits, so a read finds nothing`; return; }
     if (mode !== "done") return;
     stRead.load(card);
     stEv.load(card);
@@ -89,7 +90,7 @@ const rView = new TextView($("#read-text"), { boxed: false });
 let toolRead;
 const toolWrite = new WritePanel($("#panel-write"), {
   engine, picker, callouts, strip: wStrip, view: wView,
-  onDone: ({ card, mode }) => { if (mode === "done") return; toolRead.load(card); select("read"); toolRead.run().then(() => { if (mode === "break") $("#panel-read [data-break]")?.focus(); }); },
+  onDone: ({ card, mode }) => { if (mode === "done" || mode === "stalled") return; toolRead.load(card); select("read"); toolRead.run().then(() => { if (mode === "break") $("#panel-read [data-break]")?.focus(); }); },
 });
 toolRead = new ReadPanel($("#panel-read"), { engine, picker, callouts, strip: rStrip, view: rView });
 initLocal($("#panel-local"));

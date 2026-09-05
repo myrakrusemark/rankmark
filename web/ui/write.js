@@ -82,6 +82,7 @@ export class WritePanel {
     if (box) this.view.prime(prompt); else this.view.clear();
     this.strip.reset();
     const cardEl = this.q("[data-card]"); if (cardEl) cardEl.hidden = true;
+    const notice = this.q("[data-notice]"); if (notice) notice.hidden = true;
     // the copy button shows from the start, disabled until the text is done
     const copyBtn = this.q("[data-copy]");
     if (copyBtn) { copyBtn.dataset.label ??= copyBtn.textContent; copyBtn.hidden = false; copyBtn.disabled = true; copyBtn.textContent = "Generating…"; }
@@ -128,8 +129,21 @@ export class WritePanel {
       });
       if (res.cancelled) { head.textContent = "stopped"; meter.textContent = ""; if (copyBtn) copyBtn.hidden = true; return; }
       this.result = res;
-      head.textContent = `${tokens} words, ${carriers} carry bits, ${res.framesPlanted.toFixed(1)} copies of the frame`;
       meter.textContent = "";
+      if (planted < frameBits) {
+        // the model settled into text it could predict and the free choices ran
+        // out before the frame closed: say so, and offer another go
+        head.textContent = `${tokens} words, ${planted} of ${frameBits} bits planted: the frame did not close`;
+        if (copyBtn) copyBtn.hidden = true;
+        if (notice) {
+          notice.innerHTML = `The model drifted into text it could predict almost word for word, so it ran out of free choices to hide bits in after ${planted} of ${frameBits}. There is no finished mark in this text. The small model does this about one run in six; write it again, change the opening, or nudge the temperature up.<div class="btn-row" style="margin-top: 10px"><button type="button" class="btn primary" data-again>Write it again</button></div>`;
+          notice.hidden = false;
+          notice.querySelector("[data-again]").onclick = () => this.run();
+        }
+        this.onDone?.({ card: null, text: res.text, tag: tagText, mode: "stalled", tokens: this.tokensOut, result: res, planted, frameBits });
+        return;
+      }
+      head.textContent = `${tokens} words, ${carriers} carry bits, ${res.framesPlanted.toFixed(1)} copies of the frame`;
       const card = markCard(res.text, res.lens, res.fingerprint, res.textHash);
       if (cardEl) {
         this.q("[data-card-text]").textContent = res.text;
