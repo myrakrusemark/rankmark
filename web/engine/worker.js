@@ -38,6 +38,15 @@ self.onmessage = async ev => {
       return done({});
     }
     if (cmd === "info") return done(info(currentLens()));
+    if (cmd === "logitHash") {
+      // hash of the logit row after the prompt, for cross-machine comparison
+      const lens = await ensureLens(args, reqId);
+      const ids = await lens.completionContext(args.prompt);
+      const logits = await lens.step(ids, true);
+      const digest = await crypto.subtle.digest("SHA-256", logits.buffer.slice(logits.byteOffset, logits.byteOffset + logits.byteLength));
+      const hash = [...new Uint8Array(digest)].slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("");
+      return done({ hash, tokens: ids.length, fingerprint: lens.fp, threads: lens.threads });
+    }
     if (cmd === "load") {
       await ensureLens(args, reqId);
       return done(info(currentLens()));

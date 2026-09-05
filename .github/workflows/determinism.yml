@@ -1,0 +1,60 @@
+name: determinism
+
+on:
+  push:
+    branches: [main, feat/public-site]
+  workflow_dispatch:
+
+jobs:
+  probe:
+    name: ${{ matrix.os }} / ${{ matrix.browser }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15]
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Fetch the pinned engine build
+        run: node scripts/fetch-engine.mjs
+      - name: Install Playwright ${{ matrix.browser }}
+        working-directory: web/test/ci
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps ${{ matrix.browser }}
+        shell: bash
+      - name: Write and read a seeded text
+        run: node web/test/ci/determinism.mjs
+        env:
+          BROWSER: ${{ matrix.browser }}
+          OUT_DIR: ci-out
+        shell: bash
+        timeout-minutes: 40
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: determinism-${{ matrix.os }}-${{ matrix.browser }}
+          path: ci-out/
+          if-no-files-found: warn
+
+  compare:
+    name: compare across the matrix
+    needs: probe
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: determinism-*
+          path: ci-out
+          merge-multiple: true
+      - name: Diff the records
+        run: node web/test/ci/compare.mjs ci-out

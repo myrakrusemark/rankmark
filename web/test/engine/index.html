@@ -75,6 +75,25 @@ const engine = {
 
   async unload() { return runJob("unload", {}); },
 
+  // sha256 of the cached weights against the registry; needs the lens unloaded
+  // (the worker holds the file open) and a file under 2 GiB (one ArrayBuffer)
+  async hashCachedModel(id) {
+    const rung = rungById(registry, id);
+    await runJob("unload", {});
+    const root = await navigator.storage.getDirectory();
+    const cache = await root.getDirectoryHandle("cache");
+    for await (const [name, h] of cache.entries()) {
+      if (h.kind !== "file" || name.startsWith("__metadata__") || !name.endsWith("_" + rung.file)) continue;
+      const f = await h.getFile();
+      if (f.size !== rung.bytes) return { name, size: f.size, expected: rung.bytes, ok: false, reason: "size" };
+      if (f.size >= 2 ** 31) return { name, size: f.size, ok: null, reason: "over 2 GiB, not hashed" };
+      const d = await crypto.subtle.digest("SHA-256", await f.arrayBuffer());
+      const sha256 = [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, "0")).join("");
+      return { name, size: f.size, sha256, ok: sha256 === rung.sha256 };
+    }
+    return { ok: false, reason: "not cached" };
+  },
+
   async roundtrip(id, opts = {}) {
     const rung = rungById(registry, id);
     const o = { prompt: PROMPT, payloadHex: "a7", profile: 0, tau: 2.0, temperature: 0.7, ...opts };
