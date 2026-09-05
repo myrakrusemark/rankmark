@@ -84,15 +84,9 @@
   <div class="station" id="st-write">
     <div class="st-head"><span>write with a mark</span><span class="meter" data-meter></span></div>
     <div class="two row-inputs">
-      <div class="pair">
-        <div class="field">
-          <div class="label-row"><label for="st-tag">Your message</label><span class="hint" data-tag-hint></span></div>
-          <input id="st-tag" type="text" data-tag value="hello" maxlength="16" autocomplete="off">
-        </div>
-        <div class="field">
-          <div class="label-row"><label for="st-temp">Temperature</label><span class="hint" data-temp-out>0.7</span></div>
-          <div class="range-box"><input id="st-temp" type="range" data-temp min="0" max="1.5" step="0.1" value="0.7"></div>
-        </div>
+      <div class="field">
+        <div class="label-row"><label for="st-tag">Your message</label><span class="hint" data-tag-hint></span></div>
+        <input id="st-tag" type="text" data-tag value="hello" maxlength="16" autocomplete="off">
       </div>
       <div class="field">
         <div class="label-row" aria-hidden="true">&nbsp;</div>
@@ -100,6 +94,10 @@
         <button type="button" class="btn wide" data-stop hidden>Stop</button>
         <div class="progress" style="margin-top: 8px"><span class="line"><i></i></span><b>0%</b></div>
       </div>
+    </div>
+    <div class="field temp-field">
+      <div class="label-row"><label for="st-temp">Temperature</label><span class="hint" data-temp-out>0.7</span></div>
+      <div class="range-box"><input id="st-temp" type="range" data-temp min="0" max="1.5" step="0.1" value="0.7"></div>
     </div>
     <p class="temp-note">Hotter temperature means more chaotic choices, and more chaotic choices mean more room for the message. At any one step the dial does not change which words are free choices, since the gate reads the model's own scores first; but stranger words lead into sentences the model cannot predict, and those have more free choices to hide bits in. Cold text settles into stock phrases and runs out of room. The price is worse writing; 0.7 is about where this small model stops repeating itself without talking nonsense.</p>
     <div class="two">
