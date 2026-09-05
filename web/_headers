@@ -8,15 +8,16 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
 
-# unhashed modules and data: a redeploy shows up within a minute
+# unhashed modules and data: revalidated on every load (ETag makes that a 304),
+# so a page never pairs new HTML with last deploy's modules
 /engine/*
-  Cache-Control: public, max-age=60, must-revalidate
+  Cache-Control: no-cache
 /ui/*
-  Cache-Control: public, max-age=60, must-revalidate
+  Cache-Control: no-cache
 /styles/*
-  Cache-Control: public, max-age=60, must-revalidate
+  Cache-Control: no-cache
 /data/*
-  Cache-Control: public, max-age=60, must-revalidate
+  Cache-Control: no-cache
 
 # the engine build is pinned by hash in the registry; a new build gets a new path
 /vendor/*
