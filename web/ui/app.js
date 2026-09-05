@@ -35,7 +35,7 @@ const picker = new ModelPicker({
 const consent = r => picker.consent(r);
 
 // ---- stations ---------------------------------------------------------------
-const ranked = new RankedChoice($("#st-ranked"), { engine, snapshot });
+const ranked = new RankedChoice($("#st-ranked"), { engine, picker, snapshot, consent });
 
 const stWriteStrip = new FrameStrip($("#st-write-strip"));
 const stWriteView = new TextView($("#st-write-text"), { emptyText: "The model's words appear here as it writes." });
@@ -193,6 +193,7 @@ async function autoload() {
     if (!job) return;
     job = null;
     loaded = null;
+    ranked.ready(false, "No model loaded");
     picker.granted.delete(current.id);
     engine.restart();
     await picker.dropPartial(current);
@@ -212,6 +213,7 @@ async function autoload() {
     cancel.textContent = "Cancel";
     renderList(fromCache ? "loading" : "downloading");
     show();
+    ranked.ready(false, "Loading the model");
     picker.granted.add(rung.id);
     const mine = engine.run("load", { rung }, {
       onProgress: p => {
@@ -230,6 +232,7 @@ async function autoload() {
       bar.classList.remove("wait");
       msg.textContent = `The download did not finish (${err.message}). Each example asks again when you run it.`;
       cancel.textContent = "Close";
+      ranked.ready(false, "No model loaded");
       renderList("");
       return;
     }
@@ -243,8 +246,8 @@ async function autoload() {
     cancel.textContent = "Close";
     await picker.scanCache();
     renderList("ready");
+    ranked.ready(true);
     shrinkTimer = setTimeout(shrink, 10000);
-    ranked.live(rung);   // section one writes its own sentence with the model that just came in
   };
   cancel.addEventListener("click", async () => { await stop(); shrink(); });
   pill.addEventListener("click", show);

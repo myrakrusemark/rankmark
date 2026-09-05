@@ -1,47 +1,60 @@
-// Station: every word is a ranked choice. A sentence grows one word at a time;
-// on the right, the model's top candidates for the next word with their odds
-// at the chosen temperature. When the word is chosen its row lights up and the
-// word flies into the sentence. No controls: it runs on its own whenever it is
-// in view and waits when it is not. It starts on the recorded run; when the
-// page's model comes in it writes its own sentence in one short job, and that
-// sentence takes over at the next pass. The model is shared with every other
-// station, so this one never holds it: the words are taken all at once and only
-// the animation pauses.
+// Station: every word is a ranked choice. The visitor gives an opening and a
+// temperature and starts it; the page's model writes the next 24 words. For
+// each word the list on the right shows the model's top candidates with their
+// odds at that temperature, the pick lights up, and the word flies into the
+// sentence. Words land as the engine picks them and the landing pauses while
+// the station is out of view. The model is shared with every other station,
+// so this is one short job. Without a model (phones) the button plays the
+// recorded run from the snapshot.
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const WORDS = 24;
 
 export class RankedChoice {
-  constructor(root, { engine, snapshot }) {
-    Object.assign(this, { root, engine });
+  constructor(root, { engine, picker, snapshot, consent }) {
+    Object.assign(this, { root, engine, picker, consent });
     this.q = s => root.querySelector(s);
-    this.steps = snapshot?.ranked?.steps || [];
-    this.prompt = snapshot?.ranked?.prompt || "It was late in the harbor when the last boat came in, and";
-    this.recordedTemp = snapshot?.ranked?.temperature ?? 0.7;
-    this.source = this.steps.length ? "a recorded run" : "";
-    this.pending = null;   // the model's own sentence, waiting for the next pass
+    this.recorded = snapshot?.ranked || null;
+    this.prompt = this.recorded?.prompt || "It was late in the harbor when the last boat came in, and";
+    this.steps = [];
     this.i = 0;            // words landed in the sentence
     this.shown = null;     // the step whose list is on the right
     this.chosen = false;   // whether that list has its pick lit
+    this.source = "";
     this.busy = false;
-    this.looping = false;
-    this.ran = false;
+    this.running = false;
     this.visible = false;
     this.waiters = [];
+    const prompt = this.q("[data-prompt]"), btn = this.q("[data-start]");
+    prompt.value = this.prompt;
+    if (engine) {
+      this.ready(false, "Loading the model");   // app.js enables it when the model is in
+    } else {
+      prompt.readOnly = true;
+      btn.textContent = "Watch a recorded run";
+      btn.disabled = !this.recorded;
+    }
     this.q("[data-temp]").addEventListener("input", () => this.renderList());
-    this.renderSentence();
-    this.showList(0, false);
-    this.renderSource();
-    // out of view, the loop waits before the next word
+    btn.addEventListener("click", () => this.start());
+    this.renderList();
+    // out of view, the landing waits before the next word
     new IntersectionObserver(([e]) => {
       this.visible = e.isIntersecting;
       if (this.visible) { const w = this.waiters; this.waiters = []; for (const r of w) r(); }
     }, { threshold: 0.25 }).observe(root);
-    if (this.steps.length) this.loop();
   }
 
   temp() { return Number(this.q("[data-temp]").value); }
+
+  // the start button follows the model: off while it loads or after a cancel
+  ready(on, label) {
+    const btn = this.q("[data-start]");
+    btn.disabled = !on || this.running;
+    btn.textContent = label || (this.steps.length ? "Write it again" : `Write the next ${WORDS} words`);
+  }
+
   whenVisible() { return this.visible ? Promise.resolve() : new Promise(r => this.waiters.push(r)); }
 
   // odds of each candidate at the chosen temperature, from the recorded scores
@@ -101,7 +114,6 @@ export class RankedChoice {
       if (this.steps[k + 1]) this.showList(k + 1, false);
     } finally {
       this.busy = false;
-      if (!this.steps[k + 1]) this.renderList();
     }
   }
 
@@ -127,51 +139,64 @@ export class RankedChoice {
     });
   }
 
-  // one pass after another: land every word, hold, take the model's sentence if
-  // it has arrived, start again
-  async loop() {
-    if (this.looping) return;
-    this.looping = true;
-    for (;;) {
-      if (this.pending) { this.steps = this.pending; this.pending = null; this.renderSource(); }
-      this.i = 0;
-      this.renderSentence();
-      this.showList(0, false);
-      while (this.i < this.steps.length) await this.choose(this.i);
-      await this.whenVisible();
-      await wait(4000);
+  async start() {
+    if (this.running) return;
+    this.running = true;
+    const btn = this.q("[data-start]");
+    btn.disabled = true;
+    this.steps = [];
+    this.i = 0;
+    this.q("[data-sentence]").hidden = false;
+    try {
+      if (this.engine) await this.live(btn);
+      else await this.replay();
+    } finally {
+      this.running = false;
+      if (this.engine) this.ready(true);
+      else { btn.disabled = false; btn.textContent = "Watch it again"; }
+      this.renderSource();
     }
   }
 
-  // the model's own sentence, once, when a model is in. With a recorded pass
-  // playing, the words wait for the next pass; with nothing to show yet they
-  // land as the engine picks them
-  async live(rung) {
-    if (!this.engine || this.ran) return;
-    this.ran = true;
+  // the page's model writes the next words from the opening at the slider's
+  // temperature; each word lands as the engine picks it, faster when the
+  // engine runs ahead of the animation
+  async live(btn) {
+    const rung = this.picker.rung;
+    if (!(await this.consent(rung))) return;
     const name = rung.id.replace(/-Q.*$/, "");
-    const steps = [];
-    const asTheyCome = !this.steps.length;
-    let queue = Promise.resolve(), pendingLandings = 0;
+    this.prompt = this.q("[data-prompt]").value.trim() || this.prompt;
+    this.renderSentence();
+    this.showList(0, false);
+    this.source = `${name}, writing on this computer`;
+    this.renderSource();
+    btn.textContent = "Writing";
+    let queue = Promise.resolve(), pending = 0;
     const land = k => {
-      pendingLandings++;
-      queue = queue.then(async () => { const rush = pendingLandings > 3; await this.choose(k, rush ? 0 : 250, rush ? 160 : 320); pendingLandings--; });
+      pending++;
+      queue = queue.then(async () => { const rush = pending > 3; await this.choose(k, rush ? 0 : 250, rush ? 160 : 320); pending--; });
     };
-    if (asTheyCome) {
-      this.steps = steps;
-      this.source = `${name}, writing on this computer`;
-      this.renderSource();
+    await this.engine.run("sample", { rung, opts: { prompt: this.prompt, maxNew: WORDS, temperature: this.temp() } }, {
+      onEvent: e => {
+        if (e.type !== "token") return;
+        this.steps.push({ piece: e.piece, rank: e.rank, entropy: e.entropy, top: e.top });
+        land(this.steps.length - 1);
+      },
+    });
+    await queue;
+    this.source = this.steps.length ? `${name} wrote this on your computer` : "";
+  }
+
+  // no model here: the recorded run, one word at a time
+  async replay() {
+    this.prompt = this.recorded.prompt;
+    this.renderSentence();
+    this.source = "a recorded run";
+    this.renderSource();
+    for (const s of this.recorded.steps) {
+      this.steps.push(s);
+      await this.choose(this.steps.length - 1);
     }
-    try {
-      await this.engine.run("sample", { rung, opts: { prompt: this.prompt, maxNew: 24, temperature: this.temp() } }, {
-        onEvent: e => { if (e.type === "token") { steps.push({ piece: e.piece, rank: e.rank, entropy: e.entropy, top: e.top }); if (asTheyCome) land(steps.length - 1); } },
-      });
-    } catch { this.ran = false; return; }
-    if (!steps.length) { this.ran = false; return; }
-    this.recordedTemp = this.temp();
-    this.source = `${name} wrote this on your computer`;
-    if (asTheyCome) { await queue; this.renderSource(); this.loop(); }
-    else this.pending = steps;
   }
 }
 

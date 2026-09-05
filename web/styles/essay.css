@@ -38,7 +38,7 @@
 .ranked li.took .piece { color: var(--ink); font-weight: 600; }
 .ranked ol.chosen li:not(.took) { opacity: 0.45; }
 .ranked .list-head { font: 11px/1.4 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-.ranked ol:empty::before { content: "run it live to see the list"; font: 13px var(--font-body); color: var(--muted); }
+.ranked ol:empty::before { content: "the top 8 for each word appears here"; font: 13px var(--font-body); color: var(--muted); }
 /* the chosen word travels from its row into the sentence */
 .fly-word { position: fixed; z-index: 20; pointer-events: none; font-size: 18px; line-height: 1.6; color: var(--ink); background: var(--accent-soft); border-radius: 4px; padding: 0 3px; white-space: pre; }
 .ranked li .rank { color: var(--muted); }
