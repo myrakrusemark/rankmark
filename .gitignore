@@ -12,3 +12,6 @@ out/
 !web/**/*.html
 # engine build artifacts (from the wllama fork); fetched or built, not source
 web/vendor/
+web/test/ci/node_modules/
+web/test/ci/out/
+ci-out/

@@ -4,11 +4,30 @@
     "name": "llama.cpp-wasm (wllama fork)",
     "repo": "https://github.com/myrakrusemark/wllama",
     "branch": "rankmark",
-    "commit": "9fb194c",
+    "commit": "bac45ef",
     "wllama": "3.7.0",
     "llamacpp": "c7bda030",
     "emsdk": "4.0.20",
-    "_comment": "the engine build is part of a lens fingerprint; rebuilds get a new commit here"
+    "_comment": "the engine build is part of a lens fingerprint; scripts/fetch-engine.mjs downloads these assets from the release and verifies them",
+    "release": "https://github.com/myrakrusemark/wllama/releases/tag/engine-bac45ef",
+    "assets": {
+      "index.js": {
+        "path": "wllama/index.js",
+        "sha256": "ec9ee621fea690dc1bfd7e421e612aa89a5529724b3d33b3cb1c64ef18e72eaa"
+      },
+      "wllama.wasm": {
+        "path": "wllama/wllama.wasm",
+        "sha256": "1a09da8269f82ce19e085b45c2702c857477efdb86434977e88a1f43d510c095"
+      },
+      "compat-wllama.js": {
+        "path": "wllama-compat/wllama.js",
+        "sha256": "5123205b21c85e91c233113f61564c4c2a8abccfb4c3f21a3e24c656c2a786ed"
+      },
+      "compat-wllama.wasm": {
+        "path": "wllama-compat/wllama.wasm",
+        "sha256": "132806f642285b12d54d897a31f88a26dd0c2f0671823fdf3c7892910ef5bcc7"
+      }
+    }
   },
   "rungs": [
     {
