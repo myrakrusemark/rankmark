@@ -118,6 +118,13 @@ function frameLayout(payloadLen, p) {
   return parts;
 }
 
+// the segments of a frame about to be written, from bit 0: what the strip draws
+export function layoutOf(payloadLen, profileId) {
+  const layout = frameLayout(payloadLen, PROFILES[profileId]);
+  const total = layout.reduce((s, [, n]) => s + n, 0);
+  return spansFrom(layout, 0, total);
+}
+
 function spansFrom(layout, offset, limit) {
   const spans = [];
   let cur = offset;

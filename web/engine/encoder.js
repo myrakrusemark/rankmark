@@ -3,7 +3,7 @@
 // context (no window in the browser engine).
 
 import { hexToBytes } from "./bits.js";
-import { buildFrame, tagOf } from "./framing.js";
+import { buildFrame, layoutOf, tagOf } from "./framing.js";
 import { entropyOf, sortedTokenIds } from "./logits.js";
 import { mulberry32, randomSeed, sampleSoftmax } from "./sampling.js";
 import { textHash } from "./fingerprint.js";
@@ -68,7 +68,10 @@ export async function embed(lens, opts, onEvent) {
   const maxNew = Math.min(opts.maxNew || need, cap);
 
   let planted = 0, carriers = 0, nextIdx = 0;
-  onEvent({ type: "start", frame_bits: frameBits, max_new: maxNew, seed, temperature, tau });
+  onEvent({
+    type: "start", frame_bits: frameBits, max_new: maxNew, seed, temperature, tau,
+    layout: layoutOf(nbytes, profile), context_tokens: context.length,
+  });
 
   // context[0] is the prefill seed; context[1..] are force-replayed as single
   // steps (ungated, not part of the watermark) so encode's KV cache is built the
