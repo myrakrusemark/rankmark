@@ -1,0 +1,23 @@
+# Cross-origin isolation for SharedArrayBuffer (multi-threaded WASM). Weights come
+# from huggingface.co, which answers CORS, so require-corp is satisfied.
+# One header name per path rule only: Pages joins duplicates with a comma.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# unhashed modules and data: a redeploy shows up within a minute
+/engine/*
+  Cache-Control: public, max-age=60, must-revalidate
+/ui/*
+  Cache-Control: public, max-age=60, must-revalidate
+/styles/*
+  Cache-Control: public, max-age=60, must-revalidate
+/data/*
+  Cache-Control: public, max-age=60, must-revalidate
+
+# the engine build is pinned by hash in the registry; a new build gets a new path
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
