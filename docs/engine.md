@@ -49,8 +49,23 @@ write of a 1-byte lean frame (79 bits) at temperature 0.7 and tau 2.0, then its 
 | Qwen3-8B Q4_K_M, 5.03 GB | 0.6 tok/s | 6% | 770 tokens, 0.68 frames, 22 min | no frame, 28 min |
 
 The bigger rungs are more confident, so at tau 2.0 fewer than one word in twelve carries a bit and a frame does
-not fit inside the budget. tau is per rung in the registry; the entropy profile pass (`MODE=entropy`) records each
-rung's carrier rate at eight gates so tau can be set where about a fifth of the words carry.
+not fit inside the budget. tau is per rung in the registry. The entropy profile pass (`MODE=entropy`, results under
+`entropy` in `measurements.json`) writes 200 tokens per rung at temperature 0.7 and records the carrier rate at
+eight gates:
+
+| Rung | mean entropy (nats) | tau 0.75 | tau 1.0 | tau 1.25 | tau 1.5 | tau 2.0 | chosen tau | registry rate |
+|---|---|---|---|---|---|---|---|---|
+| 0.6B | 1.97 | 65% | 60% | 57% | 52% | 46% | 2.0 | 0.40 |
+| 1.7B | 1.18 | 58% | 51% | 44% | 37% | 19% | 1.25 | 0.35 |
+| 4B | 0.78 | 39% | 31% | 23% | 17% | 9% | 1.0 | 0.25 |
+| 8B | 0.78 | 44% | 32% | 24% | 17% | 7% | 1.0 | 0.25 |
+
+The registry rate is discounted below the profile because longer texts drift into confident territory (the 0.6B
+measured 40% over 330 tokens against 46% on the profile, and one story write at seed 20260905 carried only 21%).
+That write also exposed the budget rule: with 1.3 times the expected tokens it stopped at 71 of 103 bits. The
+encoder now allows 2.0 times; a write stops at the first sentence end past the seal, so the slack costs nothing on a
+normal text. The recorded run in `web/data/snapshot.json` is a 1.7B write at tau 1.25: 217 tokens, 107 carriers
+(49%), the 103-bit frame planted once and read back.
 
 Sibling reads (writer at tau 2.0, 200 tokens, seed 777; each other rung reading the same text) never validate.
 Bit agreement on the words both models treat as carriers runs 53 to 71%, against 50% for a coin, and the two models
