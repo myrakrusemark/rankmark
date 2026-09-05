@@ -11,6 +11,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const WORDS = 24;
+const PACE = { list: 800, hold: 550, fly: 450, after: 250 };   // ms per word: about two seconds
 
 export class RankedChoice {
   constructor(root, { engine, picker, snapshot, consent }) {
@@ -104,19 +105,22 @@ export class RankedChoice {
       </li>`).join("");
   }
 
-  // land word k: show its list, light the pick after a beat, fly it into the sentence
-  async choose(k, beat = 600, flyMs = 320) {
+  // land word k at a pace the eye can follow: the list appears, the pick lights
+  // up, it holds, the word flies into the sentence, a breath, the next list
+  async choose(k) {
     const step = this.steps[k];
     if (!step) return;
     await this.whenVisible();
     this.busy = true;
     try {
       if (this.shown !== k || this.chosen) this.showList(k, false);
-      if (beat) await wait(beat);
+      await wait(PACE.list);
       this.showList(k, true);
-      await this.fly(k, flyMs);
+      await wait(PACE.hold);
+      await this.fly(k, PACE.fly);
       this.i = k + 1;
       this.renderSentence();
+      await wait(PACE.after);
       if (this.steps[k + 1]) this.showList(k + 1, false);
     } finally {
       this.busy = false;
@@ -167,8 +171,7 @@ export class RankedChoice {
   }
 
   // the page's model writes the next words from the opening at the slider's
-  // temperature; each word lands as the engine picks it, faster when the
-  // engine runs ahead of the animation
+  // temperature; each word lands as the engine picks it
   async live(btn) {
     const rung = this.picker.rung;
     if (!(await this.consent(rung))) return;
@@ -180,11 +183,9 @@ export class RankedChoice {
     this.source = `${name}, writing on this computer`;
     this.renderSource();
     btn.textContent = "Writing";
-    let queue = Promise.resolve(), pending = 0;
-    const land = k => {
-      pending++;
-      queue = queue.then(async () => { const rush = pending > 3; await this.choose(k, rush ? 0 : 250, rush ? 160 : 320); pending--; });
-    };
+    // the engine runs ahead; the words land one at a time at the animation's pace
+    let queue = Promise.resolve();
+    const land = k => { queue = queue.then(() => this.choose(k)); };
     await this.engine.run("sample", { rung, opts: { prompt: this.prompt, maxNew: WORDS, temperature: this.temp() } }, {
       onEvent: e => {
         if (e.type !== "token") return;

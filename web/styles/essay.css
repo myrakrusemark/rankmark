@@ -28,6 +28,7 @@
 
 /* ranked choice */
 .ranked .sentence { font-size: 18px; line-height: 1.6; min-height: 3.2em; padding: 14px 16px; background: var(--ground); border: 1px solid var(--line); border-radius: var(--radius-sm); white-space: pre-wrap; }
+.ranked .box-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
 .ranked .sentence .muted { color: var(--muted); }
 .ranked .sentence[contenteditable="true"] { cursor: text; transition: border-color var(--t-fast) var(--ease-snap); }
 .ranked .sentence[contenteditable="true"]:focus { outline: none; border-color: var(--accent); }
