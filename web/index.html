@@ -51,15 +51,21 @@
   </aside>
   <div class="station ranked" id="st-ranked">
     <div class="st-head"><span>every word is a ranked choice</span><span class="meter" data-source></span></div>
+    <div class="two row-inputs">
+      <div class="field temp-field">
+        <div class="label-row"><label for="rk-temp">Temperature</label><span class="hint" data-temp-out>0.7</span></div>
+        <div class="range-box"><input id="rk-temp" type="range" name="temperature" data-temp min="0" max="1.5" step="0.1" value="0.7"></div>
+      </div>
+      <div class="field">
+        <div class="label-row" aria-hidden="true">&nbsp;</div>
+        <button type="button" class="btn primary wide" data-start>Write the next 24 words</button>
+      </div>
+    </div>
+    <p class="temp-note">Temperature is how chaotic each choice is. At 0 the model always takes #1, and the same opening gives the same sentence every time. Turn it up and the pick wanders further down the list, so the words get more surprising and, past a point, worse.</p>
     <div class="two">
       <div>
         <label class="box-label" id="rk-label" for="rk-box">Write anything here; the model continues it.</label>
         <div class="sentence" id="rk-box" data-sentence contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="rk-label" spellcheck="false" data-empty="Type an opening line."></div>
-        <div class="controls">
-          <label>temperature <input type="range" name="temperature" data-temp min="0" max="1.5" step="0.1" value="0.7"><b data-temp-out>0.7</b></label>
-          <button type="button" class="btn primary" data-start>Write the next 24 words</button>
-        </div>
-        <p class="temp-note">Temperature is how chaotic each choice is. At 0 the model always takes #1, and the same opening gives the same sentence every time. Turn it up and the pick wanders further down the list, so the words get more surprising and, past a point, worse.</p>
       </div>
       <div class="list-col">
         <div class="list-head"><span data-list-head>the model's top 8 for the next word</span></div>
