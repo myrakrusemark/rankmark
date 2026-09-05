@@ -165,12 +165,19 @@ async function autoload() {
   const card = $("#autoload");
   if (!card || hw.saveData) return;
   const q = s => card.querySelector(s);
-  const msg = q("[data-al-msg]"), fill = q("[data-al-fill]"), pct = q("[data-al-pct]"), bar = q(".al-bar"), cancel = q("[data-al-cancel]"), list = q("[data-al-list]");
+  const msg = q("[data-al-msg]"), fill = q("[data-al-fill]"), pct = q("[data-al-pct]"), bar = q(".al-bar"), cancel = q("[data-al-cancel]"), list = q("[data-al-list]"), pill = q("[data-al-pill]");
   const name = r => r.id.replace(/-Q.*$/, "");
   const needs = r => `${Math.ceil(r.heapGB + 2)} GB free memory${r.heapGB >= 5 ? " (a 16 GB machine)" : ""}${r.memory64 ? ", Chrome 133+ or Firefox 134+" : ""}`;
-  let current = null, job = null, hideTimer = null;
-  const hide = () => { card.classList.add("off"); setTimeout(() => { card.hidden = true; }, 400); };
-  const show = () => { clearTimeout(hideTimer); card.hidden = false; requestAnimationFrame(() => card.classList.remove("off")); };
+  let current = null, job = null, loaded = null, shrinkTimer = null;
+  // the card is the page's only model chooser, so it never goes away: it
+  // shrinks to a pill naming the loaded model, and the pill reopens it
+  const shrink = () => {
+    clearTimeout(shrinkTimer);
+    pill.innerHTML = loaded ? `<b>${name(loaded)}</b> ready · <u>change model</u>` : `No model loaded · <u>choose one</u>`;
+    pill.hidden = false;
+    card.classList.add("mini");
+  };
+  const show = () => { clearTimeout(shrinkTimer); card.hidden = false; card.classList.remove("mini"); pill.hidden = true; requestAnimationFrame(() => card.classList.remove("off")); };
   const renderList = state => {
     list.innerHTML = registry.rungs.map(r => {
       const p = hw.rungs.find(x => x.id === r.id);
@@ -185,6 +192,7 @@ async function autoload() {
   const stop = async () => {
     if (!job) return;
     job = null;
+    loaded = null;
     picker.granted.delete(current.id);
     engine.restart();
     await picker.dropPartial(current);
@@ -227,6 +235,7 @@ async function autoload() {
     }
     if (job !== mine || res?.cancelled) return;
     job = null;
+    loaded = rung;
     bar.classList.remove("wait");
     fill.style.transform = "scaleX(1)";
     pct.textContent = "";
@@ -234,9 +243,10 @@ async function autoload() {
     cancel.textContent = "Close";
     await picker.scanCache();
     renderList("ready");
-    hideTimer = setTimeout(hide, 10000);
+    shrinkTimer = setTimeout(shrink, 10000);
   };
-  cancel.addEventListener("click", async () => { hide(); await stop(); });
+  cancel.addEventListener("click", async () => { await stop(); shrink(); });
+  pill.addEventListener("click", show);
   list.addEventListener("click", e => {
     const b = e.target.closest("[data-al-pick]");
     if (!b || b.disabled) return;

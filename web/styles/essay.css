@@ -25,7 +25,6 @@
 .station .note { margin: 10px 0 0; }
 
 /* sticky model bar */
-.model-bar.sticky { position: sticky; top: 0; z-index: 15; background: var(--ground); border-bottom: 1px solid var(--line); padding: 10px 0; margin: 0 0 8px; }
 
 /* ranked choice */
 .ranked .sentence { font-size: 18px; line-height: 1.6; min-height: 3.2em; padding: 14px 16px; background: var(--ground); border: 1px solid var(--line); border-radius: var(--radius-sm); white-space: pre-wrap; }
@@ -109,3 +108,10 @@
 .al-list b { color: var(--ink); font-weight: 600; }
 .al-list i { font: 11px/1.2 var(--font-mono); font-style: normal; color: var(--accent); margin-left: auto; }
 .al-list span { flex: 1 1 100%; }
+/* shrunk to a pill once the model is in (or the download was cancelled); click to reopen */
+.autoload.mini { width: auto; padding: 0; }
+.autoload.mini .al-body { display: none; }
+.al-pill { border: 0; background: none; padding: 9px 12px; font: inherit; font-size: 12.5px; color: var(--ink-2); cursor: pointer; display: flex; gap: 6px; align-items: center; }
+.al-pill b { color: var(--ink); }
+.al-pill u { color: var(--accent); text-decoration: none; }
+.al-pill:hover u { text-decoration: underline; }

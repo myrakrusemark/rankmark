@@ -54,6 +54,7 @@ export class ModelPicker {
     parts.push(this.cached.has(r.id) ? "downloaded" : `${GB(r.bytes)} download`);
     parts.push(`about ${mins} min to write a short tag on a laptop, the same to read it`);
     if (p && !p.ok) parts.push(p.reasons.join("; "));
+    if (!this.status) return;
     this.status.textContent = parts.join(" · ");
     this.status.classList.toggle("warn", !!(p && !p.ok));
   }
