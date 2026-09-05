@@ -109,12 +109,14 @@
     <div class="two">
       <div>
         <label class="box-label" id="st-box-label" for="st-write-text">Write anything here; the model continues it, with your message hidden in the words it picks.</label>
-        <div id="st-write-text" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="st-box-label" spellcheck="false" data-box-edit>It was late in the harbor when the last boat came in, and</div>
+        <div class="box-wrap">
+          <div id="st-write-text" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="st-box-label" spellcheck="false" data-box-edit>It was late in the harbor when the last boat came in, and</div>
+          <button type="button" class="btn copy-btn" data-copy hidden title="Copy the text with its footer line">Copy</button>
+        </div>
         <div class="text-head" style="margin: 8px 0 0"><span data-head></span></div>
         <div class="card" data-card hidden style="margin-top: 12px">
           <div class="foot" data-card-foot style="border: 0; margin: 0; padding: 0"></div>
           <div data-card-text hidden></div>
-          <div class="btn-row" style="margin-top: 8px"><button type="button" class="btn" data-copy>Copy the marked text</button></div>
         </div>
       </div>
       <div>

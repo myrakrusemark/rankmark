@@ -143,3 +143,8 @@
 .al-pill b { color: var(--ink); }
 .al-pill u { color: var(--accent); text-decoration: none; }
 .al-pill:hover u { text-decoration: underline; }
+
+/* the copy button sits in the output box's top right corner once there is a marked text to copy */
+.station .box-wrap { position: relative; }
+.station .box-wrap .copy-btn { position: absolute; top: 8px; right: 8px; padding: 5px 10px; font-size: 12px; z-index: 2; }
+.station .box-wrap:has(.copy-btn:not([hidden])) .text { padding-right: 84px; }
