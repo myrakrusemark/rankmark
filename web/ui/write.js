@@ -67,20 +67,21 @@ export class WritePanel {
     if (!prompt) { this.q("[data-prompt]").focus(); return; }
     if (!(await this.picker.consent(rung))) return;
 
-    const temperature = Number(this.q("[data-temp]").value);
-    const seedRaw = this.q("[data-seed]").value.trim();
+    const temperature = Number(this.q("[data-temp]")?.value ?? 0.7);
+    const seedRaw = (this.q("[data-seed]")?.value ?? "").trim();
     const opts = { prompt, payloadHex: hex(bytes), profile: this.profile, temperature };
     if (seedRaw) opts.seed = Number(seedRaw) >>> 0;
 
     this.setBusy(true);
     this.view.clear();
     this.strip.reset();
-    this.q("[data-card]").hidden = true;
+    const cardEl = this.q("[data-card]"); if (cardEl) cardEl.hidden = true;
     const head = this.q("[data-head]");
     const meter = this.q("[data-meter]");
     head.textContent = "";
     meter.textContent = "";
     let tokens = 0, carriers = 0, t0 = 0, frameBits = 0, contextTokens = 0, sawCarrier = { 0: false, 1: false }, sawNull = false, sawFirst = false, planted = 0;
+    this.tokensOut = [];
     const tagText = this.q("[data-tag]").value.trim();
 
     try {
@@ -95,6 +96,7 @@ export class WritePanel {
           }
           if (e.type === "token") {
             tokens++;
+            this.tokensOut.push({ id: e.id, carrier: e.carrier, bit: e.bit });
             const el = this.view.append(e);
             if (!sawFirst) { sawFirst = true; this.callouts.once("first", el); }
             if (e.carrier) {
@@ -117,13 +119,16 @@ export class WritePanel {
       head.textContent = `${tokens} words, ${carriers} carry bits, ${res.framesPlanted.toFixed(1)} copies of the frame`;
       meter.textContent = "";
       const card = markCard(res.text, res.lens, res.fingerprint, res.textHash);
-      this.q("[data-card-text]").textContent = res.text;
-      this.q("[data-card-foot]").textContent = card.slice(res.text.length + 2);
-      this.q("[data-card]").hidden = false;
-      this.q("[data-copy]").onclick = async () => { try { await navigator.clipboard.writeText(card); this.q("[data-copy]").textContent = "Copied"; setTimeout(() => this.q("[data-copy]").textContent = "Copy the marked text", 1500); } catch { /* clipboard blocked */ } };
-      this.q("[data-read]").onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "read" });
-      this.q("[data-break]").onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "break" });
-      this.callouts.once("done", this.q("[data-card]"));
+      if (cardEl) {
+        this.q("[data-card-text]").textContent = res.text;
+        this.q("[data-card-foot]").textContent = card.slice(res.text.length + 2);
+        cardEl.hidden = false;
+      }
+      const copy = this.q("[data-copy]"); if (copy) copy.onclick = async () => { try { await navigator.clipboard.writeText(card); copy.textContent = "Copied"; setTimeout(() => copy.textContent = "Copy the marked text", 1500); } catch { /* clipboard blocked */ } };
+      const rd = this.q("[data-read]"); if (rd) rd.onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "read" });
+      const br = this.q("[data-break]"); if (br) br.onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "break" });
+      this.onDone?.({ card, text: res.text, tag: tagText, mode: "done", tokens: this.tokensOut, result: res });
+      if (cardEl) this.callouts.once("done", cardEl);
     } catch (err) {
       head.textContent = `could not write: ${err.message}`;
     } finally {

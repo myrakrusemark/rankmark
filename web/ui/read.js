@@ -14,10 +14,10 @@ export class ReadPanel {
     this.running = false;
     this.q("[data-run]").addEventListener("click", () => this.run());
     this.q("[data-stop]").addEventListener("click", () => this.engine.cancel());
-    this.q("[data-edit]").addEventListener("click", () => this.edit());
+    this.q("[data-edit]")?.addEventListener("click", () => this.edit());
     this.view.root.addEventListener("click", e => { if (!this.running && !e.target.closest("a")) this.edit(); });
     for (const b of root.querySelectorAll("[data-break]")) b.addEventListener("click", () => this.breakIt(b.dataset.break));
-    this.q("[data-lineup]").addEventListener("click", () => this.lineup());
+    this.q("[data-lineup]")?.addEventListener("click", () => this.lineup());
     this.ta.addEventListener("input", () => { this.original = null; });
   }
 
@@ -31,15 +31,16 @@ export class ReadPanel {
   edit() {
     this.ta.hidden = false;
     this.view.root.hidden = true;
-    this.q("[data-edit]").hidden = true;
-    this.q("[data-foot]").hidden = true;
+    const ed = this.q("[data-edit]"); if (ed) ed.hidden = true;
+    const ft = this.q("[data-foot]"); if (ft) ft.hidden = true;
   }
   // show the annotated words in place of the textarea
   annotate(card) {
     this.ta.hidden = true;
     this.view.root.hidden = false;
-    this.q("[data-edit]").hidden = false;
+    const ed = this.q("[data-edit]"); if (ed) ed.hidden = false;
     const foot = this.q("[data-foot]");
+    if (!foot) return;
     if (card) { foot.textContent = `footer: rankmark: ${card.rungId} f=${card.fp}${card.textHash ? " t=" + card.textHash : ""}`; foot.hidden = false; }
     else foot.hidden = true;
   }
@@ -48,7 +49,7 @@ export class ReadPanel {
     this.running = on;
     this.q("[data-run]").hidden = on;
     this.q("[data-stop]").hidden = !on;
-    this.q("[data-edit]").disabled = on;
+    const ed = this.q("[data-edit]"); if (ed) ed.disabled = on;
     this.root.querySelectorAll("[data-break], [data-lineup]").forEach(el => { el.disabled = on; });
   }
 

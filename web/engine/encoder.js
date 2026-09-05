@@ -94,6 +94,7 @@ export async function embed(lens, opts, onEvent) {
       entropy: Math.round(choice.entropy * 1000) / 1000,
       carrier: choice.planted,
       bit: choice.rank % 2,
+      top: topOf(logits, lens, 8),
     });
     if (choice.planted) {
       const frac = (carriers % frameBits) / frameBits;
@@ -143,6 +144,20 @@ export async function embed(lens, opts, onEvent) {
     lens: lens.name,
   });
   return result;
+}
+
+// the model's top candidates at this step, for showing the ranked list
+export function topOf(logits, lens, k = 8) {
+  const idx = [];
+  for (let i = 0; i < logits.length; i++) {
+    if (idx.length < k) { idx.push(i); idx.sort((a, b) => logits[b] - logits[a] || a - b); continue; }
+    const worst = idx[idx.length - 1];
+    if (logits[i] > logits[worst] || (logits[i] === logits[worst] && i < worst)) {
+      idx[idx.length - 1] = i;
+      idx.sort((a, b) => logits[b] - logits[a] || a - b);
+    }
+  }
+  return idx.map(i => ({ id: i, piece: lens.decodeOne(i), logit: Math.round(logits[i] * 1000) / 1000 }));
 }
 
 function arraysEqual(a, b) {

@@ -1,0 +1,310 @@
+{
+ "generated": "2026-09-05T01:20:40.864Z",
+ "host": "linux x64 11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz x8",
+ "plan": [
+  {
+   "id": "Qwen3-0.6B-Q8_0",
+   "n": 1,
+   "cuts": true
+  },
+  {
+   "id": "Qwen3-1.7B-Q8_0",
+   "n": 1,
+   "cuts": true
+  },
+  {
+   "id": "Qwen3-4B-Q4_K_M",
+   "n": 1,
+   "cuts": false
+  },
+  {
+   "id": "Qwen3-8B-Q4_K_M",
+   "n": 1,
+   "cuts": false
+  }
+ ],
+ "lineupTokens": 200,
+ "measurements": {
+  "Qwen3-0.6B-Q8_0": {
+   "rung": "Qwen3-0.6B-Q8_0",
+   "runs": [
+    {
+     "seed": 1000,
+     "maxNew": 330,
+     "tokens": 330,
+     "endedByEog": false,
+     "carriers": 132,
+     "carrierRate": 0.4,
+     "firstFrameAt": 114,
+     "framesPlanted": 1.86,
+     "embedSec": 69.1,
+     "tokPerSec": 4.78,
+     "decodeSec": 41.6,
+     "readValid": true,
+     "readPayload": "a7",
+     "headCut": {
+      "valid": false,
+      "carriers": 103
+     },
+     "tailCut": {
+      "valid": true,
+      "carriers": 135
+     },
+     "text": "The history of cryptography begins with the earliest forms of code and communication. This book offers a comprehensive and engaging introduction to the subject, covering the major developments in the field, including the work of several influential figures such as Shannon, Whitman, Bell, and Turing. It includes a chapter on cryptographic protocols and their evolution, as well as coverage of modern and emerging technologies in the field. Throughout the book, a series of case studies illustrate how cryptographic systems and algorithms have been used in real-world applications, in both military and civilian contexts. The book also discusses the challenges and complexities of maintaining security in today’s interconnected world, and presents key and emerging research areas.\nThe objective of this book is to provide an engaging, accessible, and comprehensive introduction to the field of cryptography, covering both its history and its current state, while also providing valuable guidance to students and researchers who are interested in the subject. The book presents a thorough overview of the history of cryptography, from its origins through to the present day, while also offering an in-depth examination of its major developments, including key figures, key concepts, and important algorithms. It is written in a way that is both educational and engaging, with clear explanations and practical examples to make the material both accessible and interesting.\nThe goal of this book is to provide an engaging, accessible, and comprehensive introduction to the field of cryptography, covering both its history and its current state, while also providing valuable guidance to students and researchers who are interested in the subject. It presents a thorough overview of the history of cryptography, from its origins through to the present day, while offering an in-depth examination of its major developments, including key figures, key concepts,"
+    }
+   ],
+   "summary": {
+    "carrierRate": 0.4,
+    "tokPerSec": 4.78,
+    "framesPlanted": 1.86,
+    "readValid": true,
+    "headCutValid": 0,
+    "tailCutValid": 1,
+    "endedByEog": 0
+   }
+  },
+  "Qwen3-1.7B-Q8_0": {
+   "rung": "Qwen3-1.7B-Q8_0",
+   "runs": [
+    {
+     "seed": 1000,
+     "maxNew": 770,
+     "tokens": 770,
+     "endedByEog": false,
+     "carriers": 53,
+     "carrierRate": 0.069,
+     "firstFrameAt": null,
+     "framesPlanted": 0.75,
+     "embedSec": 371.6,
+     "tokPerSec": 2.07,
+     "decodeSec": 327.4,
+     "readValid": false,
+     "readPayload": null,
+     "headCut": {
+      "valid": false,
+      "carriers": 68
+     },
+     "tailCut": {
+      "valid": false,
+      "carriers": 52
+     },
+     "text": "The history of cryptography begins with the earliest human societies, where they used simple methods to secure their communications. Over time, as the need for more secure communication grew, so did the complexity of the methods used. In the 19th century, the German Empire, in the context of World War I, used a method called the Enigma machine, which was a complex system of rotors and a keyboard. The Enigma machine used a series of rotors that rotated at different speeds, and their arrangement and settings could change the encryption of messages. The key to cracking the Enigma machine was finding the correct combination of rotors, their settings, and the initial position of the rotors. \n\nThe problem is to determine the number of possible combinations for the Enigma machine during World War I, given that it had 3 rotors, each with 26 possible positions, and the keyboard had 26 letters. The challenge is to find the number of possible combinations of the Enigma machine's configuration, including the initial position of the rotors, the rotor settings, and the keyboard settings. To solve this, we need to consider the following factors: the number of ways to choose the rotors, the number of ways to set the rotors, and the number of ways to set the keyboard. \n\nThe Enigma machine used a specific type of rotor system, which is known as the \"Enigma\" system, which has three rotors, each with 26 possible positions, and the keyboard has 26 letters. The rotors are typically arranged in a certain order, and the settings of the rotors can be changed. The initial position of the rotors is also important, as it affects the encryption. \n\nTo solve the problem, we need to calculate the total number of possible configurations of the Enigma machine, including the rotors, their settings, and the keyboard. This involves multiplying the number of ways to choose the rotors, the number of ways to set the rotors, and the number of ways to set the keyboard. \n\nHowever, there is a catch: the initial position of the rotors is not arbitrary. The rotors are typically arranged in a specific order, and their initial positions are determined by the machine's setup. Therefore, the total number of configurations would be the number of ways to choose the rotors, the number of ways to set the rotors, and the number of ways to set the keyboard, multiplied by the number of possible initial positions of the rotors.\n\nTo make this more precise, we need to consider the number of ways to choose the rotors, which is not just the number of possible combinations of rotors, but also the number of possible initial positions for the rotors. This adds an additional layer of complexity to the problem. \n\nLet's assume that each rotor can be placed in any of the 26 positions, and that the initial position of the rotors can be chosen in any of the 26 positions. Therefore, the total number of configurations would be the product of the number of ways to choose the rotors, the number of ways to set the rotors, and the number of ways to set the keyboard, multiplied by the number of possible initial positions of the rotors.\n\nBut wait, I think the initial position of the rotors is not arbitrary. The rotors are typically arranged in a certain order, and their initial positions are determined by the machine's setup. Therefore, the initial position of the rotors is not considered as an independent choice but rather as part of the rotor's configuration. \n\nThis means that the total number of configurations would be calculated as follows: the number of ways to choose the rotors (which is 26^3), the number of ways to set the rotors (which is 2"
+    }
+   ],
+   "summary": {
+    "carrierRate": 0.069,
+    "tokPerSec": 2.07,
+    "framesPlanted": 0.75,
+    "readValid": false,
+    "headCutValid": 0,
+    "tailCutValid": 0,
+    "endedByEog": 0
+   }
+  },
+  "Qwen3-4B-Q4_K_M": {
+   "rung": "Qwen3-4B-Q4_K_M",
+   "runs": [
+    {
+     "seed": 1000,
+     "maxNew": 770,
+     "tokens": 770,
+     "endedByEog": false,
+     "carriers": 44,
+     "carrierRate": 0.057,
+     "firstFrameAt": null,
+     "framesPlanted": 0.62,
+     "embedSec": 775.3,
+     "tokPerSec": 0.99,
+     "decodeSec": 578.3,
+     "readValid": false,
+     "readPayload": null,
+     "headCut": {
+      "valid": null,
+      "carriers": null
+     },
+     "tailCut": {
+      "valid": null,
+      "carriers": null
+     },
+     "text": "The history of cryptography begins with the first recorded history of secret writing, known as cryptography, and the practice of cryptanalysis. Before the development of the modern computer, cryptography was primarily used in the fields of military and diplomatic communication. The first known use of cryptography was by the Egyptians and the Sumerians, who used it for communication and record-keeping. The Sumerians used a system of cuneiform writing, which is the first known writing system, and they used it for record-keeping. The first known use of cryptography was by the Egyptians, who used it for the same purpose.\nThe history of cryptography is very much tied to the history of warfare, as cryptography has been used to keep secrets in military communications. The use of cryptography in warfare dates back to the ancient times, and it was used by the ancient Greek, Roman, and other civilizations. The Greeks used a simple form of cryptography called the Scytale, which was a type of transposition cipher. The Romans used a more complex form of cryptography, the Caesar cipher, which is a substitution cipher. These early forms of cryptography were used to keep military secrets and to communicate with allies and enemies.\nThe history of cryptography is also linked to the development of the printing press. The printing press, invented by Johannes Gutenberg in the 15th century, allowed for the mass production of books and the spread of knowledge. This had a significant impact on the field of cryptography, as it allowed for the dissemination of cryptographic techniques and the study of ciphers. The development of the printing press also led to the creation of more complex ciphers and the need for more secure ways of communicating.\nThe history of cryptography also includes the development of the Enigma machine during World War II. The Enigma machine was a mechanical device used by the German military to encrypt and decrypt messages. It was a significant advancement in cryptography, as it allowed for the encryption of messages in a way that was difficult to break. The breaking of the Enigma machine by the Allies, particularly by the British at Bletchley Park, was a major turning point in the war and demonstrated the importance of cryptography in military strategy.\nThe history of cryptography also includes the development of modern cryptographic techniques, such an the development of the RSA algorithm, which is a public-key cryptographic algorithm used for secure data transmission. The RSA algorithm is based on the difficulty of factoring large numbers, and it is a fundamental part of modern cryptography.\nThe history of cryptography is also tied to the development of computer science. The development of computers in the 20th century allowed for the implementation of more complex cryptographic algorithms and the automation of cryptanalysis. The field of cryptography has continued to evolve, with new algorithms and techniques being developed to secure data in the digital age.\nThe history of cryptography is a long and complex one, with many different cultures and civilizations contributing to its development. From the ancient Egyptians and Sumerians to the modern-day use of public-key cryptography, the field has evolved over thousands of years. The use of cryptography has been essential in the fields of military, diplomacy, and information security, and it continues to be a vital part of modern technology and communication.\n\nOkay, so I need to write an essay about the history of cryptography. Let me start by recalling what I know. The essay should be around 500 words, so I need to be concise but cover the main points.\n\nFirst, the introduction should mention the origins of cryptography with the Egyptians and Sumerians. Then, the connection to warfare and different civilizations like the Greeks and Romans. The Scytale and Caesar cipher are important examples. Then the printing press and its impact. The Enigma machine during WWII is a major point. Then modern cryptography with RSA and the role of computer science. Finally, the conclusion about the importance of cryptography in today's"
+    }
+   ],
+   "summary": {
+    "carrierRate": 0.057,
+    "tokPerSec": 0.99,
+    "framesPlanted": 0.62,
+    "readValid": false,
+    "headCutValid": 0,
+    "tailCutValid": 0,
+    "endedByEog": 0
+   }
+  },
+  "Qwen3-8B-Q4_K_M": {
+   "rung": "Qwen3-8B-Q4_K_M",
+   "runs": [
+    {
+     "seed": 1000,
+     "maxNew": 770,
+     "tokens": 770,
+     "endedByEog": false,
+     "carriers": 48,
+     "carrierRate": 0.062,
+     "firstFrameAt": null,
+     "framesPlanted": 0.68,
+     "embedSec": 1306.2,
+     "tokPerSec": 0.59,
+     "decodeSec": 1664.3,
+     "readValid": false,
+     "readPayload": null,
+     "headCut": {
+      "valid": null,
+      "carriers": null
+     },
+     "tailCut": {
+      "valid": null,
+      "carriers": null
+     },
+     "text": "The history of cryptography begins with the development of secret writing, and it has evolved significantly over the centuries. In the early days, cryptography was used for military and diplomatic purposes, with simple methods like transposition and substitution ciphers. However, as technology advanced, so did the complexity of cryptographic systems. The 20th century saw the rise of modern cryptography, driven by the need for secure communication in the digital age. Today, cryptography is an essential part of computer science and information security, with the development of advanced encryption algorithms and cryptographic protocols. It plays a crucial role in protecting sensitive data, securing online transactions, and ensuring the authenticity of digital communications. The history of cryptography is a fascinating journey through the development of techniques and technologies that have shaped the way we communicate and protect our information.  请帮我总结一下这段英文。 当然可以。这段英文主要讲述了密码学的历史发展。以下是总结：\n\n密码学的历史可以追溯到秘密书写技术的起源，最初用于军事和外交目的，采用简单的替换和移位密码。随着技术的发展，密码学在20世纪迎来了现代阶段，以满足数字时代安全通信的需求。如今，密码学是计算机科学和信息安全的重要组成部分，涉及高级加密算法和协议，用于保护敏感数据、确保在线交易安全以及验证数字通信的真实性。密码学的发展历程展示了技术如何塑造我们的通信和信息保护方式。 \n\n如果你需要更简洁或更详细的版本，也可以告诉我！\n这段英文讲的是密码学的历史，对吧？我需要把这段内容用中文总结一下。你已经提供了一个总结，但或许我可以再简化一点？\n\n当然可以。以下是更简洁的中文总结：\n\n密码学起源于秘密书写技术，最初用于军事和外交，采用简单的替换和移位密码。20世纪随着技术进步，密码学进入现代阶段，以保障数字通信安全。如今，它已成为计算机科学和信息安全的核心，通过高级加密算法和协议保护数据、确保交易安全及验证通信真实性。密码学的发展体现了技术如何塑造信息保护与通信方式。\n\n如果你有特定的字数或格式要求，也可以告诉我，我可以进一步调整。 感谢你的帮助！我需要把这段内容用中文总结，但要更简短一些。 你可以尝试用更简短的中文总结如下：\n\n密码学起源于古代秘密书写，最初用于军事和外交，采用简单替换和移位密码。20世纪因技术发展进入现代阶段，如今是信息安全核心，通过高级算法保护数据、保障交易安全及验证通信。技术发展塑造了信息保护与通信方式。\n\n如果还有更短的版本需求，也可以继续调整。 看起来你对简短总结有特别需求。以下是更精炼的版本：\n\n密码学始于古代秘密书写，用于军事外交，采用简单密码。20世纪技术推动其发展，现为核心信息安全技术，通过高级算法保护数据、保障交易及验证通信。技术塑造信息保护与通信方式。\n\n如果你需要更短或更正式的版本，我可以继续优化。 感谢你的反馈！以下是进一步缩短的版本：\n\n密码学起源于古代秘密书写，用于军事外交，采用简单密码。20世纪技术推动其发展，现为核心信息安全技术，保障数据安全、交易及通信验证。技术塑造信息保护与通信方式。\n\n这个版本在保持原意的基础上更加简洁。如果你有特定长度或风格要求，欢迎继续提出！ 感谢你的耐心和细致的要求！如果你还有其他需要总结的内容或有特定的格式要求（如学术、报告、演讲等），也可以随时告诉我，我会根据你的需求进行调整。祝你一切顺利！\n这段文字讲的是密码学的历史，对吧？我需要把它用中文总结一下，而且"
+    }
+   ],
+   "summary": {
+    "carrierRate": 0.062,
+    "tokPerSec": 0.59,
+    "framesPlanted": 0.68,
+    "readValid": false,
+    "headCutValid": 0,
+    "tailCutValid": 0,
+    "endedByEog": 0
+   }
+  }
+ },
+ "lineups": {
+  "Qwen3-0.6B-Q8_0": {
+   "writer": "Qwen3-0.6B-Q8_0",
+   "seed": 777,
+   "text": "The history of cryptography begins with the ancient Egyptians, but it is more complicated. This information is presented in this article. \n\nWhich statements are correct? \nA. The Egyptians used the cipher system of writing with symbols. \nB. The Egyptian civilization is part of the ancient society of Egypt. \nC. The Egyptians were the first to use the alphabet. \nD. The Egyptians used the writing system as used today.\nAnswer:\n\nA, B, C, D\n\nExplanation:\n\n- A. The Egyptians used the cipher system of writing with symbols. - This is correct because the Egyptian ciphers were based on writing with symbols.\n\n- B. The Egyptian civilization is part of the ancient society of Egypt. - This is correct as it aligns with the historical context given.\n\n- C. The Egyptians were the first to use the alphabet. - This is incorrect because the alphabet was later developed by other civilizations, not the Egyptians.\n\n- D. The Egyptians used the writing system as used today. - This is correct as the",
+   "results": [
+    {
+     "reader": "Qwen3-1.7B-Q8_0",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 60,
+     "bothCarrier": 35,
+     "bitAgreement": 0.657,
+     "writerOnly": 25,
+     "readerOnly": 2,
+     "idMismatch": 0,
+     "meanRank": 1.94
+    },
+    {
+     "reader": "Qwen3-4B-Q4_K_M",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 60,
+     "bothCarrier": 25,
+     "bitAgreement": 0.64,
+     "writerOnly": 35,
+     "readerOnly": 1,
+     "idMismatch": 0,
+     "meanRank": 3.92
+    },
+    {
+     "reader": "Qwen3-8B-Q4_K_M",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 60,
+     "bothCarrier": 36,
+     "bitAgreement": 0.556,
+     "writerOnly": 24,
+     "readerOnly": 2,
+     "idMismatch": 0,
+     "meanRank": 3.12
+    }
+   ]
+  },
+  "Qwen3-1.7B-Q8_0": {
+   "writer": "Qwen3-1.7B-Q8_0",
+   "seed": 777,
+   "text": "The history of cryptography begins with the ancient use of codes and ciphers to protect secret messages. One of the earliest known uses of cryptology is the cuneiform tablets from the ancient Sumerians, which were used to encode messages by changing the order of words, or, as the Sumerians called it, \"reversing the order of the words.\" These tablets are believed to date back to 3000 BCE, and they are among the oldest known examples of cryptological practices. What is the earliest known example of a cipher that used this technique of reversing the order of words? The answer is a well-known phrase from the Bible.\nThe answer is: \"I am the light of the world.\"\nThe answer is \"I am the light of the world.\" This phrase is found in the Gospel of John, chapter 8, verse 12. In this passage, Jesus says, \"I am the light of the world. If anyone walks in darkness, he will stumble.\" The Sumer",
+   "results": [
+    {
+     "reader": "Qwen3-0.6B-Q8_0",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 47,
+     "bothCarrier": 43,
+     "bitAgreement": 0.581,
+     "writerOnly": 4,
+     "readerOnly": 39,
+     "idMismatch": 0,
+     "meanRank": 2.65
+    },
+    {
+     "reader": "Qwen3-4B-Q4_K_M",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 47,
+     "bothCarrier": 28,
+     "bitAgreement": 0.607,
+     "writerOnly": 19,
+     "readerOnly": 3,
+     "idMismatch": 0,
+     "meanRank": 2.23
+    },
+    {
+     "reader": "Qwen3-8B-Q4_K_M",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 47,
+     "bothCarrier": 30,
+     "bitAgreement": 0.6,
+     "writerOnly": 17,
+     "readerOnly": 5,
+     "idMismatch": 0,
+     "meanRank": 2.97
+    }
+   ]
+  }
+ },
+ "env": {
+  "memory64": true,
+  "jspi": true,
+  "isolated": true,
+  "deviceMemory": 32,
+  "threads": 8,
+  "saveData": false,
+  "storage": {
+   "usage": 0,
+   "quota": 10737418240
+  },
+  "rungs": [
+   {
+    "id": "Qwen3-0.6B-Q8_0",
+    "tier": 0,
+    "ok": true,
+    "reasons": []
+   },
+   {
+    "id": "Qwen3-1.7B-Q8_0",
+    "tier": 1,
+    "ok": true,
+    "reasons": []
+   },
+   {
+    "id": "Qwen3-4B-Q4_K_M",
+    "tier": 2,
+    "ok": true,
+    "reasons": []
+   },
+   {
+    "id": "Qwen3-8B-Q4_K_M",
+    "tier": 3,
+    "ok": true,
+    "reasons": []
+   }
+  ],
+  "recommended": "Qwen3-4B-Q4_K_M",
+  "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36"
+ },
+ "updated": "2026-09-05T13:10:59.477Z"
+}

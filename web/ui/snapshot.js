@@ -9,14 +9,14 @@ export class Replay {
 
   cancel() { this.stop = true; }
 
-  async write(snap, head, msPerToken = 70) {
+  async write(snap, head, msPerToken = 70, noteEl = null) {
     this.stop = false;
     this.view.clear();
     const layout = layoutOf(snap.opts.payloadHex.length / 2, snap.opts.profile);
     this.strip.setLayout(layout, snap.frameBits);
     head.textContent = `${snap.rung.replace(/-Q.*$/, "")} wrote this on ${snap.generated.slice(0, 10)}; replaying`;
-    const note = document.querySelector("#panel-write [data-strip-note]");
-    if (note) note.innerHTML = `<b>${snap.frameBits} bits</b> to plant: the knock, a label, the tag, its seal.`;
+    const note = noteEl || this.strip.root.parentElement?.querySelector("[data-strip-note]");
+    if (note) note.innerHTML = `<b>${snap.frameBits} bits</b> to plant: the knock, a label, the message, its seal, and repair data.`;
     let first = false, null1 = false, c0 = false, c1 = false, planted = 0;
     for (const t of snap.write.tokens) {
       if (this.stop) return;

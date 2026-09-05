@@ -42,14 +42,15 @@
       "quant": "Q8_0",
       "heapGB": 1.0,
       "memory64": false,
-      "tagCapBytes": 3,
+      "tagCapBytes": 8,
       "nCtx": 2048,
       "carrierRate": 0.28,
       "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3",
       "tau": 2.0,
       "_tauNote": "entropy gate in nats; bigger models are more confident, so the gate is per rung and tuned from web/data/entropy.json (Phase 3)",
       "tokPerSec": 5,
-      "_tokPerSecNote": "single-step CPU tokens per second on a 4-core laptop (2026-09-05 campaign; 8B extrapolated), for the ETA shown before a run"
+      "_tokPerSecNote": "single-step CPU tokens per second on a 4-core laptop (2026-09-05 campaign; 8B extrapolated), for the ETA shown before a run",
+      "_tagCapNote": "8 bytes everywhere: at the measured carrier rates on an open prompt a 127-bit lean frame is a few hundred tokens; the page shows the ETA before a run"
     },
     {
       "id": "Qwen3-1.7B-Q8_0",
@@ -62,14 +63,15 @@
       "quant": "Q8_0",
       "heapGB": 2.3,
       "memory64": false,
-      "tagCapBytes": 4,
+      "tagCapBytes": 8,
       "nCtx": 2048,
       "carrierRate": 0.12,
       "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3",
       "tau": 2.0,
       "_tauNote": "entropy gate in nats; bigger models are more confident, so the gate is per rung and tuned from web/data/entropy.json (Phase 3)",
       "tokPerSec": 2,
-      "_tokPerSecNote": "single-step CPU tokens per second on a 4-core laptop (2026-09-05 campaign; 8B extrapolated), for the ETA shown before a run"
+      "_tokPerSecNote": "single-step CPU tokens per second on a 4-core laptop (2026-09-05 campaign; 8B extrapolated), for the ETA shown before a run",
+      "_tagCapNote": "8 bytes everywhere: at the measured carrier rates on an open prompt a 127-bit lean frame is a few hundred tokens; the page shows the ETA before a run"
     },
     {
       "id": "Qwen3-4B-Q4_K_M",
@@ -90,7 +92,8 @@
       "tau": 2.0,
       "_tauNote": "entropy gate in nats; bigger models are more confident, so the gate is per rung and tuned from web/data/entropy.json (Phase 3)",
       "tokPerSec": 1,
-      "_tokPerSecNote": "single-step CPU tokens per second on a 4-core laptop (2026-09-05 campaign; 8B extrapolated), for the ETA shown before a run"
+      "_tokPerSecNote": "single-step CPU tokens per second on a 4-core laptop (2026-09-05 campaign; 8B extrapolated), for the ETA shown before a run",
+      "_tagCapNote": "8 bytes everywhere: at the measured carrier rates on an open prompt a 127-bit lean frame is a few hundred tokens; the page shows the ETA before a run"
     },
     {
       "id": "Qwen3-8B-Q4_K_M",
@@ -111,7 +114,8 @@
       "tau": 2.0,
       "_tauNote": "entropy gate in nats; bigger models are more confident, so the gate is per rung and tuned from web/data/entropy.json (Phase 3)",
       "tokPerSec": 0.5,
-      "_tokPerSecNote": "single-step CPU tokens per second on a 4-core laptop (2026-09-05 campaign; 8B extrapolated), for the ETA shown before a run"
+      "_tokPerSecNote": "single-step CPU tokens per second on a 4-core laptop (2026-09-05 campaign; 8B extrapolated), for the ETA shown before a run",
+      "_tagCapNote": "8 bytes everywhere: at the measured carrier rates on an open prompt a 127-bit lean frame is a few hundred tokens; the page shows the ETA before a run"
     }
   ]
 }

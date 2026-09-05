@@ -3,25 +3,208 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rankmark</title>
-<meta name="description" content="Watch a language model hide a short tag in its own word choices, then read it back. Runs in your browser.">
+<title>The watermark you can't see</title>
+<meta name="description" content="How Claude and Gemini watermark their text, explained with a version you can run in your browser.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles/tokens.css">
 <link rel="stylesheet" href="styles/page.css">
 <link rel="stylesheet" href="styles/tool.css">
+<link rel="stylesheet" href="styles/essay.css">
 </head>
 <body>
 
 <header class="wrap top">
   <div class="name">Rankmark <small>the model is the key</small></div>
-  <p class="tagline">Watch a language model hide a short tag in its own word choices, then read it back. It runs in this browser, and nothing you type leaves your machine.</p>
-  <nav><a href="#how">How this works</a><a href="#local" data-tab-link="local">Run it locally</a></nav>
+  <p class="tagline">An essay on text watermarks, with the watermark running in your browser.</p>
+  <nav><a href="#tool">Skip to the tool</a><a href="https://github.com/myrakrusemark/rankmark">Code</a></nav>
 </header>
 
 <main class="wrap">
-<section class="tool" aria-label="Rankmark" style="position: relative">
+<article class="essay">
+  <h1>The watermark you can't see</h1>
+  <p class="standfirst">Since August, text from Claude carries a watermark. Gemini's has since 2024. You cannot see it and neither can your text editor, because it lives in which words the model chose. Here is how that works, and a version of it you can run right here.</p>
+  <p class="skip"><a href="#tool">Skip the essay and go to the tool.</a></p>
+
+  <h2><small>1</small>The model chooses every word from a list</h2>
+  <div class="prose">
+    <p>On August 14, Anthropic posted a short note saying that future Claude models will write text that carries a watermark. Google has done this in Gemini since 2024. The reason is a European law that, from this August, requires text from these systems to be marked in a way software can detect. The odd part is that nobody can point at the mark. Copy a paragraph out of Claude and read it as many times as you like; there is nothing there.</p>
+    <p>The mark lives in a decision you never see. A language model does not write words the way a person types them. At every step it gives a score to every token it knows, about 150,000 pieces of words for the models on this page, and then something has to pick one from the top of that list. Usually the pick is the highest score, and sometimes, on purpose, it is the second or third, because a model that always takes the top word repeats itself. How far down the list the pick can wander is a setting called temperature.</p>
+    <p>Watch it below. The sentence grows one word at a time; the list beside it is the model's top eight for the next word, with the one it took. Slide the temperature and the odds on the bars change; run it live and the sentence changes with them.</p>
+  </div>
+  <p id="mode-note" class="note warn" hidden></p>
+  <div class="model-bar sticky" data-live-only>
+    <label for="model">Model</label>
+    <select id="model"></select>
+    <div id="model-status" class="status"></div>
+  </div>
+  <div class="station ranked" id="st-ranked">
+    <div class="st-head"><span>every word is a ranked choice</span></div>
+    <div class="two">
+      <div>
+        <div class="field"><label for="rk-prompt">Opening</label><textarea id="rk-prompt" data-prompt></textarea></div>
+        <div class="sentence" data-sentence style="margin-top: 10px"></div>
+        <div class="controls">
+          <button type="button" class="btn" data-play>Watch it choose</button>
+          <button type="button" class="btn" data-next>Next word</button>
+          <label>temperature <input type="range" data-temp min="0" max="1.5" step="0.1" value="0.7"><b data-temp-out>0.7</b></label>
+          <button type="button" class="btn" data-live data-live-only>Run it live at this temperature</button>
+        </div>
+        <p class="caption" data-caption></p>
+      </div>
+      <ol data-list aria-label="the model's top candidates for the next word"></ol>
+    </div>
+  </div>
+
+  <h2><small>2</small>Where the labs hide the mark</h2>
+  <div class="prose">
+    <p>Most of the time the list has an obvious winner. When it does not, when the top two or three words score about the same, the model is free to take any of them and the sentence reads the same either way. Those free choices are the hiding places, and there are a lot of them in any paragraph.</p>
+    <p>Anthropic's version, which is a variant of Google DeepMind's SynthID-Text, uses a secret number, the key. At each free choice, the key and the few words before it decide which of the near-equal words the model should prefer, a preference so slight that the text is not worse for it. Later, a detector holding the same key walks through the text, works out at each word which candidate the key would have preferred, and counts how often the text agrees. Unmarked text agrees about half the time, by chance. Marked text agrees far more often than that. The detector reports that likelihood and nothing else: not who wrote it, not what it says, only how likely it is that Claude was involved.</p>
+    <p>The key has two consequences, the first being that the detector is theirs alone: it does not even need the model to run, only the key and the words. What you cannot see from outside is which choices were free and how the model ranked them, because only the company that runs the model has those scores. The second consequence is that the detector counts agreement rather than decoding a message, so it still works on text that has been edited, since the words that survive still agree far above chance.</p>
+  </div>
+
+  <h2><small>3</small>You can do this yourself</h2>
+  <div class="prose">
+    <p>You cannot see inside Claude, but you can see inside an open model, and that is enough to build the same idea without a key. This page runs Qwen3, an open model from Alibaba, entirely in your browser. At every free choice, first place means a 0 and second place means a 1, and that is the whole channel. Around your message goes a frame, which opens with a fixed pattern of bits to knock with, so a reader can find the start anywhere in the text. Then come a label with the message length and a short fingerprint of the model, the message itself, a checksum to seal it, and a little repair data.</p>
+    <p>I designed this version and directed the AI coding agents that built it, mostly to find out how far the idea goes without a key. Further than I expected, with one honest difference from the labs' schemes that section five gets to.</p>
+    <p>Try it. The opening line is yours to change, and so is the message. The smallest model is the default because it writes in about a minute; the bigger ones are slower and surer of themselves, which leaves fewer free choices to hide in. Then watch the two columns: the words as they are written, and the frame's bits leaving the strip for the words that carry them.</p>
+  </div>
+  <div class="station" id="st-write">
+    <div class="st-head"><span>write with a mark</span><span class="meter" data-meter></span></div>
+    <div class="inputs">
+      <div class="field"><label for="st-prompt">Opening text</label><textarea id="st-prompt" data-prompt>It was late in the harbor when the last boat came in, and</textarea></div>
+      <div class="field"><label for="st-tag">Your message</label><input id="st-tag" type="text" data-tag value="hello" maxlength="16" autocomplete="off"><div class="hint" data-tag-hint></div></div>
+      <div class="btn-row">
+        <button type="button" class="btn primary" data-run data-live-only>Write</button>
+        <button type="button" class="btn" data-stop hidden>Stop</button>
+        <button type="button" class="btn" data-replay>Watch a recorded run</button>
+      </div>
+    </div>
+    <div class="progress"><span class="line"><i></i></span><b>0%</b></div>
+    <div class="two">
+      <div>
+        <div class="text-head"><span data-head></span></div>
+        <div id="st-write-text" role="log" aria-live="off"></div>
+      </div>
+      <div>
+        <div class="strip-head"><span>the frame</span><span>one cell per bit</span></div>
+        <div id="st-write-strip"></div>
+        <p class="strip-note" data-strip-note>Write, and the frame appears here, then leaves for the words one bit at a time.</p>
+        <div class="card" data-card hidden style="margin-top: 12px">
+          <div class="foot" data-card-foot style="border: 0; margin: 0; padding: 0"></div>
+          <div data-card-text hidden></div>
+          <div class="btn-row" style="margin-top: 8px"><button type="button" class="btn" data-copy>Copy the marked text</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><small>4</small>Read it back</h2>
+  <div class="prose">
+    <p>Reading is the same walk in reverse. The reader runs the same model over the same words and asks, at each one, where that word stood in the model's list. At a free choice, first place reads as 0 and second place as 1. The bits go into the strip in the order they come until the knock, the label and the checksum line up, and the checksum decides whether a frame is really there.</p>
+    <p>Read back what you just wrote, and watch the words stay where they are while the bits come out of them.</p>
+  </div>
+  <div class="station" id="st-read">
+    <div class="st-head"><span>read the marks</span><span class="meter"><span data-head></span></span></div>
+    <div class="two">
+      <div>
+        <div class="text" data-box>
+          <textarea class="paste" data-paste placeholder="Write something in section three first, or paste marked text here." aria-label="Marked text"></textarea>
+          <div id="st-read-text" role="log" aria-live="off" hidden></div>
+        </div>
+        <p class="note mono" data-foot hidden></p>
+        <div class="btn-row" style="margin-top: 10px">
+          <button type="button" class="btn primary" data-run data-live-only>Read it back</button>
+          <button type="button" class="btn" data-stop hidden>Stop</button>
+          <button type="button" data-edit hidden class="btn">Edit the text</button>
+        </div>
+        <div class="verdict" data-verdict hidden></div>
+      </div>
+      <div>
+        <div class="strip-head"><span>bits recovered</span><span>in reading order</span></div>
+        <div id="st-read-strip"></div>
+        <p class="strip-note">The strip fills until a frame's knock, label and seal line up, or until the text ends without one.</p>
+      </div>
+    </div>
+  </div>
+
+  <h2><small>5</small>Edit it, and it still tells</h2>
+  <div class="prose">
+    <p>What if someone changes the text? Delete a sentence, swap a few words, cut the end. The full message often does not come back: a checksum needs every bit. But that is not the question a detector answers. A detector asks how many of the surviving bits agree with what was planted, and even a mangled paragraph keeps most of its evidence. Fifty percent agreement is chance, and ninety percent over a hundred bits is not what an unmarked text does.</p>
+    <p>The meter below lines up what the reader recovered against what the writer planted, edit by edit. One honest difference shows up here. This demo scores each word against the whole text before it, so cutting the start changes every later score and the evidence after the cut is gone. The labs score each word against only the last few words, so an edit costs them a few words of evidence rather than the rest of the page. The counting is the same; the window is different.</p>
+  </div>
+  <div class="station" id="st-evidence">
+    <div class="st-head"><span>edit, then read again</span><span class="meter"><span data-head></span></span></div>
+    <div class="two">
+      <div>
+        <div class="text" data-box>
+          <textarea class="paste" data-paste placeholder="Write something in section three first." aria-label="Marked text to edit"></textarea>
+          <div id="st-ev-text" role="log" aria-live="off" hidden></div>
+        </div>
+        <div class="breakit" style="margin-top: 10px">
+          <button type="button" class="btn" data-break="sentence" data-live-only>Delete a sentence</button>
+          <button type="button" class="btn" data-break="swap" data-live-only>Swap five words</button>
+          <button type="button" class="btn" data-break="end" data-live-only>Cut the end</button>
+          <button type="button" class="btn" data-break="start" data-live-only>Cut the start</button>
+          <button type="button" class="btn" data-break="undo" data-live-only>Undo</button>
+          <button type="button" class="btn" data-stop hidden>Stop</button>
+          <button type="button" class="btn primary" data-run data-live-only hidden>Read</button>
+          <button type="button" data-edit hidden class="btn">Edit the text</button>
+        </div>
+        <p class="note mono" data-foot hidden></p>
+        <div class="verdict" data-verdict hidden></div>
+      </div>
+      <div>
+        <div class="strip-head"><span>evidence</span><span>surviving bits</span></div>
+        <div class="evidence" data-evidence hidden></div>
+        <p class="strip-note" data-ev-note>Edit the text with a button, and the reader compares what it recovers against what was planted. Green underlines agree, red ones flipped, dashed ones were lost.</p>
+        <div id="st-ev-strip" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <h2><small>6</small>Whose text is it</h2>
+  <div class="prose">
+    <p>Every model ranks its near ties its own way. Give this paragraph to a different model and ask for the bits, and it agrees with the writer on about six bits in ten, where a coin gets five and the writer gets all of them. That gap is enough to say which model wrote a text, and it is why this page calls the model the key: nothing secret, just the one set of scores that lines up.</p>
+    <p>The bars below are measured on the laptop this was built on: each model's text, read back by the others.</p>
+  </div>
+  <div class="station" id="st-lineup">
+    <div class="st-head"><span>who wrote this</span></div>
+    <div data-lineup-bars></div>
+  </div>
+
+  <h2><small>7</small>What the key buys</h2>
+  <div class="prose">
+    <p>A key buys two properties this page does not have. Nobody can plant Claude's mark without the key, while anyone with Qwen's weights can plant this one. And because the labs count agreement over the last few words, an edit anywhere costs them little, while this demo loses everything after an edit. What the keyless version has instead is that anyone can check it, because the verification and the model are both public. The same trick also names which open model wrote a text, which a keyed scheme cannot do for models it does not own.</p>
+    <div class="table-wrap">
+    <table>
+      <tr><th></th><th>Keyed</th><th>Who can check</th><th>What it says</th><th>Forgeable</th></tr>
+      <tr><td>Claude (SynthID-Text variant, since August 2026)</td><td>yes</td><td>eligible organizations, by API</td><td>likelihood Claude was involved</td><td>hard without the key</td></tr>
+      <tr><td>Gemini (SynthID-Text, since 2024)</td><td>yes</td><td>Google, and a limited portal</td><td>likelihood</td><td>hard without the key</td></tr>
+      <tr><td>ChatGPT</td><td colspan="4">no text watermark shipped as of September 2026</td></tr>
+      <tr><td>Rankmark, this page</td><td>no, the model is the key</td><td>anyone with the same weights</td><td>which model validates, and your message</td><td>yes, by anyone with the weights</td></tr>
+    </table>
+    </div>
+    <div class="limits">
+      Read every verdict on this page with these in mind:
+      <ul>
+        <li>A validating frame means a frame planted with this model validates in these words. It does not mean this model wrote the rest of the text.</li>
+        <li>No frame proves nothing. Unmarked, edited, another model, a different engine build: all look the same.</li>
+        <li>This page cannot detect Claude, Gemini or ChatGPT text, and no public tool can read their watermarks.</li>
+        <li>The mark is visible to anyone who ranks the words with the same model, dies under paraphrase, and can be forged by anyone with the weights.</li>
+        <li>"AI detectors" that guess from style are a different product. They have no key and no frame, and a 2023 Stanford study found them flagging most essays by non-native English writers as machine-written.</li>
+        <li>Reading on another machine works because the engine gives bit-identical results across the browsers and processors it is tested on with every change; the records are in the repository.</li>
+      </ul>
+    </div>
+  </div>
+</article>
+
+<section class="tool-section">
+  <h2>The tool</h2>
+  <p class="note" style="margin: 0 0 8px">Everything above in one place: write with any model on the ladder, read any text, and run it locally for models bigger than a browser holds.</p>
+</section>
+<section class="tool" id="tool" aria-label="The tool" style="position: relative">
   <div class="tabs" role="tablist" aria-label="Write, read, or run locally">
     <button role="tab" id="tab-write" aria-controls="panel-write" aria-selected="true">Write</button>
     <button role="tab" id="tab-read" aria-controls="panel-read" aria-selected="false">Read</button>
@@ -30,11 +213,6 @@
   </div>
 
   <p id="mode-note" class="note warn" hidden></p>
-  <div class="model-bar" data-live-only>
-    <label for="model">Model</label>
-    <select id="model"></select>
-    <div id="model-status" class="status"></div>
-  </div>
 
   <!-- WRITE -->
   <div id="panel-write" class="panel" role="tabpanel" aria-labelledby="tab-write">
@@ -176,73 +354,18 @@ rankmark serve --model Qwen/Qwen3-14B</pre>
 
   <div class="callout-layer" style="position:absolute;inset:0;pointer-events:none"></div>
 </section>
-
-<section id="how" class="explain">
-  <h2>How this works</h2>
-  <div class="cols">
-    <div class="prose">
-      <h3 id="how-ranked">Every word is a ranked choice</h3>
-      <p>A language model does not write words. At each step it scores every token it knows, about 150,000 of them for the models here, and something picks one. Usually the pick is the top score, or a sample from the top few. Hover any word the tool wrote and you see where that word sat in the ranking.</p>
-
-      <h3 id="how-gate">Where a bit can hide</h3>
-      <p>When the top score is far ahead of the rest there is no room: taking the second choice would read as a mistake. When two or three candidates score about the same, the choice is free, and a free choice can carry a bit. Rankmark measures that freedom as the entropy of the model's scores and only plants bits above a gate. The gate is set per model, because a bigger model is surer of itself and offers fewer free choices.</p>
-
-      <h3 id="how-parity">One bit, one choice</h3>
-      <p>At a free choice the writer takes the first-ranked word for a 0 and the second-ranked word for a 1, and that is the whole channel. No hidden characters and no changed spelling: the words are the message, and the text reads as the model's own writing because it is.</p>
-
-      <h3 id="how-frame">The frame</h3>
-      <p>Bits alone are noise, so Rankmark wraps your tag in a frame. It opens with the knock, a fixed pattern of bits a reader can find anywhere in the text. Then comes a label with the tag's length and a 3-bit fingerprint of the model, then your tag, then a checksum that seals it. The standard and heavy settings add repair data that corrects bits an edit damaged. The strip beside the tool is that frame, one cell per bit.</p>
-
-      <h3 id="how-read">Reading</h3>
-      <p>The reader feeds the text back through the same model one word at a time and asks, at each word, where that word sat in the ranking. Above the gate, first place means 0 and second place means 1. Those bits go into the strip until the knock, the label and the checksum line up, and the checksum decides.</p>
-
-      <h3 id="how-key">The model is the key</h3>
-      <p>Deployed watermarks use a secret key, a number that decides which words count as 0 and which as 1, and only the key holder can check. Rankmark has no secret: the ranking itself is the key, and only the model that wrote the text reproduces it. A different model, even a close sibling of the writer, ranks the near-tie words differently often enough that the checksum fails. Reading is an attribution test among open models. It also means anyone with the same weights can forge a mark.</p>
-
-      <h3 id="how-break">Breaking it</h3>
-      <p>Each word was ranked against everything before it, so cutting the start changes every later ranking and the frame dies. Cutting the end leaves the frame intact when it was planted early enough. Swapping words breaks the bits at the swap, and the repair data in the standard and heavy settings absorbs a few of those. Paraphrasing rewrites every ranking and kills the frame outright. The break-it buttons do each of these so you can watch.</p>
-    </div>
-
-    <div class="prose">
-      <h3 id="how-labs">How the labs do it</h3>
-      <p>Anthropic began watermarking Claude's text in August 2026 with a version of Google DeepMind's SynthID-Text. Google has used SynthID-Text in Gemini since 2024. OpenAI had built a text watermark by 2024 and, as of September 2026, has not shipped it. All of these are keyed: the pattern comes from a secret, the vendor holds the secret, and the detector answers one question, how likely it is that this model was involved.</p>
-      <div class="table-wrap">
-      <table>
-        <tr><th></th><th>Keyed</th><th>Who can check</th><th>What it says</th><th>Forgeable</th></tr>
-        <tr><td>Claude (SynthID-Text variant)</td><td>yes</td><td>eligible organizations, by API</td><td>likelihood Claude was involved</td><td>hard without the key</td></tr>
-        <tr><td>Gemini (SynthID-Text)</td><td>yes</td><td>Google, and a limited portal</td><td>likelihood</td><td>hard without the key</td></tr>
-        <tr><td>Red/green lists (research, 2023)</td><td>yes</td><td>key holder</td><td>a z-score</td><td>keys can be stolen from outputs</td></tr>
-        <tr><td>Rankmark</td><td>no, the model is the key</td><td>anyone with the same weights</td><td>which model validates, and your tag</td><td>yes, by anyone with the weights</td></tr>
-      </table>
-      </div>
-      <p>"AI detectors" that guess from writing style are a different product. They have no key and no frame, they are guessing, and a 2023 Stanford study found them flagging most essays by non-native English writers as machine-written. A watermark is a fact planted at writing time; a detector is a bet.</p>
-
-      <h3 id="how-limits">What this is and is not</h3>
-      <div class="limits">
-        A research demo. Read every verdict with these in mind:
-        <ul>
-          <li>A validating frame means "a frame planted with this model validates here." It does not mean this model wrote the rest of the text.</li>
-          <li>No frame proves nothing. Unmarked, edited, wrong model, or a different engine build all look the same.</li>
-          <li>Rankmark cannot detect text from ChatGPT, Claude or Gemini, and no public tool reads their watermarks.</li>
-          <li>The mark is visible to anyone who ranks the words with the same model, dies under paraphrase, and can be forged by anyone with the weights.</li>
-          <li>Reading on another machine works because the engine is bit-exact across the browsers and processors we test on every change; the list is in the repository.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
 </main>
 
 <footer class="wrap">
-  <span>Rankmark is a research demo by Myra Krusemark.</span>
-  <a href="https://github.com/myrakrusemark/rankmark">Code and tests</a>
+  <span>Rankmark is a research demo by Myra Krusemark, who designed it and directed the AI coding agents that built it.</span>
+  <a href="https://github.com/myrakrusemark/rankmark">Code, tests and measurements</a>
   <span>Models: Qwen3, Alibaba, Apache 2.0. Engine: llama.cpp compiled to WebAssembly.</span>
 </footer>
 
 <dialog id="consent">
   <form method="dialog">
     <h3>Download <span data-name></span>?</h3>
-    <p><b data-size></b> once, kept in this browser's storage so the next run is instant. A short tag takes about <b data-mins></b> minutes to write on a laptop, and the same to read. <span data-space></span></p>
+    <p><b data-size></b> once, kept in this browser's storage so the next run is instant. A short message takes about <b data-mins></b> minutes to write on a laptop, and the same to read. <span data-space></span></p>
     <div class="btn-row">
       <button class="btn" value="no">Not now</button>
       <button class="btn primary" value="yes">Download</button>

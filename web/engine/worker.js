@@ -6,6 +6,7 @@
 import { loadLens, currentLens, unloadLens, Cancelled } from "./lens.js";
 import { embed } from "./encoder.js";
 import { decode } from "./decoder.js";
+import { sample } from "./sampler.js";
 import { parseMarkCard, textHash } from "./fingerprint.js";
 
 async function ensureLens(args, reqId) {
@@ -26,7 +27,16 @@ function info(lens) {
   } : null;
 }
 
-self.onmessage = async ev => {
+// one job at a time: two runs interleaving on one lens would corrupt both.
+// cancel and info bypass the queue so a stuck job can be stopped.
+let chain = Promise.resolve();
+self.onmessage = ev => {
+  const { cmd } = ev.data;
+  if (cmd === "cancel" || cmd === "info") return handle(ev);
+  chain = chain.then(() => handle(ev)).catch(() => {});
+};
+
+async function handle(ev) {
   const { reqId, cmd, args = {} } = ev.data;
   const emit = e => self.postMessage({ reqId, kind: "event", data: e });
   const done = data => self.postMessage({ reqId, kind: "done", data });
@@ -58,6 +68,11 @@ self.onmessage = async ev => {
       const result = await embed(lens, args.opts, emit);
       return done(result);
     }
+    if (cmd === "sample") {
+      const lens = await ensureLens(args, reqId);
+      const result = await sample(lens, args.opts, emit);
+      return done(result);
+    }
     if (cmd === "decode") {
       const lens = await ensureLens(args, reqId);
       // a pasted mark card names its lens and hashes the written text; strip
@@ -75,4 +90,4 @@ self.onmessage = async ev => {
     const cancelled = err instanceof Cancelled;
     self.postMessage({ reqId, kind: cancelled ? "cancelled" : "error", data: { message: String(err && err.message || err) } });
   }
-};
+}
