@@ -109,6 +109,8 @@ details.adv .field { margin-top: 10px; }
 .strip .fseg-letters span { transition: color var(--t-move) var(--ease-out), opacity var(--t-move) var(--ease-out); }
 .strip .fseg-letters .lit { color: var(--seg); }
 .strip .fseg-letters .dim { color: var(--muted); opacity: 0.4; }
+.strip .fseg-letters .sep { color: var(--muted); opacity: 0.6; }
+.strip .fseg[data-kind="sync"] .fseg-letters { letter-spacing: 0.22em; }
 .strip .fseg-note { font-size: 12.5px; line-height: 1.4; color: var(--muted); margin: 5px 0 0; }
 .strip .seal { position: absolute; inset: 0 -8px -4px; border: 1.5px solid var(--ok); border-radius: 6px; pointer-events: none; opacity: 0;
   clip-path: inset(0 100% 0 0); }

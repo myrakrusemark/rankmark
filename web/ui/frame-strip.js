@@ -1,9 +1,12 @@
 // The frame strip: one cell per bit of the frame being written or read, in
 // sections (knock, label, your message, seal, repair), each explained and in
-// its own color. Bits travel between the strip and the words: out of the strip
-// when a word is chosen, back into it when a word is read, and the word takes
-// the color of the section its bit belongs to. The strip is the one place
-// motion carries meaning.
+// its own color. Under each bar the section spells out what its bits say as
+// they land: the knock as its ones and zeros, the label as the length and the
+// model tag, the message as letters, the seal and the repair as hex digits.
+// Bits travel between the strip and the words: out of the strip when a word is
+// chosen, back into it when a word is read, and the word takes the color of
+// the section its bit belongs to. The strip is the one place motion carries
+// meaning.
 
 const LABEL = {
   sync: "knock", header: "label", payload: "your message", checksum: "seal", parity: "repair",
@@ -11,7 +14,7 @@ const LABEL = {
 };
 const NOTE = {
   sync: "A fixed pattern of bits. A reader scans for it, so the frame can start anywhere in the text.",
-  header: "How long the message is, and a short fingerprint of the model that wrote it.",
+  header: "How long the message is, and a short tag for the model that wrote it, each bit sent twice.",
   payload: "Your message itself, eight bits a letter.",
   checksum: "A checksum over the message. One wrong bit and the frame fails, so a reader never reports a match it cannot back.",
   parity: "Parity bits that put right a few bits a reader gets wrong.",
@@ -19,7 +22,9 @@ const NOTE = {
   read: "One cell per word that carries a bit, in the order they are read.",
   outside: "Bits from words before or after the frame; the reader ignores them.",
 };
+const SPELLED = ["sync", "header", "payload", "checksum", "parity"];
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const toInt = bits => bits.reduce((a, b) => a * 2 + b, 0);
 
 export class FrameStrip {
   constructor(root) {
@@ -31,36 +36,72 @@ export class FrameStrip {
     this.pulled = [];   // reading: the word each cell came from, in order
     this.frameBits = 0;
     this.filled = 0;
+    this.landed = {};   // per section, the bit values in so far
     this.message = "";  // the letters under the message bar, lit as their bytes land
     this.lit = "";
-    this.payloadPlanted = 0;
     this.decoder = new TextDecoder();
   }
 
   setMessage(text) {
     this.message = text || "";
     this.msgBytes = new TextEncoder().encode(this.message);
-    this.renderLetters();
+    this.renderSpell("payload");
   }
 
-  // under the message bar: the letters, dim until their eight bits are in
-  renderLetters() {
-    const el = this.segs.querySelector('.fseg[data-kind="payload"] .fseg-letters');
-    if (!el) return;
-    if (!this.message) { el.hidden = true; return; }
-    const litCount = [...this.lit].length;
-    el.hidden = false;
-    el.innerHTML = [...this.message].map((ch, i) => `<span class="${i < litCount ? "lit" : "dim"}">${ch === " " ? "␣" : escapeHtml(ch)}</span>`).join("");
+  // what a section's bits say so far, as characters and the bit count each needs
+  spell(kind, got, total) {
+    if (kind === "sync") return [...Array(total)].map((_, i) => ({ text: i < got.length ? String(got[i]) : "·", need: i + 1 }));
+    if (kind === "header") {
+      const rep = Math.max(1, Math.round(total / 9));
+      const hdr = [...Array(9)].map((_, k) => got[k * rep] ?? 0);
+      return [
+        { text: got.length >= 6 * rep ? `${toInt(hdr.slice(0, 6))} bytes` : "? bytes", need: 6 * rep },
+        { text: " · ", sep: true },
+        { text: got.length >= 9 * rep ? `model #${toInt(hdr.slice(6, 9))}` : "model #?", need: 9 * rep },
+      ];
+    }
+    if (kind === "checksum" || kind === "parity") {
+      const out = [];
+      for (let i = 0; i < Math.floor(total / 4); i++) {
+        if (i && i % 2 === 0) out.push({ text: " ", sep: true });
+        const need = 4 * (i + 1);
+        out.push({ text: got.length >= need ? toInt(got.slice(4 * i, need)).toString(16) : "·", need });
+      }
+      return out;
+    }
+    if (kind === "payload" && this.message) {
+      const litCount = [...this.lit].length;
+      return [...this.message].map((ch, i) => ({ text: ch === " " ? "␣" : ch, need: i < litCount ? 0 : Infinity }));
+    }
+    return null;
   }
 
-  onPayloadBit() {
-    this.payloadPlanted++;
-    if (this.payloadPlanted % 8) return;
-    const b = this.msgBytes?.[this.payloadPlanted / 8 - 1];
-    if (b === undefined) return;
-    this.lit += this.decoder.decode(new Uint8Array([b]), { stream: true });
-    this.renderLetters();
+  renderSpell(kind) {
+    for (const s of this.segs.querySelectorAll(`.fseg[data-kind="${kind}"]`)) {
+      const el = s.querySelector(".fseg-letters");
+      const got = this.landed[kind] || [];
+      const chars = this.spell(kind, got, s.querySelectorAll(".bit").length);
+      if (!chars) { el.hidden = true; continue; }
+      el.hidden = false;
+      el.innerHTML = chars.map(c => c.sep ? `<span class="sep">${c.text}</span>` : `<span class="${got.length >= c.need ? "lit" : "dim"}">${escapeHtml(c.text)}</span>`).join("");
+    }
   }
+  renderAll() { for (const k of SPELLED) this.renderSpell(k); }
+
+  // a landed bit of one section: remember it, and light what it completes
+  land(kind, bit) {
+    (this.landed[kind] ||= []).push(bit);
+    if (kind === "payload") {
+      const n = this.landed.payload.length;
+      if (n % 8 === 0) {
+        const b = this.msgBytes?.[n / 8 - 1];
+        if (b !== undefined) this.lit += this.decoder.decode(new Uint8Array([b]), { stream: true });
+      }
+    }
+    this.renderSpell(kind);
+  }
+
+  clearLanded() { this.landed = {}; this.lit = ""; this.decoder = new TextDecoder(); }
 
   section(kind, count) {
     const s = document.createElement("section");
@@ -77,9 +118,7 @@ export class FrameStrip {
     this.segs.innerHTML = "";
     this.cells = [];
     this.pulled = [];
-    this.lit = "";
-    this.payloadPlanted = 0;
-    this.decoder = new TextDecoder();
+    this.clearLanded();
     for (const seg of layout) {
       const s = this.section(seg.kind, seg.len);
       const row = s.querySelector(".row");
@@ -93,18 +132,16 @@ export class FrameStrip {
       }
       this.segs.appendChild(s);
     }
-    this.renderLetters();
+    this.renderAll();
     this.markNext();
   }
 
   reset() {
     for (const c of this.cells) c.className = "bit";
     this.filled = 0;
-    this.lit = "";
-    this.payloadPlanted = 0;
-    this.decoder = new TextDecoder();
+    this.clearLanded();
     this.root.classList.remove("sealed", "locked");
-    this.renderLetters();
+    this.renderAll();
     this.markNext();
   }
 
@@ -131,7 +168,7 @@ export class FrameStrip {
     this.fly(cell, tokenEl, bit, cell.dataset.kind, () => {
       cell.classList.add(bit ? "v1" : "v0", "spent");
       tokenEl?.classList.add("in");
-      if (cell.dataset.kind === "payload") this.onPayloadBit();
+      this.land(cell.dataset.kind, bit);
     });
     this.filled++;
     if (this.filled === this.frameBits) this.root.classList.add("sealed");
@@ -147,6 +184,7 @@ export class FrameStrip {
     this.segs.innerHTML = "";
     this.cells = [];
     this.pulled = [];
+    this.clearLanded();
     this.readRow = this.section("read", 0);
     this.segs.appendChild(this.readRow);
   }
@@ -170,23 +208,27 @@ export class FrameStrip {
   }
 
   // a checksum-valid frame: the read row regroups into the frame's sections,
-  // bits outside the frame stay aside, and the words take their colors
+  // bits outside the frame stay aside, the words take their colors, and every
+  // section spells out what it carried
   lockSpans(spans, message = "") {
     if (!spans.length) { this.root.classList.add("locked", "sealed"); return; }
     const sorted = [...spans].sort((a, b) => a.start - b.start);
     const first = sorted[0].start, last = sorted[sorted.length - 1].start + sorted[sorted.length - 1].len;
     this.segs.innerHTML = "";
+    this.clearLanded();
     const place = (kind, cells, from) => {
       if (!cells.length) return;
       const s = this.section(kind, cells.length);
       const row = s.querySelector(".row");
       cells.forEach((c, i) => { c.dataset.kind = kind; c.classList.add("locked"); row.appendChild(c); const t = this.pulled[from + i]; if (t && kind !== "outside") t.dataset.seg = kind; });
+      if (kind !== "outside") this.landed[kind] = cells.map(c => (c.classList.contains("v1") ? 1 : 0));
       this.segs.appendChild(s);
     };
     place("outside", this.cells.slice(0, first), 0);
     for (const s of sorted) place(s.kind, this.cells.slice(s.start, s.start + s.len), s.start);
     place("outside", this.cells.slice(last), last);
-    if (message) { this.message = message; this.lit = message; this.renderLetters(); }
+    if (message) { this.message = message; this.lit = message; }
+    this.renderAll();
     this.root.classList.add("locked", "sealed");
   }
 
