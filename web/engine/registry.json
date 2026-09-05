@@ -45,7 +45,9 @@
       "tagCapBytes": 3,
       "nCtx": 2048,
       "carrierRate": 0.28,
-      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3"
+      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3",
+      "tau": 2.0,
+      "_tauNote": "entropy gate in nats; bigger models are more confident, so the gate is per rung and tuned from web/data/entropy.json (Phase 3)"
     },
     {
       "id": "Qwen3-1.7B-Q8_0",
@@ -61,7 +63,9 @@
       "tagCapBytes": 4,
       "nCtx": 2048,
       "carrierRate": 0.12,
-      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3"
+      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3",
+      "tau": 2.0,
+      "_tauNote": "entropy gate in nats; bigger models are more confident, so the gate is per rung and tuned from web/data/entropy.json (Phase 3)"
     },
     {
       "id": "Qwen3-4B-Q4_K_M",
@@ -78,7 +82,9 @@
       "nCtx": 2048,
       "carrierRate": 0.12,
       "browsers": "Chrome >= 133, Firefox >= 134 (single file over 2 GB needs the memory64 build)",
-      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3"
+      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3",
+      "tau": 2.0,
+      "_tauNote": "entropy gate in nats; bigger models are more confident, so the gate is per rung and tuned from web/data/entropy.json (Phase 3)"
     },
     {
       "id": "Qwen3-8B-Q4_K_M",
@@ -95,7 +101,9 @@
       "tagCapBytes": 8,
       "nCtx": 2048,
       "carrierRate": 0.12,
-      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3"
+      "_carrierRateNote": "fraction of generated tokens above the tau 2.0 gate at temperature 0.7; 0.6B measured 0.312 on 2026-09-04, set conservatively; others are placeholders until Phase 3",
+      "tau": 2.0,
+      "_tauNote": "entropy gate in nats; bigger models are more confident, so the gate is per rung and tuned from web/data/entropy.json (Phase 3)"
     }
   ]
 }

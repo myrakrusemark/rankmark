@@ -9,7 +9,7 @@ import {
 import { entropyOf, rankOf } from "./logits.js";
 
 export async function decode(lens, text, opts, onEvent) {
-  const { tau = 2.0 } = opts;
+  const tau = opts.tau ?? lens.rung?.tau ?? 2.0;
   const lensTag = tagOf(lens.name);
   const ids = await lens.encodeText(text);
   if (!ids.length) {

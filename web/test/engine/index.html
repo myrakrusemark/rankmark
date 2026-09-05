@@ -147,6 +147,27 @@ const engine = {
     };
   },
 
+  // one short seeded write, every token's entropy: the carrier rate for any gate
+  async entropyProfile(id, maxNew = 200, seed = 4242) {
+    const rung = rungById(registry, id);
+    const ents = [];
+    let start = null;
+    const t0 = now();
+    const emb = await runJob("embed", { rung, opts: { prompt: PROMPT, payloadHex: "a7", profile: 0, temperature: 0.7, seed, maxNew } }, {
+      onEvent: e => { if (e.type === "start") start = e; if (e.type === "token") ents.push(e.entropy); },
+    });
+    const sec = (now() - t0) / 1000;
+    const taus = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
+    const rateAt = t => +(ents.filter(h => h >= t).length / ents.length).toFixed(3);
+    const sorted = [...ents].sort((a, b) => a - b);
+    return {
+      rung: id, tauUsed: start?.tau, tokens: ents.length, tokPerSec: +(ents.length / sec).toFixed(2),
+      entropy: { mean: +(ents.reduce((a, b) => a + b, 0) / ents.length).toFixed(3), median: sorted[Math.floor(sorted.length / 2)], p25: sorted[Math.floor(sorted.length * 0.25)], p75: sorted[Math.floor(sorted.length * 0.75)] },
+      carrierRateByTau: Object.fromEntries(taus.map(t => [t, rateAt(t)])),
+      entropies: ents.map(h => +h.toFixed(2)), text: emb.text,
+    };
+  },
+
   // per-rung measurements: n seeded writes at temperature 0.7, their reads, and
   // reads after cutting the head and the tail of the text
   async measure(id, n = 2, { cuts = true } = {}) {

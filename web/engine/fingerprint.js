@@ -5,7 +5,7 @@
 // must not report a mismatch. Two lenses with the same fingerprint read each
 // other's text; a mismatch is diagnosable by field.
 
-const FIELDS = ["engine", "model", "sha256", "quant", "device", "flashAttn", "nCtx"];
+const FIELDS = ["engine", "model", "sha256", "quant", "device", "flashAttn", "nCtx", "tau"];
 
 async function shortSha(bytes, n) {
   const digest = await crypto.subtle.digest("SHA-256", bytes);

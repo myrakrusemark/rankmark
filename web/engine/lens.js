@@ -160,6 +160,7 @@ export class Lens {
       device: "wasm-cpu",
       flashAttn: false,
       nCtx: this.nCtx,
+      tau: this.rung.tau ?? 2.0,
     };
   }
 

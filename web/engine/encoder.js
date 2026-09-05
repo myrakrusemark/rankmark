@@ -43,9 +43,11 @@ function encodeStep(logits, nextBit, tau, ban, sampler) {
 
 export async function embed(lens, opts, onEvent) {
   const {
-    prompt, payloadHex, profile = 0, tau = 2.0,
+    prompt, payloadHex, profile = 0,
     temperature = 0.7, topK = 48,
   } = opts;
+  // the gate is a property of the lens: bigger models are more confident and need a lower one
+  const tau = opts.tau ?? lens.rung?.tau ?? 2.0;
   const seed = temperature > 0 ? (opts.seed ?? randomSeed()) : null;
   const sampler = temperature > 0 ? { temperature, topK, rng: mulberry32(seed) } : null;
 
@@ -66,7 +68,7 @@ export async function embed(lens, opts, onEvent) {
   const maxNew = Math.min(opts.maxNew || need, cap);
 
   let planted = 0, carriers = 0, nextIdx = 0;
-  onEvent({ type: "start", frame_bits: frameBits, max_new: maxNew, seed, temperature });
+  onEvent({ type: "start", frame_bits: frameBits, max_new: maxNew, seed, temperature, tau });
 
   // context[0] is the prefill seed; context[1..] are force-replayed as single
   // steps (ungated, not part of the watermark) so encode's KV cache is built the

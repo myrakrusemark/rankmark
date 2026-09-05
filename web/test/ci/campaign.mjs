@@ -57,6 +57,23 @@ try {
   out.env.ua = await page.evaluate(() => navigator.userAgent);
   save();
 
+  // MODE=entropy: one short write per rung, carrier rate as a function of the gate
+  if (process.env.MODE === "entropy") {
+    out.entropy = out.entropy || {};
+    for (const p of PLAN) {
+      if (out.entropy[p.id]) { log("skip entropy", p.id); continue; }
+      log("entropy profile", p.id);
+      out.entropy[p.id] = await page.evaluate(id => window.engine.entropyProfile(id, 200), p.id);
+      save();
+      log("saved", p.id, JSON.stringify(out.entropy[p.id].carrierRateByTau), "tok/s", out.entropy[p.id].tokPerSec);
+    }
+    await page.evaluate(() => window.engine.unload());
+    log("entropy profiles complete");
+    await ctx.close();
+    server.kill();
+    process.exit(0);
+  }
+
   for (const p of PLAN) {
     if (out.measurements[p.id]) { log("skip measured", p.id); continue; }
     log("measure", p.id);
