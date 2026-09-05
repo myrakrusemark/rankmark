@@ -1,38 +1,48 @@
 // Station: every word is a ranked choice. A sentence grows one word at a time;
 // on the right, the model's top candidates for the next word with their odds
 // at the chosen temperature. When the word is chosen its row lights up and the
-// word flies into the sentence. The recorded run plays without a model; "run
-// it live" samples the opening with the loaded model and lands each word as
-// the engine picks it.
+// word flies into the sentence. No controls: it runs on its own whenever it is
+// in view and waits when it is not. It starts on the recorded run; when the
+// page's model comes in it writes its own sentence in one short job, and that
+// sentence takes over at the next pass. The model is shared with every other
+// station, so this one never holds it: the words are taken all at once and only
+// the animation pauses.
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export class RankedChoice {
-  constructor(root, { engine, picker, snapshot, consent }) {
-    Object.assign(this, { root, engine, picker, consent });
+  constructor(root, { engine, snapshot }) {
+    Object.assign(this, { root, engine });
     this.q = s => root.querySelector(s);
     this.steps = snapshot?.ranked?.steps || [];
     this.prompt = snapshot?.ranked?.prompt || "It was late in the harbor when the last boat came in, and";
     this.recordedTemp = snapshot?.ranked?.temperature ?? 0.7;
-    this.i = 0;           // words landed in the sentence
-    this.shown = null;    // the step whose list is on the right
-    this.chosen = false;  // whether that list has its pick lit
-    this.playing = false;
+    this.source = this.steps.length ? "a recorded run" : "";
+    this.pending = null;   // the model's own sentence, waiting for the next pass
+    this.i = 0;            // words landed in the sentence
+    this.shown = null;     // the step whose list is on the right
+    this.chosen = false;   // whether that list has its pick lit
     this.busy = false;
+    this.looping = false;
+    this.ran = false;
+    this.visible = false;
+    this.waiters = [];
     this.q("[data-temp]").addEventListener("input", () => this.renderList());
-    this.q("[data-play]").addEventListener("click", () => this.play());
-    this.q("[data-next]").addEventListener("click", () => this.next());
-    this.q("[data-live]")?.addEventListener("click", () => this.live());
-    this.q("[data-prompt]").value = this.prompt;
-    this.enable(!!this.steps.length);
     this.renderSentence();
     this.showList(0, false);
+    this.renderSource();
+    // out of view, the loop waits before the next word
+    new IntersectionObserver(([e]) => {
+      this.visible = e.isIntersecting;
+      if (this.visible) { const w = this.waiters; this.waiters = []; for (const r of w) r(); }
+    }, { threshold: 0.25 }).observe(root);
+    if (this.steps.length) this.loop();
   }
 
   temp() { return Number(this.q("[data-temp]").value); }
-  enable(on) { this.q("[data-play]").disabled = !on; this.q("[data-next]").disabled = !on; }
+  whenVisible() { return this.visible ? Promise.resolve() : new Promise(r => this.waiters.push(r)); }
 
   // odds of each candidate at the chosen temperature, from the recorded scores
   odds(top, t) {
@@ -42,6 +52,8 @@ export class RankedChoice {
     const s = w.reduce((a, b) => a + b, 0);
     return w.map(x => x / s);
   }
+
+  renderSource() { this.q("[data-source]").textContent = this.source; }
 
   renderSentence() {
     const done = this.steps.slice(0, this.i).map(s => s.piece).join("");
@@ -59,7 +71,7 @@ export class RankedChoice {
       list.innerHTML = "";
       list.classList.remove("chosen");
       head.textContent = "the model's top 8 for the next word";
-      cap.textContent = this.steps.length ? "The sentence is written. Play again, or run it live." : "Run it live to see the list.";
+      cap.textContent = this.engine ? "The sentence starts when the model is in." : "No recorded run is available.";
       return;
     }
     const p = this.odds(step.top, t);
@@ -77,7 +89,7 @@ export class RankedChoice {
     if (!this.chosen) text = `Which word comes next? At ${t.toFixed(1)}, #1 has a ${Math.round(p[0] * 100)}% chance. Entropy here: ${ent} nats.`;
     else if (t <= 0) text = `At 0 it always takes #1. This run (at ${this.recordedTemp}) took #${step.rank + 1}.`;
     else text = `At ${t.toFixed(1)}, #${step.rank + 1} had a ${Math.round(p[step.rank] * 100)}% chance, and it took it. Entropy here: ${ent} nats.`;
-    if (this.chosen && this.i >= this.steps.length && !this.playing && !this.busy) text += " The sentence is written; play again, or run it live.";
+    if (this.chosen && this.i >= this.steps.length && !this.busy) text += " The sentence is written.";
     cap.textContent = text;
   }
 
@@ -85,6 +97,7 @@ export class RankedChoice {
   async choose(k, beat = 600, flyMs = 320) {
     const step = this.steps[k];
     if (!step) return;
+    await this.whenVisible();
     this.busy = true;
     try {
       if (this.shown !== k || this.chosen) this.showList(k, false);
@@ -122,57 +135,51 @@ export class RankedChoice {
     });
   }
 
-  stop() { this.playing = false; this.q("[data-play]").textContent = "Watch it choose"; }
-
-  async play() {
-    if (this.playing) { this.stop(); return; }
-    if (this.busy) return;
-    if (this.i >= this.steps.length) { this.i = 0; this.renderSentence(); this.showList(0, false); }
-    this.playing = true;
-    this.q("[data-play]").textContent = "Pause";
-    while (this.playing && this.i < this.steps.length) await this.choose(this.i);
-    this.stop();
-    this.renderList();
+  // one pass after another: land every word, hold, take the model's sentence if
+  // it has arrived, start again
+  async loop() {
+    if (this.looping) return;
+    this.looping = true;
+    for (;;) {
+      if (this.pending) { this.steps = this.pending; this.pending = null; this.renderSource(); }
+      this.i = 0;
+      this.renderSentence();
+      this.showList(0, false);
+      while (this.i < this.steps.length) await this.choose(this.i);
+      await this.whenVisible();
+      await wait(4000);
+    }
   }
 
-  async next() {
-    if (this.busy) return;
-    this.stop();
-    if (this.i >= this.steps.length) { this.i = 0; this.renderSentence(); this.showList(0, false); return; }
-    await this.choose(this.i, 350);
-  }
-
-  async live() {
-    if (!this.engine) return;
-    const rung = this.picker.rung;
-    if (!(await this.consent(rung))) return;
-    this.stop();
-    const btn = this.q("[data-live]");
-    btn.disabled = true;
-    this.enable(false);
-    this.prompt = this.q("[data-prompt]").value.trim() || this.prompt;
-    this.steps = [];
-    this.i = 0;
-    this.renderSentence();
-    this.showList(0, false);
-    // words land in order as the engine picks them; when the engine runs ahead
-    // of the animation, the landings speed up to catch it
-    let queue = Promise.resolve(), pending = 0;
+  // the model's own sentence, once, when a model is in. With a recorded pass
+  // playing, the words wait for the next pass; with nothing to show yet they
+  // land as the engine picks them
+  async live(rung) {
+    if (!this.engine || this.ran) return;
+    this.ran = true;
+    const name = rung.id.replace(/-Q.*$/, "");
+    const steps = [];
+    const asTheyCome = !this.steps.length;
+    let queue = Promise.resolve(), pendingLandings = 0;
     const land = k => {
-      pending++;
-      queue = queue.then(async () => { const rush = pending > 3; await this.choose(k, rush ? 0 : 250, rush ? 160 : 320); pending--; });
+      pendingLandings++;
+      queue = queue.then(async () => { const rush = pendingLandings > 3; await this.choose(k, rush ? 0 : 250, rush ? 160 : 320); pendingLandings--; });
     };
+    if (asTheyCome) {
+      this.steps = steps;
+      this.source = `${name}, writing on this computer`;
+      this.renderSource();
+    }
     try {
       await this.engine.run("sample", { rung, opts: { prompt: this.prompt, maxNew: 24, temperature: this.temp() } }, {
-        onEvent: e => { if (e.type === "token") { this.steps.push({ piece: e.piece, rank: e.rank, entropy: e.entropy, top: e.top }); land(this.steps.length - 1); } },
+        onEvent: e => { if (e.type === "token") { steps.push({ piece: e.piece, rank: e.rank, entropy: e.entropy, top: e.top }); if (asTheyCome) land(steps.length - 1); } },
       });
-      await queue;
-      this.recordedTemp = this.temp();
-    } finally {
-      btn.disabled = false;
-      this.enable(!!this.steps.length);
-      this.renderList();
-    }
+    } catch { this.ran = false; return; }
+    if (!steps.length) { this.ran = false; return; }
+    this.recordedTemp = this.temp();
+    this.source = `${name} wrote this on your computer`;
+    if (asTheyCome) { await queue; this.renderSource(); this.loop(); }
+    else this.pending = steps;
   }
 }
 

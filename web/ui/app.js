@@ -35,7 +35,7 @@ const picker = new ModelPicker({
 const consent = r => picker.consent(r);
 
 // ---- stations ---------------------------------------------------------------
-const ranked = new RankedChoice($("#st-ranked"), { engine, picker, snapshot, consent });
+const ranked = new RankedChoice($("#st-ranked"), { engine, snapshot });
 
 const stWriteStrip = new FrameStrip($("#st-write-strip"));
 const stWriteView = new TextView($("#st-write-text"), { emptyText: "The model's words appear here as it writes." });
@@ -244,6 +244,7 @@ async function autoload() {
     await picker.scanCache();
     renderList("ready");
     shrinkTimer = setTimeout(shrink, 10000);
+    ranked.live(rung);   // section one writes its own sentence with the model that just came in
   };
   cancel.addEventListener("click", async () => { await stop(); shrink(); });
   pill.addEventListener("click", show);
