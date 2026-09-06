@@ -185,10 +185,12 @@ function report(a, res, frame, reference, frontier) {
     out.push(`<div class="ev-row"><span>${label}</span><b>${t.ok} of ${t.len}</b><small>${bits.join(", ")}${note ? (bits.length ? " · " : "") + note : ""}</small></div>`);
   }
   if (res) {
+    // the verdict rests on how far agreement sits above chance: z of 3 is one in a thousand by luck
     out.push(`<p class="ev-verdict">${res.valid
       ? "The frame validates: every bit agrees and the checksum holds."
       : a.survived === 0 ? "No planted bit survived this edit."
-      : pct >= 80 ? `The checksum fails, so the full message is not vouched for; the bits that survived still say ${esc(name)} wrote this.`
+      : a.z >= 3 ? `The checksum fails, so the full message is not vouched for; the bits that survived still say ${esc(name)} wrote this (${pct}% agree; luck gives that less than one time in a thousand).`
+      : a.z >= 2 ? `Weak evidence: ${pct}% agree, which luck gives about one time in twenty.`
       : "What survived agrees no better than chance: after this edit the reader is scoring different words than the writer did."}</p>`);
   }
   return out.join("");
