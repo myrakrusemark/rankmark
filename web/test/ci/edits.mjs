@@ -19,6 +19,7 @@ const PORT = process.env.PORT || "8776";
 const RUNG = process.env.RUNG || "Qwen3-0.6B-Q8_0";
 const PROFILES = (process.env.PROFILES || "0,1").split(",").map(Number);
 const COPIES = (process.env.COPIES || "1").split(",").map(Number);
+const WINDOW = Number(process.env.WINDOW || 0);   // positions the model keeps in view; 0 = all
 const PROMPT = "It was late in the harbor when the last boat came in, and";
 const stamp = () => new Date().toISOString().slice(11, 19);
 const log = (...a) => console.log(stamp(), ...a);
@@ -34,9 +35,9 @@ try {
 
   for (const profile of PROFILES) for (const copies of COPIES) {
     log(`profile ${profile}, ${copies} cop${copies === 1 ? "y" : "ies"}: writing`);
-    const out = await page.evaluate(async ({ rungId, profile, prompt, copies }) => {
+    const out = await page.evaluate(async ({ rungId, profile, prompt, copies, win }) => {
       const { agreement } = await import("/engine/compare.js");
-      const rung = window.engine.registry.rungs.find(r => r.id === rungId);
+      const rung = { ...window.engine.registry.rungs.find(r => r.id === rungId), window: win };
       const hex = [...new TextEncoder().encode("hello")].map(b => b.toString(16).padStart(2, "0")).join("");
       const written = [];
       const emb = await window.engine.runJob("embed", { rung, opts: { prompt, payloadHex: hex, profile, temperature: 0.7, seed: 4242, copies } }, {
@@ -62,8 +63,8 @@ try {
         results[name] = { valid: dec.valid, combined: dec.combined, payload: dec.payload, carriers: dec.carriers, agree: a.agreementPct, survived: a.survived, planted: a.planted, z: a.z };
       }
       return { tokens: written.length, carriers: written.filter(t => t.carrier).length, framesPlanted: emb.framesPlanted, frameBits: emb.frameBits ?? null, results };
-    }, { rungId: RUNG, profile, prompt: PROMPT, copies });
-    log(`profile ${profile}, ${copies} copies: ${out.tokens} tokens, ${out.carriers} carriers, ${out.framesPlanted?.toFixed(2)} frames`);
+    }, { rungId: RUNG, profile, prompt: PROMPT, copies, win: WINDOW });
+    log(`profile ${profile}, ${copies} copies${WINDOW ? `, window ${WINDOW}` : ""}: ${out.tokens} tokens, ${out.carriers} carriers, ${out.framesPlanted?.toFixed(2)} frames`);
     for (const [name, r] of Object.entries(out.results)) log(`  ${name.padEnd(26)} valid ${String(r.valid).padEnd(5)}${r.valid && r.combined > 1 ? ` (${r.combined} copies combined)` : ""}  agree ${String(r.agree).padStart(5)}% (${r.survived}/${r.planted})  z ${r.z}`);
   }
   await page.evaluate(() => window.engine.unload());

@@ -32,7 +32,7 @@ export function defaultThreads() {
 
 export async function loadLens(rung, { onProgress, threads, viaBlob = false } = {}) {
   const nThreads = threads ?? defaultThreads();
-  if (current && current.rung.id === rung.id && current.threads === nThreads) return current;
+  if (current && current.rung.id === rung.id && current.threads === nThreads && (current.rung.window ?? 0) === (rung.window ?? 0)) return current;
   await unloadLens();
   const w = new Wllama({ default: WASM }, { parallelDownloads: 3, suppressNativeLog: true });
   w.setCompat(COMPAT);
@@ -149,6 +149,8 @@ export class Lens {
     this.pieces = vocab.pieces.map(b => utf8.decode(b));
     this.cancelFlag = false;
     this.fp = null;
+    this.window = rung.window ?? 0;   // positions kept in view; 0 means the whole text
+    this.nPast = 0;
   }
 
   fingerprintParts() {
@@ -161,6 +163,7 @@ export class Lens {
       flashAttn: false,
       nCtx: this.nCtx,
       tau: this.rung.tau ?? 2.0,
+      window: this.window,
     };
   }
 
@@ -181,7 +184,22 @@ export class Lens {
 
   async step(ids, reset = false) {
     if (this.cancelFlag) { this.cancelFlag = false; throw new Cancelled(); }
-    return (await this.w.rawEval(ids, { reset })).logits;
+    const r = await this.w.rawEval(ids, { reset });
+    this.nPast = r.nPast;
+    return r.logits;
+  }
+
+  // the window: before the next token goes in, drop the oldest positions so
+  // that at most `window` stay, the seed always among them. Writer and reader
+  // slide at the same steps, so their logits agree; an edit then disturbs one
+  // window of words instead of everything after it.
+  async slide() {
+    const w = this.window;
+    if (!w) return;
+    const discard = this.nPast - (w - 1);
+    if (discard <= 0) return;
+    const r = await this.w.kvShift({ nKeep: 1, nDiscard: discard });
+    this.nPast = r.nPast;
   }
 
   // Prefill is the seed alone; every later token is chosen by decide() from the
@@ -197,7 +215,7 @@ export class Lens {
       stepped.push(id);
       if (stopOn && stopOn.has(id)) break;
       if (stopWhen && stopWhen(id)) break;
-      if (i + 1 < maxNew) logits = await this.step([id]);
+      if (i + 1 < maxNew) { await this.slide(); logits = await this.step([id]); }
     }
     return [seedId, ...stepped];
   }
