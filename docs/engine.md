@@ -140,6 +140,13 @@ generation with a short view costs nothing in quality. The study tool on the dum
 cannot save a copy in that stretch: its header bits flip (lengths read 16 and 0 instead of 5) and a lost carrier
 inside the copy shifts every bit after it, which the knock at the copy's start cannot repair.
 
+**The message code.** `textcode.js` / `textcode.py`: one canonical table (a static Huffman over letters, space,
+digits and common punctuation, weighted by English frequency, with an escape for any other byte and an end mark),
+used for every message so no flag is needed. "hello" is 29 bits instead of 40, "hi there" 40 instead of 64; about
+a third off for English, which is the single-letter entropy limit. The frame stack is unchanged (bytes in, bytes
+out); the eight-byte cap now holds about fifteen letters. Letters light on the strip as their codes complete
+(`decodePrefix`), and the evidence panel judges each letter by the run of planted bits its code occupies.
+
 **Sentence scope.** `rung.scope = "sentence"` rebuilds the cache at every sentence end from that sentence alone,
 so each sentence is scored against only the one before it, on both sides, from identical text. After an edit in
 sentence s, sentences s+2 onward are computed from the same tokens on both sides and come back exact; the damage is

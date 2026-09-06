@@ -15,7 +15,7 @@ const LABEL = {
 const NOTE = {
   sync: "A fixed pattern of bits. A reader scans for it, so the frame can start anywhere in the text.",
   header: "How long the message is, and a short tag for the model that wrote it, each bit sent twice.",
-  payload: "Your message itself, eight bits a letter.",
+  payload: "Your message itself, in a fixed code of about five bits a letter.",
   checksum: "A checksum over the message. One wrong bit and the frame fails, so a reader never reports a match it cannot back.",
   parity: "Parity bits that put right a few bits a reader gets wrong.",
   woven: "Your message, its seal and repair data, interleaved so damage spreads thin.",
