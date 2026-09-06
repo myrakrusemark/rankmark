@@ -32,6 +32,6 @@ jobs:
         with:
           node-version: "22"
       - name: Vectors match the Python reference bit for bit
-        run: node web/test/verify.mjs
+        run: node web/test/verify.mjs && node web/test/framing_copies.mjs
       - name: Encoder to decoder round trip through a fake lens
         run: node web/test/engine_roundtrip.mjs

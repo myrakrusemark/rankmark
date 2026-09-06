@@ -50,6 +50,8 @@ BARKER_13 = [1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1]
 MSEQ_31 = [1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1,
            0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0]
 
+BARKER_13_INV = [1 - b for b in BARKER_13]  # the copies profile knocks upside down: a lean frame never answers to it
+
 LEN_BITS = 6  # payload length in bytes, 1..63
 TAG_BITS = 3  # namespace tag: which model family claims this frame
 HEADER_BITS = LEN_BITS + TAG_BITS
@@ -71,6 +73,9 @@ PROFILES: dict[int, Profile] = {
     0: Profile("lean", tuple(BARKER_13), 1, 2, 2, 2, False, 1),
     1: Profile("standard", tuple(MSEQ_31), 3, 3, 4, 4, True, 4),
     2: Profile("robust", tuple(MSEQ_31), 5, 5, 6, 8, True, 8),
+    # the lean frame without its repair bytes: short, meant to be repeated,
+    # and combined copy by copy at the reader
+    3: Profile("copies", tuple(BARKER_13_INV), 1, 2, 2, 0, False, 1),
 }
 DEFAULT_PROFILE = 1
 
@@ -83,6 +88,7 @@ class DecodedFrame:
     tag: int
     tag_ok: bool
     sync_errors: int
+    combined: int = 1  # copies summed to decode this frame; 1 when a copy stood alone
 
 
 def tag_of(model_name: str) -> int:
@@ -146,6 +152,7 @@ def parse_frames_soft(llrs: list[float], lens_tag: int | None = None) -> list[De
     frames = []
     for p in PROFILES.values():
         sync_len, hdr_len = len(p.sync), HEADER_BITS * p.header_rep
+        cands = []  # copies that fail on their own, kept for combining
         for off in range(len(llrs) - sync_len - hdr_len + 1):
             errs = sum(b != s for b, s in zip(hard[off : off + sync_len], p.sync))
             if errs > p.sync_tol:
@@ -163,6 +170,7 @@ def parse_frames_soft(llrs: list[float], lens_tag: int | None = None) -> list[De
                 continue
             payload = _decode_body(llrs[start:end], payload_len, p)
             if payload is None:
+                cands.append((off, start, end, payload_len, tag, errs))
                 continue
             frames.append(DecodedFrame(
                 offset=off,
@@ -172,6 +180,35 @@ def parse_frames_soft(llrs: list[float], lens_tag: int | None = None) -> list[De
                 tag_ok=lens_tag is None or tag == lens_tag,
                 sync_errors=errs,
             ))
+        # candidates of one length, combined: each bit's confidence summed across
+        # the copies, then decoded; all of them first, then each left out in turn
+        groups: dict[int, list] = {}
+        for c in cands:
+            groups.setdefault(c[3], []).append(c)
+        for payload_len, g in groups.items():
+            if len(g) < 2:
+                continue
+            body_len = g[0][2] - g[0][1]
+            subsets = [g] + ([g[:i] + g[i + 1:] for i in range(len(g))] if len(g) > 2 else [])
+            for subset in subsets:
+                total = [0.0] * body_len
+                for (_, start, _, _, _, _) in subset:
+                    for i in range(body_len):
+                        total[i] += llrs[start + i]
+                payload = _decode_body(total, payload_len, p)
+                if payload is None:
+                    continue
+                off, _, _, _, tag, errs = subset[0]
+                frames.append(DecodedFrame(
+                    offset=off,
+                    payload=payload,
+                    profile=p.name,
+                    tag=tag,
+                    tag_ok=lens_tag is None or tag == lens_tag,
+                    sync_errors=errs,
+                    combined=len(subset),
+                ))
+                break
     return frames
 
 
@@ -193,7 +230,7 @@ def frame_layout(payload_len: int, p: Profile) -> list[tuple[str, int]]:
         parts += [("payload", 8 * payload_len),
                   ("checksum", 8 * p.crc_bytes),
                   ("parity", 8 * p.rs_nsym)]
-    return parts
+    return [part for part in parts if part[1] > 0]
 
 
 def _spans_from(layout: list[tuple[str, int]], offset: int, limit: int) -> list[dict]:

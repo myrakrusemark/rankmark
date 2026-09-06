@@ -15,6 +15,8 @@ const BARKER_13 = [1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1];
 const MSEQ_31 = [1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1,
                  0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0];
 
+const BARKER_13_INV = BARKER_13.map(b => 1 - b);   // the copies profile knocks upside down, so a lean frame never answers to it
+
 const LEN_BITS = 6;
 const TAG_BITS = 3;
 const HEADER_BITS = LEN_BITS + TAG_BITS;
@@ -24,6 +26,9 @@ export const PROFILES = {
   0: { name: "lean",     sync: BARKER_13, syncTol: 1, headerRep: 2, crcBytes: 2, rsNsym: 2, conv: false, depth: 1 },
   1: { name: "standard", sync: MSEQ_31,   syncTol: 3, headerRep: 3, crcBytes: 4, rsNsym: 4, conv: true,  depth: 4 },
   2: { name: "robust",   sync: MSEQ_31,   syncTol: 5, headerRep: 5, crcBytes: 6, rsNsym: 8, conv: true,  depth: 8 },
+  // the lean frame without its repair bytes: short, meant to be repeated, and
+  // combined copy by copy at the reader
+  3: { name: "copies",   sync: BARKER_13_INV, syncTol: 1, headerRep: 2, crcBytes: 2, rsNsym: 0, conv: false, depth: 1 },
 };
 export const DEFAULT_PROFILE = 1;
 
@@ -76,13 +81,18 @@ function decodeBody(llrs, payloadLen, p) {
   return payload;
 }
 
-// Scan every offset under every profile; return checksum-valid frames.
+// Scan every offset under every profile; return checksum-valid frames. A copy
+// that fails on its own is kept as a candidate; candidates of one profile and
+// one length are then combined, each bit's confidence summed across copies,
+// and the sum decoded (all of them, then each left out in turn, so one false
+// knock cannot spoil the rest). A frame reports how many copies it took.
 export function parseFramesSoft(llrs, lensTag = null) {
   const hard = llrsToBits(llrs);
   const frames = [];
   for (const p of Object.values(PROFILES)) {
     const syncLen = p.sync.length;
     const hdrLen = HEADER_BITS * p.headerRep;
+    const cands = [];
     for (let off = 0; off <= llrs.length - syncLen - hdrLen; off++) {
       let errs = 0;
       for (let i = 0; i < syncLen; i++) if (hard[off + i] !== p.sync[i]) errs++;
@@ -96,11 +106,34 @@ export function parseFramesSoft(llrs, lensTag = null) {
       const end = start + bodyCodedBits(payloadLen, p);
       if (end > llrs.length) continue;
       const payload = decodeBody(llrs.slice(start, end), payloadLen, p);
-      if (payload === null) continue;
+      if (payload === null) { cands.push({ off, start, end, payloadLen, tag, errs }); continue; }
       frames.push({
         offset: off, payload, profile: p.name, tag,
-        tagOk: lensTag === null || tag === lensTag, syncErrors: errs,
+        tagOk: lensTag === null || tag === lensTag, syncErrors: errs, combined: 1,
       });
+    }
+    const groups = new Map();
+    for (const c of cands) { if (!groups.has(c.payloadLen)) groups.set(c.payloadLen, []); groups.get(c.payloadLen).push(c); }
+    for (const [payloadLen, g] of groups) {
+      if (g.length < 2) continue;
+      const bodyLen = g[0].end - g[0].start;
+      const decodeSum = subset => {
+        const sum = new Array(bodyLen).fill(0);
+        for (const c of subset) for (let i = 0; i < bodyLen; i++) sum[i] += llrs[c.start + i];
+        return decodeBody(sum, payloadLen, p);
+      };
+      const subsets = [g];
+      if (g.length > 2) for (let i = 0; i < g.length; i++) subsets.push(g.filter((_, j) => j !== i));
+      for (const subset of subsets) {
+        const payload = decodeSum(subset);
+        if (payload === null) continue;
+        const a = subset[0];
+        frames.push({
+          offset: a.off, payload, profile: p.name, tag: a.tag,
+          tagOk: lensTag === null || a.tag === lensTag, syncErrors: a.errs, combined: subset.length,
+        });
+        break;
+      }
     }
   }
   return frames;
@@ -115,7 +148,7 @@ function frameLayout(payloadLen, p) {
   } else {
     parts.push(["payload", 8 * payloadLen], ["checksum", 8 * p.crcBytes], ["parity", 8 * p.rsNsym]);
   }
-  return parts;
+  return parts.filter(([, n]) => n > 0);
 }
 
 // the segments of a frame about to be written, from bit 0: what the strip draws
