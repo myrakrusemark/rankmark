@@ -79,5 +79,19 @@ check("repeat parse wrong tag", wrong, V.repeat.parsed_wrong_tag);
   }
 }
 
+// the echo, bit-exact with echo.py
+{
+  const { buildEcho, echoHash, EchoSlots, parseEcho } = await import("../engine/echo.js");
+  const { bitsToLlrs } = await import("../engine/ecc.js");
+  const e = V.echo;
+  check("echo packet", buildEcho(Uint8Array.from(e.payload), e.tag), e.packet);
+  check("echo hash", echoHash(e.ids.slice(0, 4)), e.hash);
+  const rule = new EchoSlots(e.n); const slots = [];
+  for (let i = 4; i < e.ids.length; i++) if (e.ids[i] % 5 !== 0) slots.push(rule.next(e.ids.slice(i - 4, i)));
+  check("echo slots", slots, e.slots);
+  const res = parseEcho(bitsToLlrs(slots.map(j => e.packet[j])), slots, e.n, e.tag);
+  check("echo tally", { valid: res.valid, votes: res.votes }, { valid: e.valid, votes: e.votes });
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
