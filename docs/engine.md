@@ -79,6 +79,28 @@ Bit agreement on the words both models treat as carriers runs 53 to 71%, against
 rarely agree on which words are carriers at all (the 4B text has 21 carrier words for the 4B, 76 for the 0.6B).
 That is the lineup section's point: a sibling model gets most easy words right and orders the near-ties differently.
 
+## Edits: measured, and why the lean frame stays
+
+`web/test/ci/edits.mjs` writes "hello" once per frame profile and reads the text back after edits. On the 1.7B
+(seed 4242, harbor opening):
+
+| Edit | lean (244 tokens, 115 carriers) | standard (843 tokens, 286 carriers) |
+|---|---|---|
+| untouched | valid, 100% | valid, 100% |
+| one word swapped at 25% | fails, 88% agreement | fails, 88% |
+| one word swapped at 50% | fails, 89% | fails, 90% |
+| one word swapped at 75% | fails, 94% | valid, 97% |
+| second sentence deleted | fails, 75% | fails, 68% |
+| last 20% cut | fails, 100% of the surviving 85 | fails, 100% of the surviving 240 |
+
+A changed word disturbs about one in ten of the carrier bits after it, because every later word is scored against a
+context that now contains the change. Error correction can absorb the handful of flips an edit near the end causes
+(the one standard-frame success, 8 flips in 286) and nothing else, at three and a half times the text. So the
+examples keep the lean frame and section five shows agreement instead of validity. The structural fix is windowed
+scoring: choose and score each word against only the last few dozen words, so an edit disturbs a window rather than
+the rest of the text; then a standard frame would validate through single edits. That is an engine change (the
+writer must generate from the same windowed view) and is not built.
+
 ## Determinism: measured
 
 The CI matrix (`.github/workflows/determinism.yml`, records in `web/data/determinism/`) runs a fixed prompt and a
