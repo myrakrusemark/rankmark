@@ -21,6 +21,7 @@ const PROFILES = (process.env.PROFILES || "0,1").split(",").map(Number);
 const COPIES = (process.env.COPIES || "1").split(",").map(Number);
 const WINDOW = Number(process.env.WINDOW || 0);   // positions the model keeps in view; 0 = all
 const DUMP = process.env.DUMP || "";               // save every variant's LLRs and the writer's bits here (JSON)
+const SCOPE = process.env.SCOPE || "all";          // "sentence": score each sentence against only the one before
 const PROMPT = "It was late in the harbor when the last boat came in, and";
 const stamp = () => new Date().toISOString().slice(11, 19);
 const log = (...a) => console.log(stamp(), ...a);
@@ -38,7 +39,7 @@ try {
     log(`profile ${profile}, ${copies} cop${copies === 1 ? "y" : "ies"}: writing`);
     const out = await page.evaluate(async ({ rungId, profile, prompt, copies, win }) => {
       const { agreement } = await import("/engine/compare.js");
-      const rung = { ...window.engine.registry.rungs.find(r => r.id === rungId), window: win };
+      const rung = { ...window.engine.registry.rungs.find(r => r.id === rungId), window: win, scope };
       const hex = [...new TextEncoder().encode("hello")].map(b => b.toString(16).padStart(2, "0")).join("");
       const written = [];
       const emb = await window.engine.runJob("embed", { rung, opts: { prompt, payloadHex: hex, profile, temperature: 0.7, seed: 4242, copies } }, {
@@ -68,13 +69,13 @@ try {
         results[name] = { valid: dec.valid, combined: dec.combined, payload: dec.payload, carriers: dec.carriers, agree: a.agreementPct, survived: a.survived, planted: a.planted, z: a.z, flipsByTenth: tenths, lostByTenth: lostBy, llrs: dec.llrs, read };
       }
       return { tokens: written.length, carriers: written.filter(t => t.carrier).length, framesPlanted: emb.framesPlanted, frameBits: emb.frameBits ?? null, results, written, text };
-    }, { rungId: RUNG, profile, prompt: PROMPT, copies, win: WINDOW });
-    log(`profile ${profile}, ${copies} copies${WINDOW ? `, window ${WINDOW}` : ""}: ${out.tokens} tokens, ${out.carriers} carriers, ${out.framesPlanted?.toFixed(2)} frames`);
+    }, { rungId: RUNG, profile, prompt: PROMPT, copies, win: WINDOW, scope: SCOPE });
+    log(`profile ${profile}, ${copies} copies${WINDOW ? `, window ${WINDOW}` : ""}${SCOPE !== "all" ? `, scope ${SCOPE}` : ""}: ${out.tokens} tokens, ${out.carriers} carriers, ${out.framesPlanted?.toFixed(2)} frames`);
     for (const [name, r] of Object.entries(out.results)) log(`  ${name.padEnd(26)} valid ${String(r.valid).padEnd(5)}${r.valid && r.combined > 1 ? ` (${r.combined} copies combined)` : ""}  agree ${String(r.agree).padStart(5)}% (${r.survived}/${r.planted})  z ${r.z}  flips by tenth ${r.flipsByTenth.join(" ")}  lost ${r.lostByTenth.join(" ")}`);
     if (DUMP) {
       const { writeFileSync } = await import("node:fs");
       const slim = Object.fromEntries(Object.entries(out.results).map(([k, r]) => [k, { valid: r.valid, combined: r.combined, llrs: r.llrs, read: r.read }]));
-      writeFileSync(DUMP.replace(/\.json$/, "") + `-p${profile}-c${copies}${WINDOW ? "-w" + WINDOW : ""}.json`, JSON.stringify({ rung: RUNG, profile, copies, window: WINDOW, written: out.written, text: out.text, results: slim }));
+      writeFileSync(DUMP.replace(/\.json$/, "") + `-p${profile}-c${copies}${WINDOW ? "-w" + WINDOW : ""}${SCOPE !== "all" ? "-" + SCOPE : ""}.json`, JSON.stringify({ rung: RUNG, profile, copies, window: WINDOW, written: out.written, text: out.text, results: slim }));
       log("dumped");
     }
   }

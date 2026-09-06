@@ -32,7 +32,7 @@ export function defaultThreads() {
 
 export async function loadLens(rung, { onProgress, threads, viaBlob = false } = {}) {
   const nThreads = threads ?? defaultThreads();
-  if (current && current.rung.id === rung.id && current.threads === nThreads && (current.rung.window ?? 0) === (rung.window ?? 0)) return current;
+  if (current && current.rung.id === rung.id && current.threads === nThreads && (current.rung.window ?? 0) === (rung.window ?? 0) && (current.rung.scope ?? "all") === (rung.scope ?? "all")) return current;
   await unloadLens();
   const w = new Wllama({ default: WASM }, { parallelDownloads: 3, suppressNativeLog: true });
   w.setCompat(COMPAT);
@@ -150,6 +150,7 @@ export class Lens {
     this.cancelFlag = false;
     this.fp = null;
     this.window = rung.window ?? 0;   // positions kept in view; 0 means the whole text
+    this.scope = rung.scope ?? "all"; // "sentence": every sentence is scored against only the one before it
     this.nPast = 0;
   }
 
@@ -164,6 +165,7 @@ export class Lens {
       nCtx: this.nCtx,
       tau: this.rung.tau ?? 2.0,
       window: this.window,
+      scope: this.scope,
     };
   }
 
@@ -202,20 +204,42 @@ export class Lens {
     this.nPast = r.nPast;
   }
 
+  // a token that closes a sentence (or a paragraph), by its text alone, so the
+  // writer and the reader agree on every boundary
+  endsSentence(id) {
+    const piece = this.decodeOne(id);
+    return /[.!?]["')\]]?\s*$/.test(piece) || /\n\s*\n/.test(piece);
+  }
+
   // Prefill is the seed alone; every later token is chosen by decide() from the
   // previous step's logits and fed back as a single step. stopOn ends the run
   // early when decide() returns one of those ids (the encoder passes the
   // end-of-generation set); stopWhen(id) can end it after any token.
+  // With scope "sentence", each sentence end rebuilds the cache from that
+  // sentence alone, so the next one is scored against only its predecessor:
+  // a changed word then disturbs its own sentence and the next, and every
+  // later sentence comes back exact. Costs a second pass over each token.
   // Returns [seedId, ...stepped].
   async run(seedId, maxNew, decide, { stopOn, stopWhen } = {}) {
     const stepped = [];
     let logits = await this.step([seedId], true);
+    let sentence = [seedId];
+    const SENTENCE_CAP = 96;   // a run of that many tokens without a stop counts as a sentence
     for (let i = 0; i < maxNew; i++) {
       const id = decide(logits);
       stepped.push(id);
       if (stopOn && stopOn.has(id)) break;
       if (stopWhen && stopWhen(id)) break;
-      if (i + 1 < maxNew) { await this.slide(); logits = await this.step([id]); }
+      if (i + 1 < maxNew) {
+        sentence.push(id);
+        if (this.scope === "sentence" && (this.endsSentence(id) || sentence.length >= SENTENCE_CAP)) {
+          logits = await this.step(sentence, true);   // the cache is now this sentence only
+          sentence = [];
+        } else {
+          await this.slide();
+          logits = await this.step([id]);
+        }
+      }
     }
     return [seedId, ...stepped];
   }
