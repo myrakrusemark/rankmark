@@ -360,8 +360,8 @@
   "threads": 8,
   "saveData": false,
   "storage": {
-   "usage": 2396,
-   "quota": 10737420636
+   "usage": 1409005475,
+   "quota": 12146423715
   },
   "rungs": [
    {
@@ -392,7 +392,7 @@
   "recommended": "Qwen3-4B-Q4_K_M",
   "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36"
  },
- "updated": "2026-09-05T14:21:46.887Z",
+ "updated": "2026-09-06T22:58:15.913Z",
  "entropy": {
   "Qwen3-0.6B-Q8_0": {
    "rung": "Qwen3-0.6B-Q8_0",
