@@ -162,6 +162,23 @@ newline-only sentence leaves the writer no context; boundaries are now stop mark
 break after sixty tokens without one. Sentence scope and two copies are the page's defaults; the card's minutes
 double to match.
 
+## The echo (profile 4): a message with no frame around it
+
+`echo.js` / `echo.py`. The packet is the model tag (3 bits), the coded message and a 16-bit checksum: 51 bits for
+"hello". Nothing marks where it starts. Every carrier word votes for one packet bit, chosen by the words before
+it: a hash (FNV-1a over the previous four token ids) either opens a run of slots, about one word in eight, at the
+slot it names, or continues the run one slot on. The rule advances at every token on both sides; a carrier votes
+with the slot current at its position. Runs keep the coverage even (a fresh random slot per word wastes most words
+on bits already covered); anchors put writer and reader back in step within a few words of an edit, whatever it did
+to the token count. The writer keeps going until every slot has the asked number of votes (`copies` is reused as
+votes per bit) and reports the minimum as its copies. The reader keeps a slot rule per possible message length
+(eight of them), tallies each carrier's confidence into its slot, decides every bit by the sign of the sum, and
+accepts the length whose tag and checksum hold. Cost against copies: the run-and-anchor rule needs about half
+again as many words to give every bit the same minimum, because coverage is uneven; against that, an edit or a cut
+of any shape removes only the votes in the words it touched, and there is no knock, label or copy to lose. The
+strip plants by slot, so cells light out of order and a ring deepens with each vote; the evidence lineup sends
+each read word to the slot it voted on. Measured next to copies with `edits.mjs` (`PROFILES=4`).
+
 ## Determinism: measured
 
 The CI matrix (`.github/workflows/determinism.yml`, records in `web/data/determinism/`) runs a fixed prompt and a
