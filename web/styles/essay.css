@@ -77,6 +77,13 @@
 .ev-row span { flex: 1; color: var(--ink-2); }
 .ev-row b { font-family: var(--font-mono); }
 .ev-row small { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.ev-row.top { align-items: center; }
+.ev-row .ev-name { font-size: 17px; }
+.ev-why { margin: 6px 0 10px; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+.ev-letters { font: 600 24px/1.2 var(--font-mono); letter-spacing: 0.08em; }
+.ev-letters .ok { color: var(--ok); }
+.ev-letters .flip { color: var(--warn); }
+.ev-letters .lost { color: var(--muted); opacity: 0.5; }
 .ev-bar { position: relative; height: 10px; background: var(--surface-2); border-radius: 5px; margin: 10px 0; overflow: visible; }
 .ev-bar i { display: block; height: 100%; background: var(--accent); border-radius: 5px; transform-origin: left; transition: transform var(--t-move) var(--ease-out); }
 .ev-bar b { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--ink); }

@@ -25,19 +25,23 @@ export function agreement(written, read) {
   const pairs = align(written.map(t => t.id), read.map(t => t.id));
   let both = 0, agree = 0, lost = 0, extra = 0;
   const perToken = new Array(read.length).fill(null); // null: unmatched; "ok" / "flip" / "lost"
+  // per planted bit, in the writer's order: what came back for it
+  const carrierIndex = new Map();
+  written.forEach((t, i) => { if (t.carrier) carrierIndex.set(i, carrierIndex.size); });
+  const perPlanted = Array.from({ length: carrierIndex.size }, () => ({ status: "lost", readBit: null }));
   const matchedRead = new Set();
   for (const [i, j] of pairs) {
     matchedRead.add(j);
     const w = written[i], r = read[j];
-    if (w.carrier && r.carrier) { both++; if (w.bit === r.bit) { agree++; perToken[j] = "ok"; } else perToken[j] = "flip"; }
+    if (w.carrier && r.carrier) { both++; const ok = w.bit === r.bit; if (ok) agree++; perToken[j] = ok ? "ok" : "flip"; perPlanted[carrierIndex.get(i)] = { status: ok ? "ok" : "flip", readBit: r.bit }; }
     else if (w.carrier) { lost++; perToken[j] = "lost"; }
     else if (r.carrier) extra++;
   }
-  const planted = written.filter(t => t.carrier).length;
+  const planted = carrierIndex.size;
   const z = both ? (agree - both / 2) / Math.sqrt(both / 4) : 0;
   return {
     planted, survived: both, agree, agreementPct: both ? Math.round((100 * agree) / both) : null,
     lost, extra, z: Math.round(z * 10) / 10,
-    matchedTokens: pairs.length, perToken,
+    matchedTokens: pairs.length, perToken, perPlanted,
   };
 }

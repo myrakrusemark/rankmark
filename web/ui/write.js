@@ -101,6 +101,7 @@ export class WritePanel {
         onEvent: e => {
           if (e.type === "start") {
             frameBits = e.frame_bits; contextTokens = e.context_tokens;
+            this.layout = e.layout;
             this.strip.setLayout(e.layout, e.frame_bits);
             this.strip.setMessage(tagText);
             const note = this.q("[data-strip-note]");
@@ -159,7 +160,7 @@ export class WritePanel {
       }
       const rd = this.q("[data-read]"); if (rd) rd.onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "read" });
       const br = this.q("[data-break]"); if (br) br.onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "break" });
-      this.onDone?.({ card, text: res.text, tag: tagText, mode: "done", tokens: this.tokensOut, result: res });
+      this.onDone?.({ card, text: res.text, tag: tagText, mode: "done", tokens: this.tokensOut, result: res, layout: this.layout, frameBits, rung: rung.id });
       if (cardEl) this.callouts.once("done", cardEl);
     } catch (err) {
       head.textContent = `could not write: ${err.message}`;
