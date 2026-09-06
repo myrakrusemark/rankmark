@@ -35,6 +35,9 @@
 .station .label-row .hint { margin: 0; }
 .station .row-inputs input[type="text"], .station .row-inputs .btn.wide, .station .row-inputs .range-box { height: 44px; box-sizing: border-box; }
 .station .temp-field { max-width: 320px; margin-top: 14px; }
+.station .pair { display: grid; grid-template-columns: minmax(0, 320px) 220px; gap: 16px; align-items: end; margin-top: 14px; }
+.station .pair .temp-field { margin-top: 0; }
+.station .pair select { width: 100%; }
 .station .row-inputs .temp-field { max-width: none; margin-top: 0; }
 .station .range-box { display: flex; align-items: center; }
 .station .range-box input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }

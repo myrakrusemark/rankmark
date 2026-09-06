@@ -18,6 +18,7 @@ const PROFILE = process.env.PROFILE || join(os.homedir(), ".cache", "rankmark-pl
 const PORT = process.env.PORT || "8776";
 const RUNG = process.env.RUNG || "Qwen3-0.6B-Q8_0";
 const PROFILES = (process.env.PROFILES || "0,1").split(",").map(Number);
+const COPIES = (process.env.COPIES || "1").split(",").map(Number);
 const PROMPT = "It was late in the harbor when the last boat came in, and";
 const stamp = () => new Date().toISOString().slice(11, 19);
 const log = (...a) => console.log(stamp(), ...a);
@@ -31,14 +32,14 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/test/engine/index.html`, { waitUntil: "load" });
   await page.waitForFunction(() => !!(window.engine && window.engine.registry), null, { timeout: 60000 });
 
-  for (const profile of PROFILES) {
-    log(`profile ${profile}: writing`);
-    const out = await page.evaluate(async ({ rungId, profile, prompt }) => {
+  for (const profile of PROFILES) for (const copies of COPIES) {
+    log(`profile ${profile}, ${copies} cop${copies === 1 ? "y" : "ies"}: writing`);
+    const out = await page.evaluate(async ({ rungId, profile, prompt, copies }) => {
       const { agreement } = await import("/engine/compare.js");
       const rung = window.engine.registry.rungs.find(r => r.id === rungId);
       const hex = [...new TextEncoder().encode("hello")].map(b => b.toString(16).padStart(2, "0")).join("");
       const written = [];
-      const emb = await window.engine.runJob("embed", { rung, opts: { prompt, payloadHex: hex, profile, temperature: 0.7, seed: 4242 } }, {
+      const emb = await window.engine.runJob("embed", { rung, opts: { prompt, payloadHex: hex, profile, temperature: 0.7, seed: 4242, copies } }, {
         onEvent: e => { if (e.type === "token") written.push({ id: e.id, carrier: e.carrier, bit: e.bit }); },
       });
       const text = emb.text;
@@ -58,12 +59,12 @@ try {
         const read = [];
         const dec = await window.engine.runJob("decode", { rung, text: v, opts: {} }, { onEvent: e => { if (e.type === "token") read.push({ id: e.id, carrier: e.carrier, bit: e.bit ?? null }); } });
         const a = agreement(written, read);
-        results[name] = { valid: dec.valid, payload: dec.payload, carriers: dec.carriers, agree: a.agreementPct, survived: a.survived, planted: a.planted, z: a.z };
+        results[name] = { valid: dec.valid, combined: dec.combined, payload: dec.payload, carriers: dec.carriers, agree: a.agreementPct, survived: a.survived, planted: a.planted, z: a.z };
       }
       return { tokens: written.length, carriers: written.filter(t => t.carrier).length, framesPlanted: emb.framesPlanted, frameBits: emb.frameBits ?? null, results };
-    }, { rungId: RUNG, profile, prompt: PROMPT });
-    log(`profile ${profile}: ${out.tokens} tokens, ${out.carriers} carriers, ${out.framesPlanted?.toFixed(2)} frames`);
-    for (const [name, r] of Object.entries(out.results)) log(`  ${name.padEnd(26)} valid ${String(r.valid).padEnd(5)} agree ${String(r.agree).padStart(5)}% (${r.survived}/${r.planted})  z ${r.z}`);
+    }, { rungId: RUNG, profile, prompt: PROMPT, copies });
+    log(`profile ${profile}, ${copies} copies: ${out.tokens} tokens, ${out.carriers} carriers, ${out.framesPlanted?.toFixed(2)} frames`);
+    for (const [name, r] of Object.entries(out.results)) log(`  ${name.padEnd(26)} valid ${String(r.valid).padEnd(5)}${r.valid && r.combined > 1 ? ` (${r.combined} copies combined)` : ""}  agree ${String(r.agree).padStart(5)}% (${r.survived}/${r.planted})  z ${r.z}`);
   }
   await page.evaluate(() => window.engine.unload());
 } catch (err) {

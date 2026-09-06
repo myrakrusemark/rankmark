@@ -105,6 +105,7 @@ details.adv .field { margin-top: 10px; }
 .strip .bit.spent { transform: scaleY(0.5); }
 .strip .bit.next { box-shadow: 0 0 0 1px var(--seg); }
 .strip .bit.dead { background: var(--warn); opacity: 1; }
+.strip .bit.again { box-shadow: inset 0 0 0 2px var(--ground); }
 .strip .fseg-letters { margin-top: 6px; font: 600 15px/1.3 var(--font-mono); letter-spacing: 0.1em; }
 .strip .fseg-letters span { transition: color var(--t-move) var(--ease-out), opacity var(--t-move) var(--ease-out); }
 .strip .fseg-letters .lit { color: var(--seg); }

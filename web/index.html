@@ -101,9 +101,15 @@
         <div class="progress" style="margin-top: 8px"><span class="line"><i></i></span><b>0%</b></div>
       </div>
     </div>
-    <div class="field temp-field">
-      <div class="label-row"><label for="st-temp">Temperature</label><span class="hint" data-temp-out>0.7</span></div>
-      <div class="range-box"><input id="st-temp" type="range" data-temp min="0" max="1.5" step="0.1" value="0.7"></div>
+    <div class="pair">
+      <div class="field temp-field">
+        <div class="label-row"><label for="st-temp">Temperature</label><span class="hint" data-temp-out>0.7</span></div>
+        <div class="range-box"><input id="st-temp" type="range" data-temp min="0" max="1.5" step="0.1" value="0.7"></div>
+      </div>
+      <div class="field">
+        <div class="label-row"><label for="st-copies">Copies of the frame</label><span class="hint">more survive edits</span></div>
+        <select id="st-copies" data-copies><option value="1">1, the quickest</option><option value="2">2</option><option value="3">3, the sturdiest</option></select>
+      </div>
     </div>
     <p class="temp-note">Hotter temperature means more chaotic choices, and more chaotic choices mean more room for the message. At any one step the dial does not change which words are free choices, since the gate reads the model's own scores first; but stranger words lead into sentences the model cannot predict, and those have more free choices to hide bits in. Cold text settles into stock phrases and runs out of room. The price is worse writing; 0.7 is about where this small model stops repeating itself without talking nonsense.</p>
     <div class="two">
@@ -253,7 +259,8 @@
         <div class="field">
           <label>How much repair data</label>
           <div class="seg" role="group" aria-label="frame setting">
-            <button type="button" data-profile="0" aria-pressed="true">lean<small></small></button>
+            <button type="button" data-profile="3" aria-pressed="true">copies<small></small></button>
+            <button type="button" data-profile="0" aria-pressed="false">lean<small></small></button>
             <button type="button" data-profile="1" aria-pressed="false">standard<small></small></button>
             <button type="button" data-profile="2" aria-pressed="false">heavy<small></small></button>
           </div>

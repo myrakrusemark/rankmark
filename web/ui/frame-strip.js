@@ -159,9 +159,9 @@ export class FrameStrip {
     if (!cell) return;
     if (tokenEl) tokenEl.dataset.seg = cell.dataset.kind;
     if (this.filled >= this.frameBits) {
-      // a further copy while the sentence finishes: the word takes its color,
-      // the planted frame stays lit
-      tokenEl?.classList.add("in");
+      // a further copy: the bit flies out again and its cell takes a ring; the
+      // first frame stays lit underneath
+      this.fly(cell, tokenEl, bit, cell.dataset.kind, () => { cell.classList.add("again"); tokenEl?.classList.add("in"); });
       this.filled++;
       return;
     }

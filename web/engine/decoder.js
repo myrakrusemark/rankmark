@@ -38,6 +38,7 @@ export async function decode(lens, text, opts, onEvent) {
       type: "done",
       valid: frames.length > 0,
       payload: best ? bytesToHex(best.payload) : null,
+      combined: best ? (best.combined ?? 1) : null,
       spans,
       carriers: llrs.length,
       frames: frames.length,
@@ -63,7 +64,7 @@ export async function decode(lens, text, opts, onEvent) {
         if (frames.length > reportedFrames) {
           reportedFrames = frames.length;
           onEvent({
-            type: "frame",
+            type: "frame", combined: frames[frames.length - 1].combined ?? 1,
             spans: frames.flatMap(frameSpans),
             payload: bytesToHex(frames[frames.length - 1].payload),
           });
@@ -80,6 +81,7 @@ export async function decode(lens, text, opts, onEvent) {
   return {
     valid: frames.length > 0,
     payload: frames[0] ? bytesToHex(frames[0].payload) : null,
+    combined: frames[0] ? (frames[0].combined ?? 1) : null,
     carriers: llrs.length,
     frames: frames.length,
     fingerprint: lens.fp,

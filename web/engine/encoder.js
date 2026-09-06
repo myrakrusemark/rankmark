@@ -45,6 +45,7 @@ export async function embed(lens, opts, onEvent) {
   const {
     prompt, payloadHex, profile = 0,
     temperature = 0.7, topK = 48,
+    copies = 1,   // frames to plant before the passage may end
   } = opts;
   // the gate is a property of the lens: bigger models are more confident and need a lower one
   const tau = opts.tau ?? lens.rung?.tau ?? 2.0;
@@ -63,13 +64,13 @@ export async function embed(lens, opts, onEvent) {
   // budget from the measured carrier rate (one frame plus slack), capped by the
   // context window; the ban keeps the run going until a frame is planted
   const rate = lens.rung?.carrierRate || 0.12;
-  const need = Math.ceil((frameBits / rate) * 3.0);   // the run stops at the first sentence end past the seal, so slack is free on a normal text
+  const need = Math.ceil((frameBits * (copies + 2)) / rate);   // the run stops at the first sentence end past the last copy, so slack is free on a normal text
   const cap = Math.max(64, (lens.nCtx ?? 2048) - context.length - 8);
   const maxNew = Math.min(opts.maxNew || need, cap);
 
   let planted = 0, carriers = 0, nextIdx = 0;
   onEvent({
-    type: "start", frame_bits: frameBits, max_new: maxNew, seed, temperature, tau,
+    type: "start", frame_bits: frameBits, max_new: maxNew, seed, temperature, tau, copies,
     layout: layoutOf(nbytes, profile), context_tokens: context.length,
   });
 
@@ -83,7 +84,7 @@ export async function embed(lens, opts, onEvent) {
   const decide = logits => {
     if (ri < replay.length) return replay[ri++]; // still feeding the context
     const nextBit = frame[nextIdx % frameBits];
-    const ban = planted < frameBits ? eog : null;
+    const ban = planted < frameBits * copies ? eog : null;   // no ending the passage before the last copy is in
     const choice = encodeStep(logits, nextBit, tau, ban, sampler);
     if (choice.planted) { planted++; nextIdx++; carriers++; }
     onEvent({
@@ -109,7 +110,7 @@ export async function embed(lens, opts, onEvent) {
   // last bits off the very end of the text
   let sinceFrame = 0;
   const stopWhen = id => {
-    if (planted < frameBits) return false;
+    if (planted < frameBits * copies) return false;
     sinceFrame++;
     return sinceFrame >= 6 && /[.!?]["')\]]?\s*$/.test(lens.decodeOne(id));
   };
@@ -129,6 +130,7 @@ export async function embed(lens, opts, onEvent) {
     retokenizes,
     seed,
     temperature,
+    copies,
     fingerprint: lens.fp,
     textHash: hash,
     lens: lens.name,

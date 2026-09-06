@@ -12,7 +12,8 @@ export class WritePanel {
   constructor(root, { engine, picker, callouts, strip, view, onDone, onText }) {
     Object.assign(this, { root, engine, picker, callouts, strip, view, onDone, onText });
     this.q = s => root.querySelector(s);
-    this.profile = 0;
+    // the pressed profile button if there is one (the tool), else the copies profile (the stations)
+    this.profile = Number(root.querySelector('.seg button[aria-pressed="true"]')?.dataset.profile ?? 3);
     this.running = false;
     this.result = null;
     this.q("[data-run]").addEventListener("click", () => this.run());
@@ -74,8 +75,9 @@ export class WritePanel {
     if (!(await this.picker.consent(rung))) return;
 
     const temperature = Number(this.q("[data-temp]")?.value ?? 0.7);
+    const copies = Math.max(1, Number(this.q("[data-copies]")?.value ?? 1));
     const seedRaw = (this.q("[data-seed]")?.value ?? "").trim();
-    const opts = { prompt, payloadHex: hex(bytes), profile: this.profile, temperature };
+    const opts = { prompt, payloadHex: hex(bytes), profile: this.profile, temperature, copies };
     if (seedRaw) opts.seed = Number(seedRaw) >>> 0;
 
     this.setBusy(true);
@@ -124,7 +126,12 @@ export class WritePanel {
             const s = (performance.now() - t0) / 1000;
             const rate = tokens / Math.max(s, 0.001);
             const need = Math.max(0, Math.ceil((frameBits - planted) / Math.max(carriers / tokens, 0.05)));
-            meter.textContent = `${rate.toFixed(1)} words/s · ${Math.min(planted, frameBits)} of ${frameBits} bits · ${planted >= frameBits ? "frame planted, finishing the sentence" : `about ${Math.ceil(need / Math.max(rate, 0.1))} s to go`}`;
+            const wanted = frameBits * copies;
+            const progress = copies > 1
+              ? (planted >= wanted ? `${copies} copies planted` : `copy ${Math.floor(planted / frameBits) + 1} of ${copies}: ${planted % frameBits} of ${frameBits} bits`)
+              : `${Math.min(planted, frameBits)} of ${frameBits} bits`;
+            const left = Math.max(0, Math.ceil((wanted - planted) / Math.max(carriers / tokens, 0.05)));
+            meter.textContent = `${rate.toFixed(1)} words/s · ${progress} · ${planted >= wanted ? "finishing the sentence" : `about ${Math.ceil(left / Math.max(rate, 0.1))} s to go`}`;
           }
         },
       });
