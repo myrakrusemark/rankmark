@@ -81,6 +81,7 @@ export async function decode(lens, text, opts, onEvent) {
   const frames = finalize();
   return {
     valid: frames.length > 0,
+    llrs: Array.from(llrs),
     payload: frames[0] ? bytesToHex(frames[0].payload) : null,
     combined: frames[0] ? (frames[0].combined ?? 1) : null,
     carriers: llrs.length,

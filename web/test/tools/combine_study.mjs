@@ -7,7 +7,7 @@
 
 import { readFileSync } from "node:fs";
 import { PROFILES, parseFramesSoft, tagOf } from "../../engine/framing.js";
-import { llrsToBits, repDecodeSoft } from "../../engine/ecc.js";
+import { bitsToLlrs, llrsToBits, repDecodeSoft } from "../../engine/ecc.js";
 import { bitsToInt } from "../../engine/bits.js";
 
 const dump = JSON.parse(readFileSync(process.argv[2], "utf8"));
@@ -32,6 +32,8 @@ function candidates(llrs, tol) {
 
 console.log(`${dump.rung}, profile ${dump.profile}, ${dump.copies} copies${dump.window ? `, window ${dump.window}` : ""}: ${dump.written.length} tokens`);
 for (const [name, r] of Object.entries(dump.results)) {
+  // older dumps carry no confidences: use the hard bits of the read carriers
+  if (!r.llrs) r.llrs = bitsToLlrs(r.read.filter(t => t.carrier).map(t => t.bit));
   const frames = parseFramesSoft(r.llrs, tag).filter(f => f.tagOk);
   const shipped = frames.length ? `${frames.map(f => `${text(f.payload)}@${f.offset}${f.combined > 1 ? "x" + f.combined : ""}`).join(" ")}` : "none";
   const c1 = candidates(r.llrs, 1), c2 = candidates(r.llrs, 2), c3 = candidates(r.llrs, 3);
