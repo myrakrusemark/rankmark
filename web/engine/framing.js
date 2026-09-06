@@ -8,6 +8,7 @@ import {
   bitsToLlrs, convEncode, CONV_TAIL, deinterleave, HARD_LLR, interleave,
   llrsToBits, repDecodeSoft, repEncode, rsDecode, rsEncode, viterbiDecode,
 } from "./ecc.js";
+import { echoLen, echoLayout } from "./echo.js";
 
 const MAGIC = 0xb65d;
 
@@ -48,7 +49,10 @@ function bodyCodedBits(payloadLen, p) {
   return p.conv ? 2 * (nbits + CONV_TAIL) : nbits;
 }
 
+export const ECHO_PROFILE = 4;   // not a framed profile: see echo.js
+
 export function frameLenBits(payloadLen, profileId) {
+  if (profileId === ECHO_PROFILE) return echoLen(payloadLen);
   const p = PROFILES[profileId];
   return p.sync.length + HEADER_BITS * p.headerRep + bodyCodedBits(payloadLen, p);
 }
@@ -153,6 +157,7 @@ function frameLayout(payloadLen, p) {
 
 // the segments of a frame about to be written, from bit 0: what the strip draws
 export function layoutOf(payloadLen, profileId) {
+  if (profileId === ECHO_PROFILE) return echoLayout(payloadLen);
   const layout = frameLayout(payloadLen, PROFILES[profileId]);
   const total = layout.reduce((s, [, n]) => s + n, 0);
   return spansFrom(layout, 0, total);
@@ -170,6 +175,7 @@ function spansFrom(layout, offset, limit) {
 }
 
 export function frameSpans(frame) {
+  if (frame.profile === "echo") return [];   // the echo has slots, not positions
   const p = Object.values(PROFILES).find(q => q.name === frame.profile);
   const layout = frameLayout(frame.payload.length, p);
   const total = layout.reduce((s, [, n]) => s + n, 0);

@@ -86,6 +86,18 @@ c = collect();
 await embed(lens, { prompt: "x", payloadHex: "2a", profile: 0, temperature: 0 }, c.on);
 ok(c.ev.start.max_new === Math.ceil((c.ev.start.frame_bits / 0.5) * 3.0), `max_new from the carrier rate (got ${c.ev.start.max_new})`);
 
+// the echo, two votes a bit: the writer keeps going until every packet bit has
+// two votes, and the reader tallies its way to the payload with no frame to find
+{
+  const ce = collect();
+  const ee = await embed(lens, { prompt: "seed text here", payloadHex: "2a", profile: 4, temperature: 0.7, seed: 11, copies: 2 }, ce.on);
+  ok(ce.ev.start.echo === true && ce.ev.start.frame_bits === 27, `echo packet is 27 bits for one byte (got ${ce.ev.start.frame_bits})`);
+  ok(ee.framesPlanted >= 2, `every slot got two votes (min ${ee.framesPlanted})`);
+  const de = await decode(lens, ee.text, {}, () => {});
+  ok(de.valid && de.payload === "2a" && de.echo && de.echo.n === 27, `reader tallies the echo to 0x2a (valid ${de.valid}, payload ${de.payload})`);
+  ok(de.echo && de.echo.minVotes >= 2, `reader saw at least two votes a slot (min ${de.echo?.minVotes})`);
+}
+
 // the copies profile, three copies: the writer keeps going until three frames
 // are planted, and the reader finds three
 {

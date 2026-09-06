@@ -7,6 +7,7 @@ import {
   frameSpans, llrOf, parseFramesSoft, partialSpans, tagOf,
 } from "./framing.js";
 import { entropyOf, rankOf } from "./logits.js";
+import { echoLengths, EchoSlots, parseEcho, ECHO } from "./echo.js";
 
 export async function decode(lens, text, opts, onEvent) {
   const tau = opts.tau ?? lens.rung?.tau ?? 2.0;
@@ -29,9 +30,22 @@ export async function decode(lens, text, opts, onEvent) {
   let reportedFrames = 0;
   let sinceParse = 0;
   let t = 0;
+  // the echo: a slot rule per possible packet length, advanced at every token;
+  // each carrier's slot is kept in step with its LLR
+  const allIds = [seed, ...targets];
+  const echoes = echoLengths().map(n => ({ n, rule: new EchoSlots(n), slots: [] }));
+
+  const parseAll = () => {
+    const frames = parseFramesSoft(llrs, lensTag).filter(f => f.tagOk);
+    for (const e of echoes) {
+      const r = parseEcho(llrs, e.slots, e.n, lensTag);
+      if (r.valid && r.tagOk) frames.push({ offset: -1, payload: r.payload, profile: "echo", tag: r.tag, tagOk: true, syncErrors: 0, combined: 1, echo: { n: e.n, votes: r.votes, minVotes: r.minVotes, covered: r.covered, slots: e.slots.slice() } });
+    }
+    return frames;
+  };
 
   const finalize = () => {
-    const frames = parseFramesSoft(llrs, lensTag).filter(f => f.tagOk);
+    const frames = parseAll();
     const spans = frames.flatMap(frameSpans);
     const best = frames[0];
     onEvent({
@@ -39,6 +53,7 @@ export async function decode(lens, text, opts, onEvent) {
       valid: frames.length > 0,
       payload: best ? bytesToHex(best.payload) : null,
       combined: best ? (best.combined ?? 1) : null,
+      echo: best?.echo ?? null,
       llrs: Array.from(llrs),   // the bit confidences, for offline study of the parser
       spans,
       carriers: llrs.length,
@@ -51,23 +66,27 @@ export async function decode(lens, text, opts, onEvent) {
 
   const decide = logits => {
     const tid = targets[t++];
+    const prev = allIds.slice(Math.max(0, t - ECHO.k), t);   // the k ids before this token
+    const slotsNow = echoes.map(e => e.rule.next(prev));
     const entropy = entropyOf(logits);
     const rank = rankOf(logits, tid);
     if (entropy >= tau) {
       const bit = rank % 2;
       llrs.push(llrOf(rank, entropy, tau));
+      echoes.forEach((e, i) => e.slots.push(slotsNow[i]));
       onEvent({ type: "token", id: tid, carrier: true, bit, piece: lens.decodeOne(tid), rank });
       // cheap: repaint the forming frame every carrier; full parse periodically
       onEvent({ type: "partial", spans: partialSpans(llrs) });
       if (++sinceParse >= 6) {
         sinceParse = 0;
-        const frames = parseFramesSoft(llrs, lensTag).filter(f => f.tagOk);
+        const frames = parseAll();
         if (frames.length > reportedFrames) {
           reportedFrames = frames.length;
+          const last = frames[frames.length - 1];
           onEvent({
-            type: "frame", combined: frames[frames.length - 1].combined ?? 1,
+            type: "frame", combined: last.combined ?? 1, echo: last.echo ?? null,
             spans: frames.flatMap(frameSpans),
-            payload: bytesToHex(frames[frames.length - 1].payload),
+            payload: bytesToHex(last.payload),
           });
         }
       }
@@ -84,6 +103,7 @@ export async function decode(lens, text, opts, onEvent) {
     llrs: Array.from(llrs),
     payload: frames[0] ? bytesToHex(frames[0].payload) : null,
     combined: frames[0] ? (frames[0].combined ?? 1) : null,
+    echo: frames[0]?.echo ?? null,
     carriers: llrs.length,
     frames: frames.length,
     fingerprint: lens.fp,
