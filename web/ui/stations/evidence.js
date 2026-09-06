@@ -149,8 +149,11 @@ function report(a, res, frame, reference, frontier) {
     if (tag !== null) why.push(tag === wantTag ? `the label's model tag (#${tag}) matches` : `the label's model tag reads #${tag}, not its own`);
   }
   if (a.survived) why.push(`${a.agree} of the ${a.survived} bits that have come back agree with what it planted, where chance would give about ${Math.round(a.survived / 2)}`);
-  out.push(`<div class="ev-row top"><span>written by</span><b class="ev-name">${esc(name)}</b></div>`);
-  out.push(`<p class="ev-why">${why.length ? why.join("; ") + "." : (res ? "No bit survived this edit, so nothing can be said." : "Reading.")}</p>`);
+  // the name is earned: a checksum that holds, or agreement well above chance;
+  // until then the panel only says what it is comparing against
+  const earned = res ? (res.valid || a.z >= 3) : (a.survived >= 20 && a.z >= 3);
+  out.push(`<div class="ev-row top"><span>written by</span><b class="ev-name">${earned ? esc(name) : (res ? "cannot tell" : "reading")}</b></div>`);
+  out.push(`<p class="ev-why">Compared against what ${esc(name)} planted on this page. ${why.length ? why.join("; ") + "." : (res ? "No bit survived this edit, so nothing can be said." : "")}</p>`);
 
   const payload = sec("payload");
   if (payload) {
