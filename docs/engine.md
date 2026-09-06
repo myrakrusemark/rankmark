@@ -114,6 +114,14 @@ in five bits an edit flips; the same bits buy most of another copy.
 the sentence-end stop hold until the last copy; the budget is `frameBits × (copies + 2) / rate`). Each copy carries
 its own knock, so a reader finds each one wherever it lands.
 
+**Copies, measured** (1.7B, seed 4242, harbor opening, `edits.mjs`): one copy of the copies frame took 211 tokens and,
+like the lean frame, failed every edit. Three copies took 773 tokens (266 carriers, 34%) and validated through a
+swap at the halfway point, a swap at three quarters and a tail cut, each time on a copy that sat clear of the
+damage; the swap at a quarter (94% agreement, 7 flips over 266 bits) and the deleted sentence (70%) still failed,
+and combining did not rescue them. That is the next thing to study offline from dumped LLRs: the likely causes are
+a damaged knock (tolerance one) keeping a copy out of the candidate set, or a wrong length bit sending it to
+another group.
+
 **Combining at the reader.** `parseFramesSoft` keeps every copy that fails on its own as a candidate. Candidates of
 one profile and one length are then summed bit by bit (the LLRs, so a bit near a tie counts for little and a
 confident bit for much) and the sum is decoded: all copies first, then each left out in turn, so one false knock
