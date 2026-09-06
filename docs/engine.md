@@ -101,6 +101,32 @@ scoring: choose and score each word against only the last few dozen words, so an
 the rest of the text; then a standard frame would validate through single edits. That is an engine change (the
 writer must generate from the same windowed view) and is not built.
 
+## Copies, combining, and the window (branch feat/frame-copies, 2026-09-06)
+
+Three changes follow from the edit measurements above, in the order they pay off.
+
+**The copies profile (3).** The lean frame without its repair bytes: knock, label, message, checksum; 87 bits for a
+five-byte message against 103. Its knock is the Barker code inverted, so a lean frame never answers to it and the
+parser never reports one frame twice. Two parity bytes bought one corrected byte, which is no help against the one
+in five bits an edit flips; the same bits buy most of another copy.
+
+**Copies.** `opts.copies` makes the writer keep going until that many frames are planted (the end-of-text ban and
+the sentence-end stop hold until the last copy; the budget is `frameBits × (copies + 2) / rate`). Each copy carries
+its own knock, so a reader finds each one wherever it lands.
+
+**Combining at the reader.** `parseFramesSoft` keeps every copy that fails on its own as a candidate. Candidates of
+one profile and one length are then summed bit by bit (the LLRs, so a bit near a tie counts for little and a
+confident bit for much) and the sum is decoded: all copies first, then each left out in turn, so one false knock
+cannot spoil the rest. A frame reports `combined`, the copies it took. Same in Python (`parse_frames_soft`).
+`web/test/framing_copies.mjs` covers three damaged copies combining and a stray knock.
+
+**The window.** `rung.window > 0` keeps at most that many positions in the KV cache: before each step the lens
+drops the oldest through the engine's new `kv_shift` action (keep the seed, remove n, shift the rest back; llama.cpp's
+context shift). Writer and reader slide at the same steps, so their logits stay identical; the window is part of the
+fingerprint. The point is edits: with the whole text in view, one changed word disturbs every later word's scores;
+with a window, it disturbs the words in one window, after which the copies are clean again. Needs engine build
+`kv_shift` (fork commit 3333546 or later). Off until measured.
+
 ## Determinism: measured
 
 The CI matrix (`.github/workflows/determinism.yml`, records in `web/data/determinism/`) runs a fixed prompt and a
