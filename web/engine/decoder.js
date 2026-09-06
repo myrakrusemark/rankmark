@@ -39,6 +39,7 @@ export async function decode(lens, text, opts, onEvent) {
       valid: frames.length > 0,
       payload: best ? bytesToHex(best.payload) : null,
       combined: best ? (best.combined ?? 1) : null,
+      llrs: Array.from(llrs),   // the bit confidences, for offline study of the parser
       spans,
       carriers: llrs.length,
       frames: frames.length,
