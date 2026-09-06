@@ -37,7 +37,7 @@ try {
 
   for (const profile of PROFILES) for (const copies of COPIES) {
     log(`profile ${profile}, ${copies} cop${copies === 1 ? "y" : "ies"}: writing`);
-    const out = await page.evaluate(async ({ rungId, profile, prompt, copies, win }) => {
+    const out = await page.evaluate(async ({ rungId, profile, prompt, copies, win, scope }) => {
       const { agreement } = await import("/engine/compare.js");
       const rung = { ...window.engine.registry.rungs.find(r => r.id === rungId), window: win, scope };
       const hex = [...new TextEncoder().encode("hello")].map(b => b.toString(16).padStart(2, "0")).join("");
