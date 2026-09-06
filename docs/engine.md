@@ -128,12 +128,25 @@ confident bit for much) and the sum is decoded: all copies first, then each left
 cannot spoil the rest. A frame reports `combined`, the copies it took. Same in Python (`parse_frames_soft`).
 `web/test/framing_copies.mjs` covers three damaged copies combining and a stray knock.
 
-**The window.** `rung.window > 0` keeps at most that many positions in the KV cache: before each step the lens
-drops the oldest through the engine's new `kv_shift` action (keep the seed, remove n, shift the rest back; llama.cpp's
-context shift). Writer and reader slide at the same steps, so their logits stay identical; the window is part of the
-fingerprint. The point is edits: with the whole text in view, one changed word disturbs every later word's scores;
-with a window, it disturbs the words in one window, after which the copies are clean again. Needs engine build
-`kv_shift` (fork commit 3333546 or later). Off until measured.
+**The window, measured and set aside.** `rung.window > 0` keeps at most that many positions in the KV cache: before
+each step the lens drops the oldest through the engine's `kv_shift` action (keep the seed, remove n, shift the rest
+back; llama.cpp's context shift; engine build `engine-09a0df8`, verified bit-identical on the old path, logit hash
+`ca3e23e2a6997865`). The hope was that an edit would disturb one window of words and nothing after. Measured on the
+1.7B with three copies and a 64-position window, a swap at a quarter still flipped bits in every later tenth of the
+text (6, 1, 2, 3, 2, 5, 1, 2). The reason is the cache itself: the keys and values of the next 64 tokens are computed
+with the changed word in view, later tokens attend to those, and the disturbance runs down the chain, small but
+never zero, and carrier bits sit on near-ties where any disturbance flips them. The windowed text itself read well, so
+generation with a short view costs nothing in quality. The study tool on the dumped bits also showed why combining
+cannot save a copy in that stretch: its header bits flip (lengths read 16 and 0 instead of 5) and a lost carrier
+inside the copy shifts every bit after it, which the knock at the copy's start cannot repair.
+
+**Sentence scope.** `rung.scope = "sentence"` rebuilds the cache at every sentence end from that sentence alone,
+so each sentence is scored against only the one before it, on both sides, from identical text. After an edit in
+sentence s, sentences s+2 onward are computed from the same tokens on both sides and come back exact; the damage is
+two sentences wide, not the rest of the text. Boundaries come from the token's own text (`endsSentence`: a stop
+mark, or a blank line, or 96 tokens without either), so the two sides agree on every one. Cost: each token is
+evaluated twice, once when chosen and once as the next sentence's context. The scope is in the fingerprint.
+Measured next.
 
 ## Determinism: measured
 
