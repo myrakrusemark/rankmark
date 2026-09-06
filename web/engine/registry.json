@@ -29,6 +29,7 @@
       }
     }
   },
+  "defaultRung": "Qwen3-1.7B-Q8_0",
   "rungs": [
     {
       "id": "Qwen3-0.6B-Q8_0",

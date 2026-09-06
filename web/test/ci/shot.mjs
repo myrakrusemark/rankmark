@@ -12,7 +12,7 @@ const [selector, out, url = "http://127.0.0.1:8770/"] = process.argv.slice(2);
 if (!selector || !out) { console.error("usage: shot.mjs <selector> <out.png> [url]"); process.exit(2); }
 const ctx = await chromium.launchPersistentContext(join(os.homedir(), ".cache", "rankmark-playwright-profile"), { headless: true, viewport: { width: 1280, height: 900 } });
 try {
-  await ctx.addInitScript(rung => { try { localStorage.setItem("rankmark.rung", rung); } catch { /* ignore */ } }, process.env.RUNG || "Qwen3-0.6B-Q8_0");
+  await ctx.addInitScript(rung => { try { localStorage.setItem("rankmark.rung", rung); } catch { /* ignore */ } }, process.env.RUNG || "Qwen3-1.7B-Q8_0");
   const page = await ctx.newPage();
   await page.goto(url, { waitUntil: "load" });
   await page.waitForFunction(() => !!window.rankmark, null, { timeout: 60000 });

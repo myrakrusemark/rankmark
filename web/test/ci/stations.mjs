@@ -32,7 +32,7 @@ await new Promise(r => setTimeout(r, 1500));
 const ctx = await chromium.launchPersistentContext(PROFILE, { headless: true, viewport: { width: 1280, height: 900 } });
 try {
   // the small rung, whatever this profile picked before
-  await ctx.addInitScript(rung => { try { localStorage.setItem("rankmark.rung", rung); } catch { /* ignore */ } }, process.env.RUNG || "Qwen3-0.6B-Q8_0");
+  await ctx.addInitScript(rung => { try { localStorage.setItem("rankmark.rung", rung); } catch { /* ignore */ } }, process.env.RUNG || "Qwen3-1.7B-Q8_0");
   const page = await ctx.newPage();
   page.on("pageerror", e => log("[pageerror]", e.message));
   page.on("console", m => { if (m.type() === "error") log("[console]", m.text().slice(0, 200)); });

@@ -233,6 +233,10 @@ async function autoload() {
     const r = registry.rungs.find(x => x.id === b.dataset.alPick);
     if (r && r !== current) start(r);
   });
-  const first = picker.cached.has(picker.rung.id) ? picker.rung : registry.rungs[0];
+  // the registry's default rung (the 1.7B: reliable carriers, readable prose), or the
+  // rung this visitor downloaded and picked before, or the smallest that runs here
+  const ok = r => hw.rungs.find(x => x.id === r.id)?.ok;
+  const preferred = registry.rungs.find(r => r.id === registry.defaultRung);
+  const first = picker.cached.has(picker.rung.id) ? picker.rung : (preferred && ok(preferred) ? preferred : registry.rungs.find(ok) || registry.rungs[0]);
   if (hw.rungs.find(r => r.id === first.id)?.ok) start(first);
 }
