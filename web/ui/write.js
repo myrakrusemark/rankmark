@@ -105,20 +105,21 @@ export class WritePanel {
           if (e.type === "start") {
             frameBits = e.frame_bits; contextTokens = e.context_tokens;
             this.layout = e.layout;
+            this.echo = !!e.echo;
             this.strip.setLayout(e.layout, e.frame_bits);
             this.strip.setMessage(tagText);
             const note = this.q("[data-strip-note]");
-            if (note) note.innerHTML = `<b>${e.frame_bits} bits</b> to plant: the knock, a label, your message, its seal${e.layout.some(s => s.kind === "parity" || s.kind === "woven") ? ", and repair data" : ""}.`;
+            if (note) note.innerHTML = e.echo ? `<b>${e.frame_bits} bits</b> to vote on: the model tag, your message and its seal, each word voting on the bit the words before it name.` : `<b>${e.frame_bits} bits</b> to plant: the knock, a label, your message, its seal${e.layout.some(s => s.kind === "parity" || s.kind === "woven") ? ", and repair data" : ""}.`;
           }
           if (e.type === "token") {
             tokens++;
-            this.tokensOut.push({ id: e.id, carrier: e.carrier, bit: e.bit });
+            this.tokensOut.push({ id: e.id, carrier: e.carrier, bit: e.bit, slot: e.slot });
             const el = this.view.append(e);
             this.onText?.(this.view.root.textContent);
             if (!sawFirst) { sawFirst = true; this.callouts.once("first", el); }
             if (e.carrier) {
               carriers++;
-              this.strip.plant(e.bit, el);
+              this.strip.plant(e.bit, el, e.slot);
               if (!sawCarrier[e.bit]) { sawCarrier[e.bit] = true; this.callouts.once(e.bit ? "carrier1" : "carrier0", el); }
               planted++;
               if (planted === (this.strip.cells.findIndex(c => c.dataset.kind !== "sync"))) this.callouts.once("knock", this.strip.root);
@@ -128,18 +129,23 @@ export class WritePanel {
             const rate = tokens / Math.max(s, 0.001);
             const need = Math.max(0, Math.ceil((frameBits - planted) / Math.max(carriers / tokens, 0.05)));
             const wanted = frameBits * copies;
-            const progress = copies > 1
-              ? (planted >= wanted ? `${copies} copies planted` : `copy ${Math.floor(planted / frameBits) + 1} of ${copies}: ${planted % frameBits} of ${frameBits} bits`)
-              : `${Math.min(planted, frameBits)} of ${frameBits} bits`;
-            const left = Math.max(0, Math.ceil((wanted - planted) / Math.max(carriers / tokens, 0.05)));
-            meter.textContent = `${rate.toFixed(1)} words/s · ${progress} · ${planted >= wanted ? "finishing the sentence" : `about ${Math.ceil(left / Math.max(rate, 0.1))} s to go`}`;
+            const minVotes = this.strip.cells.length ? Math.min(...this.strip.cells.map(c => Number(c.dataset.votes) || 0)) : 0;
+            const covered = this.strip.cells.filter(c => Number(c.dataset.votes) > 0).length;
+            const done = this.echo ? minVotes >= copies : planted >= wanted;
+            const progress = this.echo
+              ? (done ? `every bit has ${copies} vote${copies === 1 ? "" : "s"}` : `${covered} of ${frameBits} bits voted on, ${planted} votes`)
+              : copies > 1
+                ? (done ? `${copies} copies planted` : `copy ${Math.floor(planted / frameBits) + 1} of ${copies}: ${planted % frameBits} of ${frameBits} bits`)
+                : `${Math.min(planted, frameBits)} of ${frameBits} bits`;
+            const left = Math.max(0, Math.ceil(((this.echo ? wanted * 1.6 : wanted) - planted) / Math.max(carriers / tokens, 0.05)));
+            meter.textContent = `${rate.toFixed(1)} words/s · ${progress} · ${done ? "finishing the sentence" : `about ${Math.ceil(left / Math.max(rate, 0.1))} s to go`}`;
           }
         },
       });
       if (res.cancelled) { head.textContent = "stopped"; meter.textContent = ""; if (copyBtn) copyBtn.hidden = true; return; }
       this.result = res;
       meter.textContent = "";
-      if (planted < frameBits) {
+      if (this.echo ? res.framesPlanted < 1 : planted < frameBits) {
         // the model settled into text it could predict and the free choices ran
         // out before the frame closed: say so, and offer another go
         head.textContent = `${tokens} words, ${planted} of ${frameBits} bits planted: the frame did not close`;
@@ -168,7 +174,7 @@ export class WritePanel {
       }
       const rd = this.q("[data-read]"); if (rd) rd.onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "read" });
       const br = this.q("[data-break]"); if (br) br.onclick = () => this.onDone?.({ card, text: res.text, tag: tagText, mode: "break" });
-      this.onDone?.({ card, text: res.text, tag: tagText, mode: "done", tokens: this.tokensOut, result: res, layout: this.layout, frameBits, rung: rung.id });
+      this.onDone?.({ card, text: res.text, tag: tagText, mode: "done", tokens: this.tokensOut, result: res, layout: this.layout, frameBits, rung: rung.id, echo: this.echo });
       if (cardEl) this.callouts.once("done", cardEl);
     } catch (err) {
       head.textContent = `could not write: ${err.message}`;

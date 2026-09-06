@@ -1,13 +1,14 @@
 // Station: edit it and it still tells. The same reader, with the writer's
-// planted bits kept as the reference. The planted frame sits on the right as
+// planted bits kept as the reference. The planted packet sits on the right as
 // one line of hollow cells in the section colors. As the reader pulls a bit
 // out of a word, the bit flies to the planted cell it lines up with (the same
-// alignment a keyed detector would use, here by matching the words): the cell
-// fills in its color if the bit agrees, red if it flipped, and cells the
-// alignment skips go dashed as lost. Under the line, the report fills in as
-// the bits arrive: which model wrote this and why, how long the message is,
-// the letters that still read, and which parts of the frame broke. A partial
-// pattern is evidence even when the full message is gone.
+// alignment a keyed detector would use, here by matching the words; for the
+// echo, the cell is the slot that word voted on): the cell fills in its color
+// if the bit agrees, red if it flipped, and cells the alignment skips go
+// dashed as lost. Under the line, the report fills in as the bits arrive:
+// which model wrote this and why, how long the message is, the letters that
+// still read, and which parts of the packet broke. A partial pattern is
+// evidence even when the full message is gone.
 
 import { agreement } from "../../engine/compare.js";
 import { FrameStrip } from "../frame-strip.js";
@@ -18,9 +19,38 @@ const shortName = id => (id || "").replace(/-Q.*$/, "");
 const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])).replace(/"/g, "&quot;");
 const fly = FrameStrip.prototype.fly;
 
+// the planted packet as the reader sees it coming back: a bit and a status per
+// packet position. Framed: position k is the writer's k-th carrier. Echo: the
+// position is the slot, and every writer carrier that voted on it counts.
+function packetView(a, frame, reference, frontier) {
+  const carriers = reference.filter(t => t.carrier);
+  const n = frame.frameBits;
+  const pbits = new Array(n).fill(0), status = new Array(n).fill("pending"), slotOf = new Array(carriers.length).fill(null);
+  if (frame.echo) {
+    const oks = new Array(n).fill(0), flips = new Array(n).fill(0), reached = new Array(n).fill(false), seen = new Array(n).fill(false);
+    carriers.forEach((c, k) => {
+      const j = c.slot; if (j === undefined || j === null) return;
+      slotOf[k] = j; pbits[j] = c.bit; seen[j] = true;
+      const st = a.perPlanted[k]?.status;
+      if (st === "ok") oks[j]++; else if (st === "flip") flips[j]++;
+      if (k <= frontier) reached[j] = true;
+    });
+    for (let j = 0; j < n; j++) {
+      status[j] = !seen[j] ? "lost" : oks[j] > 0 && oks[j] >= flips[j] ? "ok" : flips[j] > 0 ? "flip" : reached[j] ? "lost" : "pending";
+    }
+  } else {
+    carriers.slice(0, n).forEach((c, k) => {
+      slotOf[k] = k; pbits[k] = c.bit;
+      const st = a.perPlanted[k]?.status ?? "lost";
+      status[k] = st === "lost" && k > frontier ? "pending" : st;
+    });
+  }
+  return { n, pbits, status, slotOf, carriers };
+}
+
 export function attachEvidence(readPanel, meterEl) {
-  readPanel.reference = null;       // [{id, carrier, bit}] from the write station
-  readPanel.frame = null;           // { layout, frameBits, message, rung }
+  readPanel.reference = null;       // [{id, carrier, bit, slot}] from the write station
+  readPanel.frame = null;           // { layout, frameBits, message, rung, echo }
   readPanel.readTokens = [];
   const lineup = document.createElement("div");
   lineup.className = "lineup strip";
@@ -28,7 +58,7 @@ export function attachEvidence(readPanel, meterEl) {
   meterEl.parentElement.insertBefore(lineup, meterEl);
   let cells = [];
 
-  // the planted frame as a line of hollow cells, one per bit, colored by section
+  // the planted packet as a line of hollow cells, one per bit, colored by section
   const buildLineup = () => {
     const f = readPanel.frame;
     if (!f?.layout || !readPanel.reference) { lineup.hidden = true; return; }
@@ -48,18 +78,18 @@ export function attachEvidence(readPanel, meterEl) {
   const origLoad = readPanel.load.bind(readPanel);
   readPanel.load = card => { origLoad(card); queueMicrotask(buildLineup); };
 
-  let frontier = -1;   // the furthest planted bit the alignment has reached
+  let frontier = -1;   // the furthest writer carrier the alignment has reached
   const settle = a => {
     const f = readPanel.frame;
+    const v = packetView(a, f, readPanel.reference, frontier);
     for (let k = 0; k < cells.length; k++) {
-      const st = a.perPlanted[k]?.status;
-      cells[k].classList.toggle("ok", st === "ok");
-      cells[k].classList.toggle("flip", st === "flip");
-      cells[k].classList.toggle("lost", st === "lost" && k < frontier);
+      cells[k].classList.toggle("ok", v.status[k] === "ok");
+      cells[k].classList.toggle("flip", v.status[k] === "flip");
+      cells[k].classList.toggle("lost", v.status[k] === "lost");
     }
-    const reached = Math.min(frontier, f.frameBits);
-    const lost = a.perPlanted.slice(0, Math.max(0, reached)).filter(r => r.status === "lost").length;
-    lineup.querySelector("[data-lineup-count]").textContent = `${a.agree} of ${f.frameBits} agree · ${a.survived - a.agree} flipped · ${lost} lost`;
+    const agree = v.status.filter(s => s === "ok").length, flipped = v.status.filter(s => s === "flip").length, lost = v.status.filter(s => s === "lost").length;
+    lineup.querySelector("[data-lineup-count]").textContent = `${agree} of ${f.frameBits} agree · ${flipped} flipped · ${lost} lost`;
+    return v;
   };
 
   const origAppend = readPanel.view.append.bind(readPanel.view);
@@ -68,15 +98,17 @@ export function attachEvidence(readPanel, meterEl) {
     if (e.seed) return el;
     readPanel.readTokens.push({ id: e.id, carrier: !!e.carrier, bit: e.bit ?? null, el });
     if (!e.carrier || !readPanel.reference || !cells.length) return el;
-    // line this bit up with the planted frame and send it there
+    // line this bit up with the planted packet and send it there
     const a = agreement(readPanel.reference, readPanel.readTokens);
     const j = readPanel.readTokens.length - 1;
     const k = a.readToPlanted[j];
-    if (k !== null && k < cells.length) {
-      frontier = Math.max(frontier, k);
+    const v = packetView(a, readPanel.frame, readPanel.reference, frontier);
+    const target = k !== null ? v.slotOf[k] : null;
+    if (k !== null) frontier = Math.max(frontier, k);
+    if (target !== null && target !== undefined && target < cells.length) {
       const ok = a.perPlanted[k].status === "ok";
       el.classList.add(ok ? "ev-ok" : "ev-flip");
-      fly(el, cells[k], e.bit, ok ? cells[k].dataset.kind : "", () => settle(a));
+      fly(el, cells[target], e.bit, ok ? cells[target].dataset.kind : "", () => settle(a));
     } else {
       settle(a);
     }
@@ -103,32 +135,30 @@ export function attachEvidence(readPanel, meterEl) {
   };
 }
 
-function plantedBits(reference) { return reference.filter(t => t.carrier).map(t => t.bit); }
-
-// the panel: model and reasons, length, letters, and the frame's parts. While
-// the read is still going, planted bits beyond the alignment's reach are
-// pending rather than lost.
+// the panel: model and reasons, length, letters, and the packet's parts. While
+// the read is still going, bits beyond the alignment's reach are pending
+// rather than lost.
 function report(a, res, frame, reference, frontier) {
   const name = shortName(frame?.rung);
   const pct = a.agreementPct ?? 0;
   if (!frame?.layout) {
     return `<div class="ev-row"><span>surviving bits that agree with what ${esc(name)} planted</span><b>${a.survived ? pct + "%" : "n/a"}</b><small>chance is 50%</small></div>`;
   }
-  const planted = plantedBits(reference);
-  const status = k => { const st = a.perPlanted[k]?.status ?? "lost"; return st === "lost" && k > frontier ? "pending" : st; };
+  const v = packetView(a, frame, reference, frontier);
+  const status = k => v.status[k] ?? "lost";
   const sec = kind => frame.layout.find(s => s.kind === kind);
   const tally = s => {
     const sts = []; for (let k = s.start; k < s.start + s.len; k++) sts.push(status(k));
     const ok = sts.filter(x => x === "ok").length, flip = sts.filter(x => x === "flip").length, lost = sts.filter(x => x === "lost").length, pending = sts.filter(x => x === "pending").length;
-    const readBits = sts.map((x, i) => (x === "ok" ? planted[s.start + i] : x === "flip" ? a.perPlanted[s.start + i].readBit : null));
+    const readBits = sts.map((x, i) => (x === "ok" ? v.pbits[s.start + i] : x === "flip" ? 1 - v.pbits[s.start + i] : null));
     return { ok, flip, lost, pending, len: s.len, readBits, sts };
   };
   const out = [];
 
   const why = [];
   if (res?.card?.rungId) why.push(res.card.rungId === frame.rung ? "the footer line names it" : `the footer line names ${esc(shortName(res.card.rungId))}`);
-  const header = sec("header");
-  let lenText = "not yet read";
+  const header = sec("header"), tagSec = sec("tag");
+  let lenText = frame.echo ? `${Math.max(1, Math.floor((frame.frameBits - 3) / 8) - 2)} bytes` : "not yet read";
   if (header) {
     const h = tally(header);
     const rep = Math.max(1, Math.round(header.len / 9));
@@ -144,10 +174,17 @@ function report(a, res, frame, reference, frontier) {
       return toInt(bits);
     };
     const len = field(0, 6), tag = field(6, 3);
-    const wantTag = toInt([...Array(3)].map((_, k) => planted[header.start + (6 + k) * rep]));
+    const wantTag = toInt([...Array(3)].map((_, k) => v.pbits[header.start + (6 + k) * rep]));
     if (len !== null) lenText = `${len} byte${len === 1 ? "" : "s"}`;
     else if (h.pending === 0) lenText = "lost";
     if (tag !== null) why.push(tag === wantTag ? `the label's model tag (#${tag}) matches` : `the label's model tag reads #${tag}, not its own`);
+  }
+  if (tagSec) {
+    const t = tally(tagSec);
+    if (t.readBits.every(b => b !== null)) {
+      const tag = toInt(t.readBits), wantTag = toInt(v.pbits.slice(tagSec.start, tagSec.start + tagSec.len));
+      why.push(tag === wantTag ? `the model tag (#${tag}) matches` : `the model tag reads #${tag}, not its own`);
+    }
   }
   if (a.survived) why.push(`${a.agree} of the ${a.survived} bits that have come back agree with what it planted, where chance would give about ${Math.round(a.survived / 2)}`);
   // the name is earned: a checksum that holds, or agreement well above chance;
@@ -177,7 +214,7 @@ function report(a, res, frame, reference, frontier) {
     out.push(`<div class="ev-row"><span>message length</span><b>${esc(lenText)}</b><small>${header ? `label ${tally(header).ok} of ${header.len}` : ""}</small></div>`);
     out.push(`<div class="ev-row"><span>message</span><b class="ev-letters">${letters.join("")}</b><small>${intact} of ${chars.length} letter${chars.length === 1 ? "" : "s"} intact</small></div>`);
   }
-  for (const [kind, label] of [["sync", "knock"], ["checksum", "seal"], ["parity", "repair"]]) {
+  for (const [kind, label] of [["sync", "knock"], ["tag", "model tag"], ["checksum", "seal"], ["parity", "repair"]]) {
     const s = sec(kind);
     if (!s) continue;
     const t = tally(s);
@@ -191,7 +228,7 @@ function report(a, res, frame, reference, frontier) {
   if (res) {
     // the verdict rests on how far agreement sits above chance: z of 3 is one in a thousand by luck
     out.push(`<p class="ev-verdict">${res.valid
-      ? "The frame validates: every bit agrees and the checksum holds."
+      ? (frame.echo ? "The echo validates: every packet bit's votes agree and the checksum holds." : "The frame validates: every bit agrees and the checksum holds.")
       : a.survived === 0 ? "No planted bit survived this edit."
       : a.z >= 3 ? `The checksum fails, so the full message is not vouched for; the bits that survived still say ${esc(name)} wrote this (${pct}% agree; luck gives that less than one time in a thousand).`
       : a.z >= 2 ? `Weak evidence: ${pct}% agree, which luck gives about one time in twenty.`

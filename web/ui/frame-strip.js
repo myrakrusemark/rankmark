@@ -9,12 +9,13 @@
 // meaning.
 
 const LABEL = {
-  sync: "knock", header: "label", payload: "your message", checksum: "seal", parity: "repair",
+  sync: "knock", header: "label", tag: "model tag", payload: "your message", checksum: "seal", parity: "repair",
   woven: "message, seal and repair, woven", read: "bits read",
 };
 const NOTE = {
   sync: "A fixed pattern of bits. A reader scans for it, so the frame can start anywhere in the text.",
   header: "How long the message is, and a short tag for the model that wrote it, each bit sent twice.",
+  tag: "A three-bit tag for the model that wrote it. In the echo every word votes for one bit of the packet, chosen by the words before it, so nothing has to be found first.",
   payload: "Your message itself, in a fixed code of about five bits a letter.",
   checksum: "A checksum over the message. One wrong bit and the frame fails, so a reader never reports a match it cannot back.",
   parity: "Parity bits that put right a few bits a reader gets wrong.",
@@ -23,7 +24,7 @@ const NOTE = {
 };
 import { messageBits, decodePrefix } from "../engine/textcode.js";
 
-const SPELLED = ["sync", "header", "payload", "checksum", "parity"];
+const SPELLED = ["sync", "header", "tag", "payload", "checksum", "parity"];
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const toInt = bits => bits.reduce((a, b) => a * 2 + b, 0);
 const FLIGHT_MS = 720;
@@ -48,30 +49,33 @@ export class FrameStrip {
     this.renderSpell("payload");
   }
 
-  // what a section's bits say so far, as characters and the bit count each needs
+  // what a section's bits say so far, as characters, each with the bit range it
+  // needs; `got` is sparse (the echo lands bits out of order)
   spell(kind, got, total) {
-    if (kind === "sync") return [...Array(total)].map((_, i) => ({ text: i < got.length ? String(got[i]) : "·", need: i + 1 }));
+    const have = (a, b) => { for (let i = a; i < b; i++) if (got[i] === undefined) return false; return true; };
+    if (kind === "sync") return [...Array(total)].map((_, i) => ({ text: have(i, i + 1) ? String(got[i]) : "·", from: i, to: i + 1 }));
     if (kind === "header") {
       const rep = Math.max(1, Math.round(total / 9));
       const hdr = [...Array(9)].map((_, k) => got[k * rep] ?? 0);
       return [
-        { text: got.length >= 6 * rep ? `${toInt(hdr.slice(0, 6))} bytes` : "? bytes", need: 6 * rep },
+        { text: have(0, 6 * rep) ? `${toInt(hdr.slice(0, 6))} bytes` : "? bytes", from: 0, to: 6 * rep },
         { text: " · ", sep: true },
-        { text: got.length >= 9 * rep ? `model #${toInt(hdr.slice(6, 9))}` : "model #?", need: 9 * rep },
+        { text: have(6 * rep, 9 * rep) ? `model #${toInt(hdr.slice(6, 9))}` : "model #?", from: 6 * rep, to: 9 * rep },
       ];
     }
+    if (kind === "tag") return [{ text: have(0, total) ? `model #${toInt([...Array(total)].map((_, i) => got[i]))}` : "model #?", from: 0, to: total }];
     if (kind === "checksum" || kind === "parity") {
       const out = [];
       for (let i = 0; i < Math.floor(total / 4); i++) {
         if (i && i % 2 === 0) out.push({ text: " ", sep: true });
-        const need = 4 * (i + 1);
-        out.push({ text: got.length >= need ? toInt(got.slice(4 * i, need)).toString(16) : "·", need });
+        out.push({ text: have(4 * i, 4 * i + 4) ? toInt([got[4 * i], got[4 * i + 1], got[4 * i + 2], got[4 * i + 3]]).toString(16) : "·", from: 4 * i, to: 4 * i + 4 });
       }
       return out;
     }
     if (kind === "payload" && this.message) {
-      const litCount = [...this.lit].length;
-      return [...this.message].map((ch, i) => ({ text: ch === " " ? "␣" : ch, need: i < litCount ? 0 : Infinity }));
+      // each letter owns the run of bits its code occupies
+      const { ends } = decodePrefix(messageBits(this.message));
+      return [...this.message].map((ch, i) => ({ text: ch === " " ? "␣" : ch, from: i ? ends[i - 1] : 0, to: ends[i] ?? Infinity }));
     }
     return null;
   }
@@ -82,16 +86,16 @@ export class FrameStrip {
       const got = this.landed[kind] || [];
       const chars = this.spell(kind, got, s.querySelectorAll(".bit").length);
       if (!chars) { el.hidden = true; continue; }
+      const have = (a, b) => { for (let i = a; i < b; i++) if (got[i] === undefined) return false; return true; };
       el.hidden = false;
-      el.innerHTML = chars.map(c => c.sep ? `<span class="sep">${c.text}</span>` : `<span class="${got.length >= c.need ? "lit" : "dim"}">${escapeHtml(c.text)}</span>`).join("");
+      el.innerHTML = chars.map(c => c.sep ? `<span class="sep">${c.text}</span>` : `<span class="${have(c.from, c.to) ? "lit" : "dim"}">${escapeHtml(c.text)}</span>`).join("");
     }
   }
   renderAll() { for (const k of SPELLED) this.renderSpell(k); }
 
-  // a landed bit of one section: remember it, and light what it completes
-  land(kind, bit) {
-    (this.landed[kind] ||= []).push(bit);
-    if (kind === "payload") this.lit = decodePrefix(this.landed.payload).text;   // whole letters only, as their codes complete
+  // a landed bit of one section at its position: remember it, light what it completes
+  land(kind, bit, pos) {
+    (this.landed[kind] ||= [])[pos] = bit;
     this.renderSpell(kind);
   }
 
@@ -120,6 +124,7 @@ export class FrameStrip {
         const c = document.createElement("i");
         c.className = "bit";
         c.dataset.kind = seg.kind;
+        c.dataset.pos = i;
         c.title = `bit ${seg.start + i}: ${LABEL[seg.kind] ?? seg.kind}`;
         row.appendChild(c);
         this.cells.push(c);
@@ -131,7 +136,7 @@ export class FrameStrip {
   }
 
   reset() {
-    for (const c of this.cells) c.className = "bit";
+    for (const c of this.cells) { c.className = "bit"; delete c.dataset.votes; }
     this.filled = 0;
     this.clearLanded();
     this.root.classList.remove("sealed", "locked");
@@ -147,27 +152,33 @@ export class FrameStrip {
 
   // writing: the next bit leaves its cell and lands under the word, which
   // takes the section's color
-  plant(bit, tokenEl) {
-    const i = this.filled % this.frameBits;
+  // slot: the echo names the cell a word votes on; framed profiles fill in order
+  plant(bit, tokenEl, slot) {
+    const i = slot ?? (this.filled % this.frameBits);
     const cell = this.cells[i];
     if (!cell) return;
     if (tokenEl) tokenEl.dataset.seg = cell.dataset.kind;
-    if (this.filled >= this.frameBits) {
-      // a further copy: the bit flies out again and its cell takes a ring; the
-      // first frame stays lit underneath
+    const votes = (Number(cell.dataset.votes) || 0) + 1;
+    cell.dataset.votes = votes;
+    if (votes > 1) {
+      // a further vote or copy: the bit flies out again and its cell takes a ring;
+      // the first landing stays lit underneath
       this.fly(cell, tokenEl, bit, cell.dataset.kind, () => { cell.classList.add("again"); tokenEl?.classList.add("in"); });
       this.filled++;
+      if (slot !== undefined) this.sealIfCovered();
       return;
     }
     this.fly(cell, tokenEl, bit, cell.dataset.kind, () => {
       cell.classList.add(bit ? "v1" : "v0", "spent");
       tokenEl?.classList.add("in");
-      this.land(cell.dataset.kind, bit);
+      this.land(cell.dataset.kind, bit, Number(cell.dataset.pos));
     });
     this.filled++;
-    if (this.filled === this.frameBits) this.root.classList.add("sealed");
-    this.markNext();
+    if (slot === undefined) { if (this.filled === this.frameBits) this.root.classList.add("sealed"); this.markNext(); }
+    else this.sealIfCovered();
   }
+  // the echo seals when every cell has a vote
+  sealIfCovered() { if (this.cells.every(c => Number(c.dataset.votes) > 0)) this.root.classList.add("sealed"); }
 
   // reading: the strip has no layout yet; it grows one line of cells, one per
   // carrier, and the bit under the word is pulled back into it. As the parser
@@ -243,6 +254,24 @@ export class FrameStrip {
       this.colorSpans(spans);
       for (const c of this.cells) c.classList.add("locked");
       this.spellRead(spans, message);
+    }
+    this.root.classList.add("locked", "sealed");
+  }
+
+  // an echo that validates: each read cell and its word take the color of the
+  // section its slot falls in, and the message spells out
+  lockEcho(layout, slots, message = "") {
+    const kindOf = j => layout.find(s => j >= s.start && j < s.start + s.len)?.kind ?? "";
+    for (const c of this.cells) c.dataset.kind = "";
+    for (const t of this.pulled) if (t) delete t.dataset.seg;
+    slots.forEach((j, i) => {
+      const kind = kindOf(j);
+      const c = this.cells[i]; if (c) { c.dataset.kind = kind; c.classList.add("locked"); }
+      const t = this.pulled[i]; if (t && kind) t.dataset.seg = kind;
+    });
+    if (message) {
+      this.readMsg.hidden = false;
+      this.readMsg.innerHTML = [...message].map(ch => `<span class="lit">${escapeHtml(ch === " " ? "␣" : ch)}</span>`).join("");
     }
     this.root.classList.add("locked", "sealed");
   }
