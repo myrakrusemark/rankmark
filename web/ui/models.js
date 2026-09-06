@@ -39,11 +39,12 @@ export class ModelPicker {
     this.renderStatus();
   }
 
-  // a lean 1-byte frame: tokens = bits / carrier rate, with the budget's slack
-  writeTokens(rung, payloadLen = 1, profile = 0) {
-    return Math.ceil((frameLenBits(payloadLen, profile) / (rung.carrierRate || 0.12)) * 1.3);
+  // two copies of a 1-byte frame: tokens = bits / carrier rate, with the budget's slack
+  writeTokens(rung, payloadLen = 1, profile = 3, copies = 2) {
+    return Math.ceil((copies * frameLenBits(payloadLen, profile) / (rung.carrierRate || 0.12)) * 1.3);
   }
-  minutes(rung, tokens) { return Math.max(1, Math.round(tokens / (rung.tokPerSec || 1) / 60)); }
+  // sentence scope evaluates every token twice (once as the next sentence's context)
+  minutes(rung, tokens) { return Math.max(1, Math.round((rung.scope === "sentence" ? 2 : 1) * tokens / (rung.tokPerSec || 1) / 60)); }
 
   renderStatus() {
     const r = this.rung;

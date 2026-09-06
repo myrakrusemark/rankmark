@@ -5,7 +5,7 @@ export async function loadRegistry(url = new URL("./registry.json", import.meta.
   const res = await fetch(url);
   if (!res.ok) throw new Error(`registry: HTTP ${res.status}`);
   const reg = await res.json();
-  for (const rung of reg.rungs) rung.engine = reg.engine;
+  for (const rung of reg.rungs) { rung.engine = reg.engine; rung.scope = rung.scope ?? reg.scope ?? "all"; }
   return reg;
 }
 

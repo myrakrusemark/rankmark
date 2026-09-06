@@ -131,7 +131,7 @@ const engine = {
   async snapshot(id, opts = {}) {
     const rung = rungById(registry, id);
     // the essay's write station defaults: the harbor opening and the message "hello"
-    const o = { prompt: STORY, payloadHex: hex("hello"), profile: 0, tau: rung.tau ?? 2.0, temperature: 0.7, seed: 20260905, ...opts };
+    const o = { prompt: STORY, payloadHex: hex("hello"), profile: 3, copies: 2, tau: rung.tau ?? 2.0, temperature: 0.7, seed: 20260905, ...opts };
     const write = { tokens: [], start: null };
     const emb = await runJob("embed", { rung, opts: o }, {
       onEvent: e => { if (e.type === "start") write.start = e; if (e.type === "token") write.tokens.push({ id: e.id, piece: e.piece, rank: e.rank, entropy: e.entropy, carrier: e.carrier, bit: e.bit, top: e.top }); },

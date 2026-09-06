@@ -146,7 +146,14 @@ sentence s, sentences s+2 onward are computed from the same tokens on both sides
 two sentences wide, not the rest of the text. Boundaries come from the token's own text (`endsSentence`: a stop
 mark, or a blank line, or 96 tokens without either), so the two sides agree on every one. Cost: each token is
 evaluated twice, once when chosen and once as the next sentence's context. The scope is in the fingerprint.
-Measured next.
+Measured (1.7B, two copies, 362 tokens, 175 carriers): a swap at a quarter flipped bits in tenths three to five
+of the planted bits and none after; a swap at three quarters in tenths seven and eight and none after; the
+halfway swap flipped nothing; four of the five edits validated on a clean copy, where one copy with the whole text
+in view survived none and three copies survived three. The deleted-sentence case ran on longer because the
+experiment's join dropped a paragraph break that had been a boundary of its own, which also showed that a
+newline-only sentence leaves the writer no context; boundaries are now stop marks only, with a content-anchored
+break after sixty tokens without one. Sentence scope and two copies are the page's defaults; the card's minutes
+double to match.
 
 ## Determinism: measured
 

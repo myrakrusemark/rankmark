@@ -108,7 +108,7 @@
       </div>
       <div class="field">
         <div class="label-row"><label for="st-copies">Copies of the frame</label><span class="hint">more survive edits</span></div>
-        <select id="st-copies" data-copies><option value="1">1, the quickest</option><option value="2">2</option><option value="3">3, the sturdiest</option></select>
+        <select id="st-copies" data-copies><option value="1">1, the quickest</option><option value="2" selected>2</option><option value="3">3, the sturdiest</option></select>
       </div>
     </div>
     <p class="temp-note">Hotter temperature means more chaotic choices, and more chaotic choices mean more room for the message. At any one step the dial does not change which words are free choices, since the gate reads the model's own scores first; but stranger words lead into sentences the model cannot predict, and those have more free choices to hide bits in. Cold text settles into stock phrases and runs out of room. The price is worse writing; 0.7 is about where this small model stops repeating itself without talking nonsense.</p>
@@ -160,7 +160,7 @@
   <h2><small>5</small>Edit it, and it still tells</h2>
   <div class="prose">
     <p>What if someone changes the text? Delete a sentence, swap a few words, cut the end. The full message often does not come back: a checksum needs every bit. But that is not the question a detector answers. A detector asks how many of the surviving bits agree with what was planted, and even a mangled paragraph keeps most of its evidence. Fifty percent agreement is chance, and ninety percent over a hundred bits is not what an unmarked text does. Measured on this page's models: swapping one word flips about one in ten of the bits that come after it, so a text with a hundred carrier bits still agrees 88 to 94% after a swap; deleting a sentence leaves about 75%; cutting the end costs only the bits that were in the cut.</p>
-    <p>The meter below lines up what the reader recovered against what the writer planted, edit by edit. One honest difference shows up here. This demo scores each word against the whole text before it, so cutting the start changes every later score and the evidence after the cut is gone. The labs score each word against only the last few words, so an edit costs them a few words of evidence rather than the rest of the page. The counting is the same; the window is different.</p>
+    <p>The meter below lines up what the reader recovered against what the writer planted, edit by edit. The model scores each sentence against only the one before it, rebuilt fresh from the text, so a changed word costs the two sentences it touches and nothing after them; the labs score each word against only the last few words, so an edit costs them a few words. The counting is the same. The window is a sentence instead of a few words, and it takes a second pass over the text to pay for it, because here the model itself has to be run to read.</p>
   </div>
   <div class="station" id="st-evidence">
     <div class="st-head"><span>edit, then read again</span><span class="meter"><span data-head></span></span></div>
