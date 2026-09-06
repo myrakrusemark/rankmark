@@ -77,6 +77,17 @@
 .ev-row span { flex: 1; color: var(--ink-2); }
 .ev-row b { font-family: var(--font-mono); }
 .ev-row small { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+/* the planted frame, one line, and the recovered bits landing on it */
+.lineup { margin-bottom: 12px; }
+.lineup .lineup-head { display: flex; justify-content: space-between; gap: 8px; font: 12px/1.3 var(--font-mono); color: var(--muted); margin-bottom: 6px; }
+.lineup .row { display: flex; flex-wrap: wrap; gap: 2px; }
+.lineup .bit { width: 7px; height: 12px; border-radius: 2px; background: transparent; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--seg) 55%, transparent); transition: background-color var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out); }
+.lineup .bit.ok { background: var(--seg); box-shadow: none; }
+.lineup .bit.flip { background: var(--warn); box-shadow: none; }
+.lineup .bit.lost { box-shadow: inset 0 0 0 1.5px var(--line-strong); background: repeating-linear-gradient(45deg, transparent 0 2px, var(--line-strong) 2px 3px); }
+.lineup .legend { display: flex; gap: 14px; margin-top: 6px; font: 11px/1.3 var(--font-mono); color: var(--muted); }
+.lineup .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+.ev-letters .pending { color: var(--muted); opacity: 0.35; }
 .ev-row.top { align-items: center; }
 .ev-row .ev-name { font-size: 17px; }
 .ev-why { margin: 6px 0 10px; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
