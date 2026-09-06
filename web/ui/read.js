@@ -4,6 +4,7 @@
 // text for you and reads again.
 
 import { parseMarkCard } from "../engine/fingerprint.js";
+import { decodeHexMessage } from "../engine/textcode.js";
 
 export class ReadPanel {
   constructor(root, { engine, picker, callouts, strip, view }) {
@@ -168,8 +169,5 @@ export class ReadPanel {
   }
 }
 
-function hexToText(hexStr) {
-  if (!hexStr) return "";
-  const bytes = new Uint8Array(hexStr.match(/../g).map(h => parseInt(h, 16)));
-  try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return "0x" + hexStr; }
-}
+function hexToText(hexStr) { return decodeHexMessage(hexStr); }
+

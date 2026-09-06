@@ -94,4 +94,9 @@ V["repeat"] = {
     "parsed_wrong_tag": [{"offset": f.offset} for f in parse_frames_soft(bits_to_llrs(stream), (tag_gpt2 + 1) & 7)],
 }
 
+# the message coder: text to bytes, bit-exact with textcode.js
+from rankmark.textcode import encode_message, message_bits
+V["text"] = [{"text": t, "hex": encode_message(t).hex(), "bits": len(message_bits(t))}
+             for t in ["hello", "hi there", "Meet me at 9.", "THE QUICK BROWN FOX", "a-b_c/d@e", "Ünïcode ✓", "", "x" * 40]]
+
 print(json.dumps(V))

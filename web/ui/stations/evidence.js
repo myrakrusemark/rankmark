@@ -11,6 +11,7 @@
 
 import { agreement } from "../../engine/compare.js";
 import { FrameStrip } from "../frame-strip.js";
+import { messageBits, decodePrefix } from "../../engine/textcode.js";
 
 const toInt = bits => bits.reduce((a, b) => a * 2 + b, 0);
 const shortName = id => (id || "").replace(/-Q.*$/, "");
@@ -157,24 +158,24 @@ function report(a, res, frame, reference, frontier) {
 
   const payload = sec("payload");
   if (payload) {
+    // each letter owns a run of the planted bits (its code); it is intact when all of
+    // them came back, flipped when any did wrong, lost when any is gone
     const p = tally(payload);
-    const nBytes = Math.floor(payload.len / 8);
+    const chars = [...(frame.message || "")];
+    const { ends } = decodePrefix(messageBits(frame.message || ""));
     const letters = [];
     let intact = 0;
-    for (let b = 0; b < nBytes; b++) {
-      const sts = p.sts.slice(b * 8, b * 8 + 8);
+    chars.forEach((ch, k) => {
+      const from = k ? ends[k - 1] : 0, to = ends[k] ?? from;
+      const sts = p.sts.slice(from, to);
+      const shown = ch === " " ? "␣" : ch;
       if (sts.includes("pending")) letters.push(`<span class="pending">·</span>`);
       else if (sts.includes("lost")) letters.push(`<span class="lost" title="some of its bits were lost">·</span>`);
-      else {
-        const code = toInt(p.readBits.slice(b * 8, b * 8 + 8));
-        const ch = code >= 32 && code < 127 ? String.fromCharCode(code) : "?";
-        const shown = ch === " " ? "␣" : ch;
-        if (sts.every(x => x === "ok")) { intact++; letters.push(`<span class="ok">${esc(shown)}</span>`); }
-        else letters.push(`<span class="flip" title="${sts.filter(x => x === "flip").length} of its 8 bits flipped">${esc(shown)}</span>`);
-      }
-    }
+      else if (sts.every(x => x === "ok")) { intact++; letters.push(`<span class="ok">${esc(shown)}</span>`); }
+      else letters.push(`<span class="flip" title="${sts.filter(x => x === "flip").length} of its ${sts.length} bits flipped">?</span>`);
+    });
     out.push(`<div class="ev-row"><span>message length</span><b>${esc(lenText)}</b><small>${header ? `label ${tally(header).ok} of ${header.len}` : ""}</small></div>`);
-    out.push(`<div class="ev-row"><span>message</span><b class="ev-letters">${letters.join("")}</b><small>${intact} of ${nBytes} letter${nBytes === 1 ? "" : "s"} intact</small></div>`);
+    out.push(`<div class="ev-row"><span>message</span><b class="ev-letters">${letters.join("")}</b><small>${intact} of ${chars.length} letter${chars.length === 1 ? "" : "s"} intact</small></div>`);
   }
   for (const [kind, label] of [["sync", "knock"], ["checksum", "seal"], ["parity", "repair"]]) {
     const s = sec(kind);

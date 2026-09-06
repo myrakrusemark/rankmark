@@ -4,8 +4,8 @@
 
 import { frameLenBits, PROFILES } from "../engine/framing.js";
 import { markCard } from "../engine/fingerprint.js";
+import { encodeMessage } from "../engine/textcode.js";
 
-const utf8 = new TextEncoder();
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
 
 export class WritePanel {
@@ -25,13 +25,14 @@ export class WritePanel {
     this.renderProfile();
   }
 
-  tagBytes() { return utf8.encode(this.q("[data-tag]").value.trim()); }
+  // the message as the frame carries it: the fixed text code, about a third shorter than UTF-8
+  tagBytes() { const t = this.q("[data-tag]").value.trim(); return t ? encodeMessage(t) : new Uint8Array(0); }
 
   renderTag() {
     const n = this.tagBytes().length;
     const cap = this.picker.rung.tagCapBytes ?? 8;
     const hint = this.q("[data-tag-hint]");
-    hint.textContent = n === 0 ? `up to ${cap} bytes with this model` : `${n} byte${n === 1 ? "" : "s"} of ${cap}`;
+    hint.textContent = n === 0 ? `about ${cap * 2 - 1} letters fit` : `${n} byte${n === 1 ? "" : "s"} of ${cap}, coded`;
     hint.classList.toggle("warn", n > cap);
     this.renderProfile();
   }

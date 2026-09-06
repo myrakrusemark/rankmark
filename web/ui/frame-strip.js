@@ -21,6 +21,8 @@ const NOTE = {
   woven: "Your message, its seal and repair data, interleaved so damage spreads thin.",
   read: "One cell per word that carries a bit, in the order they are read.",
 };
+import { messageBits, decodePrefix } from "../engine/textcode.js";
+
 const SPELLED = ["sync", "header", "payload", "checksum", "parity"];
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const toInt = bits => bits.reduce((a, b) => a * 2 + b, 0);
@@ -39,12 +41,10 @@ export class FrameStrip {
     this.landed = {};   // per section, the bit values in so far
     this.message = "";  // the letters under the message bar, lit as their bytes land
     this.lit = "";
-    this.decoder = new TextDecoder();
   }
 
   setMessage(text) {
     this.message = text || "";
-    this.msgBytes = new TextEncoder().encode(this.message);
     this.renderSpell("payload");
   }
 
@@ -91,17 +91,11 @@ export class FrameStrip {
   // a landed bit of one section: remember it, and light what it completes
   land(kind, bit) {
     (this.landed[kind] ||= []).push(bit);
-    if (kind === "payload") {
-      const n = this.landed.payload.length;
-      if (n % 8 === 0) {
-        const b = this.msgBytes?.[n / 8 - 1];
-        if (b !== undefined) this.lit += this.decoder.decode(new Uint8Array([b]), { stream: true });
-      }
-    }
+    if (kind === "payload") this.lit = decodePrefix(this.landed.payload).text;   // whole letters only, as their codes complete
     this.renderSpell(kind);
   }
 
-  clearLanded() { this.landed = {}; this.lit = ""; this.decoder = new TextDecoder(); }
+  clearLanded() { this.landed = {}; this.lit = ""; }
 
   section(kind, count) {
     const s = document.createElement("section");
@@ -220,26 +214,19 @@ export class FrameStrip {
     }
   }
 
-  // the message so far, from the bytes of the payload span that are complete
+  // the message so far, decoded from the bits of the payload span that are in
   spellRead(spans, message = "") {
     const p = spans.find(s => s.kind === "payload");
     if (!p) { this.readMsg.hidden = true; return; }
-    const nBytes = Math.floor(p.len / 8);
-    let text = message;
+    let text = message, done = !!message;
     if (!text) {
-      const bytes = [];
-      for (let b = 0; b < nBytes; b++) {
-        const bits = [];
-        for (let i = 0; i < 8; i++) { const c = this.cells[p.start + b * 8 + i]; if (!c) break; bits.push(Number(c.dataset.bit)); }
-        if (bits.length < 8) break;
-        bytes.push(toInt(bits));
-      }
-      text = new TextDecoder().decode(new Uint8Array(bytes), { stream: true });
+      const bits = [];
+      for (let i = 0; i < p.len; i++) { const c = this.cells[p.start + i]; if (!c) break; bits.push(Number(c.dataset.bit)); }
+      ({ text, done } = decodePrefix(bits));
     }
-    const pending = Math.max(0, nBytes - new TextEncoder().encode(text).length);
     this.readMsg.hidden = false;
     this.readMsg.innerHTML = [...text].map(ch => `<span class="lit">${escapeHtml(ch === " " ? "␣" : ch)}</span>`).join("")
-      + Array.from({ length: pending }, () => `<span class="dim">·</span>`).join("");
+      + (done ? "" : `<span class="dim">…</span>`);
   }
 
   // tentative labelling while reading, on every carrier
