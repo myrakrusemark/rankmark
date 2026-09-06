@@ -205,10 +205,15 @@ export class Lens {
   }
 
   // a token that closes a sentence (or a paragraph), by its text alone, so the
-  // writer and the reader agree on every boundary
-  endsSentence(id) {
+  // writer and the reader agree on every boundary. A long stretch without a
+  // stop still gets boundaries, chosen by the token's own id rather than by
+  // counting, so a deletion upstream cannot move them.
+  endsSentence(id, soFar) {
     const piece = this.decodeOne(id);
-    return /[.!?]["')\]]?\s*$/.test(piece) || /\n\s*\n/.test(piece);
+    if (/[.!?]["')\]]?\s*$/.test(piece)) return true;
+    // a stretch of sixty tokens without a stop: break at the next word whose
+    // id says so (about one in eight), the same word on both sides
+    return soFar >= 60 && piece.startsWith(" ") && (id * 2654435761 >>> 0) % 8 === 0;
   }
 
   // Prefill is the seed alone; every later token is chosen by decide() from the
@@ -224,7 +229,6 @@ export class Lens {
     const stepped = [];
     let logits = await this.step([seedId], true);
     let sentence = [seedId];
-    const SENTENCE_CAP = 96;   // a run of that many tokens without a stop counts as a sentence
     for (let i = 0; i < maxNew; i++) {
       const id = decide(logits);
       stepped.push(id);
@@ -232,7 +236,7 @@ export class Lens {
       if (stopWhen && stopWhen(id)) break;
       if (i + 1 < maxNew) {
         sentence.push(id);
-        if (this.scope === "sentence" && (this.endsSentence(id) || sentence.length >= SENTENCE_CAP)) {
+        if (this.scope === "sentence" && this.endsSentence(id, sentence.length)) {
           logits = await this.step(sentence, true);   // the cache is now this sentence only
           sentence = [];
         } else {
