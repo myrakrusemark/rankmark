@@ -113,7 +113,7 @@ header .note {
   font-size: 1.15rem; color: var(--ink);
   margin: 26px 0 8px;
 }
-.paper p, .paper ul { font-size: 1rem; line-height: 1.7; color: var(--ink-2); margin: 0 0 14px; max-width: var(--measure); }
+.paper p, .paper ul { font-size: 1rem; line-height: 1.7; color: var(--ink-2); margin: 0 0 14px; }
 .paper ul { padding-left: 22px; }
 .paper li { margin-bottom: 6px; }
 .paper blockquote {

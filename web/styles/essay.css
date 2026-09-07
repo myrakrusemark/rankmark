@@ -1,9 +1,7 @@
 /* The essay's stations, on the paper cards that subpage.css draws. */
-.paper .prose { max-width: var(--measure); }
 .paper .prose p { margin: 0 0 1.1em; }
 .paper .prose .lede { font-size: 1.3rem; line-height: 1.5; color: var(--ink); margin-bottom: 0.7em; }
-.paper .aside { max-width: var(--measure); border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--ink-2); font-size: 15.5px; margin: 18px 0; }
-.paper .station p, .paper .tool p { max-width: none; }
+.paper .aside { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--ink-2); font-size: 15.5px; margin: 18px 0; }
 /* the comparison table in the last section */
 .paper .table-wrap { overflow-x: auto; margin: 6px 0 22px; }
 .paper .compare { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; line-height: 1.45; }
@@ -55,7 +53,7 @@
 .station .row-inputs .temp-field { max-width: none; margin-top: 0; }
 .station .range-box { display: flex; align-items: center; }
 .station .range-box input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
-.station .temp-note { font-size: 13px; line-height: 1.5; color: var(--muted); margin: 6px 0 4px; max-width: 70ch; }
+.station .temp-note { font-size: 13px; line-height: 1.5; color: var(--muted); margin: 6px 0 4px; }
 .station .box-label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-2); margin: 12px 0 6px; }
 .station .field + .box-label { margin-top: 14px; }
 /* a box that is the opening and the output: typed in, locked while the model writes, open again after */
