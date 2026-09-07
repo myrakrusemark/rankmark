@@ -35,6 +35,10 @@
 /* sticky model bar */
 
 /* ranked choice */
+/* the sentence box runs the full height of the list beside it */
+.ranked .two { align-items: stretch; }
+.ranked .two > div:first-child { display: flex; flex-direction: column; }
+.ranked .two > div:first-child .sentence { flex: 1; }
 .station .go-row { margin: 0 0 14px; }
 .ranked .sentence { font-size: 18px; line-height: 1.6; min-height: 3.2em; padding: 14px 16px; background: var(--ground); border: 1px solid var(--line); border-radius: var(--radius-sm); white-space: pre-wrap; }
 .station .row-inputs { margin-bottom: 4px; align-items: end; }
