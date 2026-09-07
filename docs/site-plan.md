@@ -63,7 +63,7 @@ reveals; motion only where data moves. Section one runs on its own when in view 
 | 2. Where the labs hide the mark | none | Anthropic's SynthID-Text deployment, keyed, detector held by the lab; why the key, not the model, is what keeps the detector theirs. |
 | 3. You can do this yourself | `#st-write` | Opening text (harbor default), a message ("hello" default), the model writing with bits flowing from the frame strip into the words. Replay of the recorded run for phones. |
 | 4. Read it back | `#st-read` | The marked text, carried over, read by the same model: bits pulled out word by word, the frame locks, the message returns. |
-| 5. Edit it, and it still tells | `#st-evidence` | Edit buttons (cut the start, cut the end, swap words) re-run the read; the meter shows planted vs survived bits and a z-score, so a partial frame is still evidence of the model. |
+| 5. Edit it and it still works... well, most of the time | `#st-evidence` | Edit buttons (cut the start, cut the end, swap words) re-run the read; the meter shows planted vs survived bits and a z-score, so a partial frame is still evidence of the model. |
 | 6. Whose text is it | `#st-lineup` | Sibling agreement bars from `measurements.json`: a different model orders the near-ties differently. |
 | 7. What the key buys | none | Keyed vs keyless, what survives paraphrase, forgeability, limits. |
 | The tool | `#tool` | The full Write / Read / Run it locally tool, unchanged. |

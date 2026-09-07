@@ -172,7 +172,7 @@
 
   </section>
   <section class="paper">
-  <h2>Edit it, and it still tells</h2>
+  <h2>Edit it and it still works... well, most of the time</h2>
   <div class="prose">
     <p>What if someone changes the text? Delete a sentence, swap a few words, cut the end. The full message often does not come back: a checksum needs every bit. But that is not the question a detector answers. A detector asks how many of the surviving bits agree with what was planted, and even a mangled paragraph keeps most of its evidence. Fifty percent agreement is chance, and ninety percent over a hundred bits is not what an unmarked text does. Measured on this page's models: swapping one word flips about one in ten of the bits that come after it, so a text with a hundred carrier bits still agrees 88 to 94% after a swap; deleting a sentence leaves about 75%; cutting the end costs only the bits that were in the cut.</p>
     <p>The meter below lines up what the reader recovered against what the writer planted, edit by edit. The model scores each sentence against only the one before it, rebuilt fresh from the text, so a changed word costs the two sentences it touches and nothing after them; the labs score each word against only the last few words, so an edit costs them a few words. The counting is the same. The window is a sentence instead of a few words, and it takes a second pass over the text to pay for it, because here the model itself has to be run to read.</p>
