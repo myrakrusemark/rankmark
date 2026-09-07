@@ -102,6 +102,8 @@ try {
 
   // evidence station: one edit, which reads again on its own
   await page.evaluate(() => { const ev = document.querySelector("#st-evidence"); ev.scrollIntoView({ block: "start" }); ev.querySelector('[data-break="swap"]').click(); });
+  // the edit cancels the baseline read (from the cache) and starts its own: wait for that one to be running, then to end
+  await page.waitForFunction(() => document.querySelector("#st-evidence [data-run]").classList.contains("stop"), null, { timeout: 30000 });
   await page.waitForTimeout(3000);
   await page.waitForFunction(() => { const ev = document.querySelector("#st-evidence"); return !ev.querySelector("[data-run]").classList.contains("stop") && !ev.querySelector("[data-evidence]").hidden; }, null, { timeout: 1500000 });
   await page.waitForTimeout(1000);
