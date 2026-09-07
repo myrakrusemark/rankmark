@@ -1,4 +1,6 @@
 /* The essay's stations, on the paper cards that subpage.css draws. */
+/* one card for the whole essay: a hairline and a breath between sections */
+.essay > section + section { margin-top: 40px; padding-top: 34px; border-top: 1px solid var(--line); }
 .paper .prose p { margin: 0 0 1.1em; }
 .paper .prose .lede { font-size: 1.3rem; line-height: 1.5; color: var(--ink); margin-bottom: 0.7em; }
 .paper .aside { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--ink-2); font-size: 15.5px; margin: 18px 0; }
