@@ -12,7 +12,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const WORDS = 24;
 const PACE = { list: 800, hold: 550, fly: 450, after: 250 };   // ms per word: about two seconds
-const TEMP = 0.9;   // the station's temperature when it has no slider: warm enough to wander, not enough to babble
+const TEMP = 0.75;   // the station's temperature when it has no slider: warm enough to wander, not enough to babble
 
 export class RankedChoice {
   constructor(root, { engine, picker, snapshot, consent }) {
@@ -99,7 +99,15 @@ export class RankedChoice {
     const list = this.q("[data-list]"), head = this.q("[data-list-head]");
     const step = this.steps[this.shown];
     if (!step) {
-      list.innerHTML = "";
+      // before the first word: the list's shape, empty
+      const widths = [52, 40, 46, 34, 44, 38, 30, 42];
+      list.innerHTML = widths.map((w, k) => `
+      <li class="ghost" aria-hidden="true">
+        <span class="rank">#${k + 1}</span>
+        <span class="piece"><i style="width: ${w}px"></i></span>
+        <span class="bar"></span>
+        <span class="pct"></span>
+      </li>`).join("");
       list.classList.remove("chosen");
       head.textContent = "the model's top 8 for the next word";
       return;
