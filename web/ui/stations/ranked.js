@@ -12,6 +12,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const WORDS = 24;
 const PACE = { list: 800, hold: 550, fly: 450, after: 250 };   // ms per word: about two seconds
+const TEMP = 0.9;   // the station's temperature when it has no slider: warm enough to wander, not enough to babble
 
 export class RankedChoice {
   constructor(root, { engine, picker, snapshot, consent }) {
@@ -43,7 +44,7 @@ export class RankedChoice {
       btn.textContent = "Watch a recorded run";
       btn.disabled = !this.recorded;
     }
-    this.q("[data-temp]").addEventListener("input", () => this.renderList());
+    this.q("[data-temp]")?.addEventListener("input", () => this.renderList());
     btn.addEventListener("click", () => (this.running ? this.stop() : this.start()));
     this.renderList();
     // out of view, the landing waits before the next word
@@ -53,7 +54,7 @@ export class RankedChoice {
     }, { threshold: 0.25 }).observe(root);
   }
 
-  temp() { return Number(this.q("[data-temp]").value); }
+  temp() { const el = this.q("[data-temp]"); return el ? Number(el.value) : TEMP; }
 
   // the start button follows the model: off while it loads or after a cancel
   ready(on, label) {
@@ -94,7 +95,7 @@ export class RankedChoice {
 
   renderList() {
     const t = this.temp();
-    this.q("[data-temp-out]").textContent = t.toFixed(1);
+    const out = this.q("[data-temp-out]"); if (out) out.textContent = t.toFixed(1);
     const list = this.q("[data-list]"), head = this.q("[data-list-head]");
     const step = this.steps[this.shown];
     if (!step) {

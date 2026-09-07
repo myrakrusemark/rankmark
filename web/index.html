@@ -39,7 +39,7 @@
     <p class="lede">On August 14, Anthropic posted a short note saying that future Claude models will write text that carries a watermark.</p>
     <p>Google has done this in Gemini since 2024. The reason is a European law that, from this August, requires text from these systems to be marked in a way software can detect. The odd part is that nobody can point at the mark. Copy a paragraph out of Claude and read it as many times as you like; there is nothing there.</p>
     <p>The mark lives in a decision you never see. A language model does not write words the way a person types them. At every step it gives a score to every token it knows, about 150,000 pieces of words for the models on this page, and then something has to pick one from the top of that list. Usually the pick is the highest score, and sometimes, on purpose, it is the second or third, because a model that always takes the top word repeats itself. How far down the list the pick can wander is a setting called temperature.</p>
-    <p>Try it below. Give the model an opening, set a temperature, and start it. The sentence grows one word at a time, and the list beside it is the model's top eight for the next word, with the one it took.</p>
+    <p>Try it below. Give the model an opening and start it. The sentence grows one word at a time, and the list beside it is the model's top eight for the next word, with the one it took.</p>
   </div>
   <p id="mode-note" class="note warn" hidden></p>
   <aside class="autoload off" id="autoload" hidden data-live-only aria-live="polite">
@@ -58,17 +58,9 @@
   </aside>
   <div class="station ranked" id="st-ranked">
     <div class="st-head"><span>every word is a ranked choice</span><span class="meter" data-source></span></div>
-    <div class="two row-inputs">
-      <div class="field temp-field">
-        <div class="label-row"><label for="rk-temp">Temperature</label><span class="hint" data-temp-out>0.7</span></div>
-        <div class="range-box"><input id="rk-temp" type="range" name="temperature" data-temp min="0" max="1.5" step="0.1" value="0.7"></div>
-      </div>
-      <div class="field">
-        <div class="label-row" aria-hidden="true">&nbsp;</div>
-        <button type="button" class="btn primary wide" data-start>Write the next 24 words</button>
-      </div>
+    <div class="btn-row go-row">
+      <button type="button" class="btn primary" data-start>Write the next 24 words</button>
     </div>
-    <p class="temp-note">Temperature is how chaotic each choice is. At 0 the model always takes #1, and the same opening gives the same sentence every time. Turn it up and the pick wanders further down the list, so the words get more surprising and, past a point, worse.</p>
     <div class="two">
       <div>
         <label class="box-label" id="rk-label" for="rk-box">Write anything here; the model continues it.</label>

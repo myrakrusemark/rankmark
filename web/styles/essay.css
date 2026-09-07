@@ -35,6 +35,7 @@
 /* sticky model bar */
 
 /* ranked choice */
+.station .go-row { margin: 0 0 14px; }
 .ranked .sentence { font-size: 18px; line-height: 1.6; min-height: 3.2em; padding: 14px 16px; background: var(--ground); border: 1px solid var(--line); border-radius: var(--radius-sm); white-space: pre-wrap; }
 .station .row-inputs { margin-bottom: 4px; align-items: end; }
 .station .row-inputs .field { margin: 0; }
