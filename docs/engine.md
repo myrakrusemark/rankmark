@@ -177,7 +177,31 @@ accepts the length whose tag and checksum hold. Cost against copies: the run-and
 again as many words to give every bit the same minimum, because coverage is uneven; against that, an edit or a cut
 of any shape removes only the votes in the words it touched, and there is no knock, label or copy to lose. The
 strip plants by slot, so cells light out of order and a ring deepens with each vote; the evidence lineup sends
-each read word to the slot it voted on. Measured next to copies with `edits.mjs` (`PROFILES=4`).
+each read word to the slot it voted on.
+
+**Measured** (1.7B, sentence scope, `edits.mjs PROFILES=4`). The first run advanced the slot rule at every token, so
+runs scattered and one packet bit never got a vote in 840 words: nothing validated. The rule now steps only at
+carriers. The second run, one vote a bit, covered the packet in 210 words (sentence scope makes the 1.7B
+carrier-rich, 79%) and still failed on untouched text: the reader cannot tell the opening from the written text,
+and the opening's ten carrier words cast stray votes. The writer now scores the opening as the reader will and
+keeps writing until its votes outnumber the strays on every slot. The third run, two votes a bit, 455 words, 271
+carriers:
+
+| Edit | echo, 2 votes | copies, 2 copies (same scope) |
+|---|---|---|
+| untouched | valid, 100% | valid, 100% |
+| swap at 25% | valid, 99% | valid, 95% |
+| swap at 50% | fails, 97% | valid, 100% |
+| swap at 75% | fails, 93% | valid, 97% |
+| second sentence deleted | fails, 86% | fails, 81% |
+| last 20% cut | valid, 100% of the surviving 214 | valid |
+
+Why copies win here: sentence scope makes damage local, and local damage is what copies handle best, since a copy
+that sits clear of it is whole. The echo spreads every bit's votes across the text, so even a two-sentence dent
+touches a third of the slots, and with two votes each a dent ties them. The echo would need four or more votes a
+bit, about twice the words of two copies, to pull ahead, and its advantages (damage of any shape costs only the
+votes it touches; no knock, label or copy to lose) matter most under the whole-text scoring that sentence scope
+replaced. Copies stay the page's default; the echo stays in the tool as the labs' shape.
 
 ## Determinism: measured
 
