@@ -17,6 +17,7 @@ const COMPAT = {
   wasm: new URL("../vendor/wllama-compat/wllama.wasm", import.meta.url).href,
 };
 const utf8 = new TextDecoder();
+const STEP_CHUNK = 3;   // tokens per engine call when feeding a run of them: about a second between cancel checks
 
 export class Cancelled extends Error {
   constructor() { super("cancelled"); this.name = "Cancelled"; }
@@ -184,9 +185,17 @@ export class Lens {
 
   cancel() { this.cancelFlag = true; }
 
+  // The engine decodes the ids one token at a time inside one call, and a
+  // cancel is only seen between calls, so a long feed (the opening, or a
+  // sentence being rebuilt) goes in a few tokens at a time. The decode
+  // sequence is the same either way, so the logits are the same bits.
   async step(ids, reset = false) {
-    if (this.cancelFlag) { this.cancelFlag = false; throw new Cancelled(); }
-    const r = await this.w.rawEval(ids, { reset });
+    let r = null;
+    for (let at = 0; at < ids.length || (at === 0 && !ids.length); at += STEP_CHUNK) {
+      if (this.cancelFlag) { this.cancelFlag = false; throw new Cancelled(); }
+      r = await this.w.rawEval(ids.slice(at, at + STEP_CHUNK), { reset: reset && at === 0 });
+      if (!ids.length) break;
+    }
     this.nPast = r.nPast;
     return r.logits;
   }

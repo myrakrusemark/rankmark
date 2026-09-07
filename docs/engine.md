@@ -212,6 +212,11 @@ against the registry. On 2026-09-05 all twelve produced the same logit row (`ca3
 the same ranks and the same carrier bits, and this laptop matches them. A text written on one machine reads on
 another; "portable" is measured, not argued.
 
+Since 2026-09-07 the lens feeds a run of tokens (the opening, or a sentence being rebuilt under sentence scope)
+three per engine call instead of all in one, so that a cancel is seen within about a second instead of after the
+whole feed. The engine decodes the tokens one at a time either way, so the logits are the same bits: the 0.6B's
+row after the fixed prompt still hashes to `ca3e23e2a6997865` (`web/test/ci/hash.mjs`).
+
 What broke it before the pin: WebGPU. wllama offloads every layer to the GPU by default, and the GPU row for the
 same weights hashes differently (`5d21ff2ea08f8319` on this laptop's Intel GPU). The lens sets `n_gpu_layers: 0`
 and the fingerprint records the device.
