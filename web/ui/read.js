@@ -25,6 +25,7 @@ export class ReadPanel {
     for (const b of root.querySelectorAll("[data-break]")) b.addEventListener("click", () => this.breakIt(b.dataset.break));
     this.q("[data-lineup]")?.addEventListener("click", () => this.lineup());
     this.ta.addEventListener("input", () => { this.original = null; });
+    this.strip.previewRead();
   }
 
   load(card) {

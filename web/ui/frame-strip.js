@@ -200,6 +200,13 @@ export class FrameStrip {
     this.readRow.appendChild(this.readMsg);
     this.segs.appendChild(this.readRow);
   }
+  // before a read: the row's shape, a run of empty cells
+  previewRead(n = 48) {
+    this.growMode();
+    const row = this.readRow.querySelector(".row");
+    for (let i = 0; i < n; i++) { const c = document.createElement("i"); c.className = "bit"; c.dataset.kind = ""; row.appendChild(c); }
+    this.readRow.querySelector("[data-count]").textContent = "one per carrier word";
+  }
   pull(bit, tokenEl) {
     const cell = document.createElement("i");
     cell.className = "bit";

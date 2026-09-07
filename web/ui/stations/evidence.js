@@ -12,7 +12,8 @@
 
 import { agreement } from "../../engine/compare.js";
 import { FrameStrip } from "../frame-strip.js";
-import { messageBits, decodePrefix } from "../../engine/textcode.js";
+import { messageBits, decodePrefix, encodeMessage } from "../../engine/textcode.js";
+import { layoutOf, frameLenBits } from "../../engine/framing.js";
 
 const toInt = bits => bits.reduce((a, b) => a * 2 + b, 0);
 const shortName = id => (id || "").replace(/-Q.*$/, "");
@@ -61,7 +62,8 @@ export function attachEvidence(readPanel, meterEl) {
   // the planted packet as a line of hollow cells, one per bit, colored by section
   const buildLineup = () => {
     const f = readPanel.frame;
-    if (!f?.layout || !readPanel.reference) { lineup.hidden = true; return; }
+    if (!f?.layout || !readPanel.reference) { ghostLineup(); return; }
+    lineup.classList.remove("ghost");
     lineup.innerHTML = `<div class="lineup-head"><span>what was planted, lined up with what comes back</span><span data-lineup-count>${f.frameBits} bits</span></div><div class="row"></div>
       <div class="legend"><span><i style="background: var(--seg-payload)"></i>agrees</span><span><i style="background: var(--warn)"></i>flipped</span><span><i style="box-shadow: inset 0 0 0 1.5px var(--line-strong)"></i>lost</span></div>`;
     const row = lineup.querySelector(".row");
@@ -75,6 +77,21 @@ export function attachEvidence(readPanel, meterEl) {
     }
     lineup.hidden = false;
   };
+  // before anything is planted: the default frame's shape (the message as typed
+  // in the write station, the copies profile), hollow
+  const ghostLineup = () => {
+    const text = document.querySelector("#st-tag")?.value.trim() || "hello";
+    const n = Math.max(1, encodeMessage(text).length);
+    const layout = layoutOf(n, 3), bits = frameLenBits(n, 3);
+    lineup.classList.add("ghost");
+    lineup.innerHTML = `<div class="lineup-head"><span>what was planted, lined up with what comes back</span><span data-lineup-count>${bits} bits</span></div><div class="row"></div>`;
+    const row = lineup.querySelector(".row");
+    cells = [];
+    for (const s of layout) for (let i = 0; i < s.len; i++) { const c = document.createElement("i"); c.className = "bit"; c.dataset.kind = s.kind; row.appendChild(c); }
+    lineup.hidden = false;
+  };
+  ghostLineup();
+  document.querySelector("#st-tag")?.addEventListener("input", () => { if (lineup.classList.contains("ghost")) ghostLineup(); });
   const origLoad = readPanel.load.bind(readPanel);
   readPanel.load = card => { origLoad(card); queueMicrotask(buildLineup); };
 
