@@ -94,4 +94,23 @@ V["repeat"] = {
     "parsed_wrong_tag": [{"offset": f.offset} for f in parse_frames_soft(bits_to_llrs(stream), (tag_gpt2 + 1) & 7)],
 }
 
+# the message coder: text to bytes, bit-exact with textcode.js
+from rankmark.textcode import encode_message, message_bits
+V["text"] = [{"text": t, "hex": encode_message(t).hex(), "bits": len(message_bits(t))}
+             for t in ["hello", "hi there", "Meet me at 9.", "THE QUICK BROWN FOX", "a-b_c/d@e", "Ünïcode ✓", "", "x" * 40]]
+
+# the echo: packet bits, the slot rule on a fixed id stream, and a clean tally
+from rankmark.echo import EchoSlots, build_echo, echo_hash, echo_len, parse_echo
+from rankmark.ecc import bits_to_llrs as _b2l
+_pl = encode_message("hello"); _tag = tag_of("Qwen3-1.7B-Q8_0")
+_packet = build_echo(_pl, _tag); _n = len(_packet)
+_ids = [((i * 7919 + 13) % 1000) + 1 for i in range(120)]
+_rule = EchoSlots(_n); _slots = []; _stream = []
+for _i in range(4, len(_ids)):
+    if _ids[_i] % 5 != 0:
+        _j = _rule.next(_ids[_i - 4:_i]); _slots.append(_j); _stream.append(_packet[_j])
+_res = parse_echo(_b2l(_stream), _slots, _n, _tag)
+V["echo"] = {"payload": list(_pl), "tag": _tag, "packet": _packet, "ids": _ids, "slots": _slots,
+             "hash": echo_hash(_ids[:4]), "n": _n, "valid": _res.valid, "votes": _res.votes}
+
 print(json.dumps(V))

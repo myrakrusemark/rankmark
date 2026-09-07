@@ -85,6 +85,30 @@ ok(s3.text !== s1.text, "a different seed gives different text");
 c = collect();
 await embed(lens, { prompt: "x", payloadHex: "2a", profile: 0, temperature: 0 }, c.on);
 ok(c.ev.start.max_new === Math.ceil((c.ev.start.frame_bits / 0.5) * 3.0), `max_new from the carrier rate (got ${c.ev.start.max_new})`);
+
+// the echo, two votes a bit: the writer keeps going until every packet bit has
+// two votes, and the reader tallies its way to the payload with no frame to find
+{
+  const ce = collect();
+  const ee = await embed(lens, { prompt: "seed text here", payloadHex: "2a", profile: 4, temperature: 0.7, seed: 11, copies: 2 }, ce.on);
+  ok(ce.ev.start.echo === true && ce.ev.start.frame_bits === 27, `echo packet is 27 bits for one byte (got ${ce.ev.start.frame_bits})`);
+  ok(ee.framesPlanted >= 2, `every slot got two votes (min ${ee.framesPlanted})`);
+  const de = await decode(lens, ee.text, {}, () => {});
+  ok(de.valid && de.payload === "2a" && de.echo && de.echo.n === 27, `reader tallies the echo to 0x2a (valid ${de.valid}, payload ${de.payload})`);
+  ok(de.echo && de.echo.minVotes >= 2, `reader saw at least two votes a slot (min ${de.echo?.minVotes})`);
+}
+
+// the copies profile, three copies: the writer keeps going until three frames
+// are planted, and the reader finds three
+{
+  const c3 = collect();
+  const e3 = await embed(lens, { prompt: "seed text here", payloadHex: "2a", profile: 3, temperature: 0.7, seed: 7, copies: 3 }, c3.on);
+  ok(c3.ev.start.copies === 3 && c3.ev.start.max_new === Math.ceil((c3.ev.start.frame_bits * 5) / 0.5), `three copies get a five-frame budget (got ${c3.ev.start.max_new})`);
+  ok(e3.framesPlanted >= 3, `three copies planted (got ${e3.framesPlanted.toFixed(2)})`);
+  const d3 = await decode(lens, e3.text, {}, () => {});
+  ok(d3.valid && d3.payload === "2a" && d3.frames >= 3, `reader finds three copies (got ${d3.frames})`);
+  ok(d3.combined === 1, "clean copies stand alone");
+}
 const tiny = new FakeLens("gpt2"); tiny.nCtx = 100;
 c = collect();
 await embed(tiny, { prompt: "x", payloadHex: "2a", profile: 0, temperature: 0 }, c.on);

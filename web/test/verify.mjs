@@ -68,5 +68,30 @@ check("repeat parse right tag", rp, V.repeat.parsed_right);
 const wrong = parseFramesSoft(V.repeat.stream, (V.repeat.tag + 1) & 7).map(f => ({ offset: f.offset }));
 check("repeat parse wrong tag", wrong, V.repeat.parsed_wrong_tag);
 
+// the message coder, bit-exact with textcode.py
+{
+  const { encodeMessage, decodeMessage, messageBits } = await import("../engine/textcode.js");
+  for (const v of V.text) {
+    const hex = [...encodeMessage(v.text)].map(b => b.toString(16).padStart(2, "0")).join("");
+    check(`text encode ${JSON.stringify(v.text)}`, hex, v.hex);
+    check(`text bits ${JSON.stringify(v.text)}`, messageBits(v.text).length, v.bits);
+    check(`text round trip ${JSON.stringify(v.text)}`, decodeMessage(encodeMessage(v.text)), v.text);
+  }
+}
+
+// the echo, bit-exact with echo.py
+{
+  const { buildEcho, echoHash, EchoSlots, parseEcho } = await import("../engine/echo.js");
+  const { bitsToLlrs } = await import("../engine/ecc.js");
+  const e = V.echo;
+  check("echo packet", buildEcho(Uint8Array.from(e.payload), e.tag), e.packet);
+  check("echo hash", echoHash(e.ids.slice(0, 4)), e.hash);
+  const rule = new EchoSlots(e.n); const slots = [];
+  for (let i = 4; i < e.ids.length; i++) if (e.ids[i] % 5 !== 0) slots.push(rule.next(e.ids.slice(i - 4, i)));
+  check("echo slots", slots, e.slots);
+  const res = parseEcho(bitsToLlrs(slots.map(j => e.packet[j])), slots, e.n, e.tag);
+  check("echo tally", { valid: res.valid, votes: res.votes }, { valid: e.valid, votes: e.votes });
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

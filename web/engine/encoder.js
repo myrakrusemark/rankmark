@@ -3,8 +3,9 @@
 // context (no window in the browser engine).
 
 import { hexToBytes } from "./bits.js";
-import { buildFrame, layoutOf, tagOf } from "./framing.js";
-import { entropyOf, sortedTokenIds } from "./logits.js";
+import { buildFrame, layoutOf, tagOf, ECHO_PROFILE } from "./framing.js";
+import { buildEcho, echoLayout, EchoSlots, ECHO } from "./echo.js";
+import { entropyOf, rankOf, sortedTokenIds } from "./logits.js";
 import { mulberry32, randomSeed, sampleSoftmax } from "./sampling.js";
 import { textHash } from "./fingerprint.js";
 
@@ -45,6 +46,7 @@ export async function embed(lens, opts, onEvent) {
   const {
     prompt, payloadHex, profile = 0,
     temperature = 0.7, topK = 48,
+    copies = 1,   // frames to plant before the passage may end
   } = opts;
   // the gate is a property of the lens: bigger models are more confident and need a lower one
   const tau = opts.tau ?? lens.rung?.tau ?? 2.0;
@@ -52,9 +54,12 @@ export async function embed(lens, opts, onEvent) {
   const sampler = temperature > 0 ? { temperature, topK, rng: mulberry32(seed) } : null;
 
   const payload = hexToBytes(payloadHex);
-  const frame = buildFrame(payload, profile, tagOf(lens.name));
-  const frameBits = frame.length;
   const nbytes = payload.length;
+  // the echo has no frame: a packet whose bits are voted on by slot
+  const echo = profile === ECHO_PROFILE;
+  const packet = echo ? buildEcho(payload, tagOf(lens.name)) : null;
+  const frame = echo ? null : buildFrame(payload, profile, tagOf(lens.name));
+  const frameBits = echo ? packet.length : frame.length;
 
   const context = await lens.completionContext(prompt);
   if (!context.length) throw new Error("prompt tokenized to nothing");
@@ -63,14 +68,26 @@ export async function embed(lens, opts, onEvent) {
   // budget from the measured carrier rate (one frame plus slack), capped by the
   // context window; the ban keeps the run going until a frame is planted
   const rate = lens.rung?.carrierRate || 0.12;
-  const need = Math.ceil((frameBits / rate) * 3.0);   // the run stops at the first sentence end past the seal, so slack is free on a normal text
+  // the run stops at the first sentence end past the last copy, so slack is free on a
+  // normal text; the echo's random-ish slots need more words to cover every bit
+  const need = Math.ceil((frameBits * (echo ? (copies + 3) * 2 : copies + 2)) / rate);
   const cap = Math.max(64, (lens.nCtx ?? 2048) - context.length - 8);
   const maxNew = Math.min(opts.maxNew || need, cap);
 
   let planted = 0, carriers = 0, nextIdx = 0;
+  // the echo counts its votes per slot, and the strays the opening will cast: a
+  // reader cannot tell the opening from the rest, so its carrier words vote too,
+  // with whatever parity they happen to have. The writer sees those words go by
+  // during the replay, scores them the way the reader will, and keeps writing
+  // until its own votes outnumber the contrary strays on every slot.
+  const votes = echo ? new Array(frameBits).fill(0) : null;
+  const strays = echo ? new Array(frameBits).fill(0) : null;
+  let minVotes = 0;
+  const margin = () => Math.min(...votes.map((v, j) => v - strays[j]));
+  const complete = () => (echo ? margin() >= copies : planted >= frameBits * copies);
   onEvent({
-    type: "start", frame_bits: frameBits, max_new: maxNew, seed, temperature, tau,
-    layout: layoutOf(nbytes, profile), context_tokens: context.length,
+    type: "start", frame_bits: frameBits, max_new: maxNew, seed, temperature, tau, copies, echo,
+    layout: echo ? echoLayout(nbytes) : layoutOf(nbytes, profile), context_tokens: context.length,
   });
 
   // context[0] is the prefill seed; context[1..] are force-replayed as single
@@ -79,13 +96,33 @@ export async function embed(lens, opts, onEvent) {
   // start planting bits.
   const replay = context.slice(1);
   let ri = 0;
+  // the ids so far, for the echo's slot rule (the previous k before each step);
+  // the rule advances at every token, and a carrier votes with the slot it lands on
+  const history = [...context];
+  const slotRule = echo ? new EchoSlots(frameBits) : null;
 
   const decide = logits => {
-    if (ri < replay.length) return replay[ri++]; // still feeding the context
-    const nextBit = frame[nextIdx % frameBits];
-    const ban = planted < frameBits ? eog : null;
+    if (ri < replay.length) {
+      // still feeding the context: the reader will score these words too
+      const id = replay[ri++];
+      if (echo && entropyOf(logits) >= tau) {
+        const step = slotRule.peek(history.slice(-ECHO.k));
+        slotRule.commit(step);
+        if (rankOf(logits, id) % 2 !== packet[step.slot]) strays[step.slot]++;
+      }
+      history.push(id);
+      return id;
+    }
+    let slot = null, step = null, nextBit;
+    if (echo) { step = slotRule.peek(history.slice(-ECHO.k)); slot = step.slot; nextBit = packet[slot]; }
+    else nextBit = frame[nextIdx % frameBits];
+    const ban = complete() ? null : eog;   // no ending the passage before the last copy is in
     const choice = encodeStep(logits, nextBit, tau, ban, sampler);
-    if (choice.planted) { planted++; nextIdx++; carriers++; }
+    history.push(choice.tokenId);
+    if (choice.planted) {
+      planted++; carriers++;
+      if (echo) { slotRule.commit(step); votes[slot]++; minVotes = margin(); } else nextIdx++;
+    }
     onEvent({
       type: "token",
       id: choice.tokenId,
@@ -94,12 +131,12 @@ export async function embed(lens, opts, onEvent) {
       entropy: Math.round(choice.entropy * 1000) / 1000,
       carrier: choice.planted,
       bit: choice.rank % 2,
+      slot: choice.planted && echo ? slot : undefined,
       top: topOf(logits, lens, 8),
     });
     if (choice.planted) {
-      const frac = (carriers % frameBits) / frameBits;
-      const copies = Math.floor(carriers / frameBits);
-      onEvent({ type: "progress", carriers, frameBits, copies, frac, nbytes });
+      if (echo) onEvent({ type: "progress", carriers, frameBits, copies: minVotes, frac: votes.filter(v => v > 0).length / frameBits, nbytes, votes: minVotes });
+      else onEvent({ type: "progress", carriers, frameBits, copies: Math.floor(carriers / frameBits), frac: (carriers % frameBits) / frameBits, nbytes });
     }
     return choice.tokenId;
   };
@@ -109,7 +146,7 @@ export async function embed(lens, opts, onEvent) {
   // last bits off the very end of the text
   let sinceFrame = 0;
   const stopWhen = id => {
-    if (planted < frameBits) return false;
+    if (!complete()) return false;
     sinceFrame++;
     return sinceFrame >= 6 && /[.!?]["')\]]?\s*$/.test(lens.decodeOne(id));
   };
@@ -121,7 +158,7 @@ export async function embed(lens, opts, onEvent) {
 
   const retokenizes = arraysEqual(await lens.encodeText(text), visibleIds);
   const hash = await textHash(text);
-  const framesPlanted = planted / frameBits;
+  const framesPlanted = echo ? minVotes : planted / frameBits;
   const result = {
     text,
     ids: visibleIds,
@@ -129,6 +166,7 @@ export async function embed(lens, opts, onEvent) {
     retokenizes,
     seed,
     temperature,
+    copies,
     fingerprint: lens.fp,
     textHash: hash,
     lens: lens.name,

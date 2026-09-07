@@ -32,7 +32,7 @@ export function defaultThreads() {
 
 export async function loadLens(rung, { onProgress, threads, viaBlob = false } = {}) {
   const nThreads = threads ?? defaultThreads();
-  if (current && current.rung.id === rung.id && current.threads === nThreads) return current;
+  if (current && current.rung.id === rung.id && current.threads === nThreads && (current.rung.window ?? 0) === (rung.window ?? 0) && (current.rung.scope ?? "all") === (rung.scope ?? "all")) return current;
   await unloadLens();
   const w = new Wllama({ default: WASM }, { parallelDownloads: 3, suppressNativeLog: true });
   w.setCompat(COMPAT);
@@ -149,6 +149,9 @@ export class Lens {
     this.pieces = vocab.pieces.map(b => utf8.decode(b));
     this.cancelFlag = false;
     this.fp = null;
+    this.window = rung.window ?? 0;   // positions kept in view; 0 means the whole text
+    this.scope = rung.scope ?? "all"; // "sentence": every sentence is scored against only the one before it
+    this.nPast = 0;
   }
 
   fingerprintParts() {
@@ -161,6 +164,8 @@ export class Lens {
       flashAttn: false,
       nCtx: this.nCtx,
       tau: this.rung.tau ?? 2.0,
+      window: this.window,
+      scope: this.scope,
     };
   }
 
@@ -181,23 +186,64 @@ export class Lens {
 
   async step(ids, reset = false) {
     if (this.cancelFlag) { this.cancelFlag = false; throw new Cancelled(); }
-    return (await this.w.rawEval(ids, { reset })).logits;
+    const r = await this.w.rawEval(ids, { reset });
+    this.nPast = r.nPast;
+    return r.logits;
+  }
+
+  // the window: before the next token goes in, drop the oldest positions so
+  // that at most `window` stay, the seed always among them. Writer and reader
+  // slide at the same steps, so their logits agree; an edit then disturbs one
+  // window of words instead of everything after it.
+  async slide() {
+    const w = this.window;
+    if (!w) return;
+    const discard = this.nPast - (w - 1);
+    if (discard <= 0) return;
+    const r = await this.w.kvShift({ nKeep: 1, nDiscard: discard });
+    this.nPast = r.nPast;
+  }
+
+  // a token that closes a sentence (or a paragraph), by its text alone, so the
+  // writer and the reader agree on every boundary. A long stretch without a
+  // stop still gets boundaries, chosen by the token's own id rather than by
+  // counting, so a deletion upstream cannot move them.
+  endsSentence(id, soFar) {
+    const piece = this.decodeOne(id);
+    if (/[.!?]["')\]]?\s*$/.test(piece)) return true;
+    // a stretch of sixty tokens without a stop: break at the next word whose
+    // id says so (about one in eight), the same word on both sides
+    return soFar >= 60 && piece.startsWith(" ") && (id * 2654435761 >>> 0) % 8 === 0;
   }
 
   // Prefill is the seed alone; every later token is chosen by decide() from the
   // previous step's logits and fed back as a single step. stopOn ends the run
   // early when decide() returns one of those ids (the encoder passes the
   // end-of-generation set); stopWhen(id) can end it after any token.
+  // With scope "sentence", each sentence end rebuilds the cache from that
+  // sentence alone, so the next one is scored against only its predecessor:
+  // a changed word then disturbs its own sentence and the next, and every
+  // later sentence comes back exact. Costs a second pass over each token.
   // Returns [seedId, ...stepped].
   async run(seedId, maxNew, decide, { stopOn, stopWhen } = {}) {
     const stepped = [];
     let logits = await this.step([seedId], true);
+    let sentence = [seedId];
     for (let i = 0; i < maxNew; i++) {
       const id = decide(logits);
       stepped.push(id);
       if (stopOn && stopOn.has(id)) break;
       if (stopWhen && stopWhen(id)) break;
-      if (i + 1 < maxNew) logits = await this.step([id]);
+      if (i + 1 < maxNew) {
+        sentence.push(id);
+        if (this.scope === "sentence" && this.endsSentence(id, sentence.length)) {
+          logits = await this.step(sentence, true);   // the cache is now this sentence only
+          sentence = [];
+        } else {
+          await this.slide();
+          logits = await this.step([id]);
+        }
+      }
     }
     return [seedId, ...stepped];
   }

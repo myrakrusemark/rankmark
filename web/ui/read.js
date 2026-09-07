@@ -4,6 +4,8 @@
 // text for you and reads again.
 
 import { parseMarkCard } from "../engine/fingerprint.js";
+import { decodeHexMessage } from "../engine/textcode.js";
+import { echoLayout } from "../engine/echo.js";
 
 export class ReadPanel {
   constructor(root, { engine, picker, callouts, strip, view }) {
@@ -101,13 +103,19 @@ export class ReadPanel {
             }
           }
           if (e.type === "partial") this.strip.paintSpans(e.spans);
-          if (e.type === "frame" && !locked) { locked = true; this.strip.lockSpans(e.spans, hexToText(e.payload)); if (!quiet) this.callouts.once("locked", this.strip.root); }
+          if (e.type === "frame" && !locked) {
+            locked = true;
+            if (e.echo) this.strip.lockEcho(echoLayout(e.payload.length / 2), e.echo.slots, hexToText(e.payload));
+            else this.strip.lockSpans(e.spans, hexToText(e.payload));
+            if (!quiet) this.callouts.once("locked", this.strip.root);
+          }
         },
       });
       if (res.cancelled) { head.textContent = "stopped"; return null; }
       head.textContent = `${this.view.tokens.length} words, ${carriers} carry bits`;
       if (res.valid) {
-        this.strip.lockSpans(res.spans || [], hexToText(res.payload));
+        if (res.echo) this.strip.lockEcho(echoLayout(res.payload.length / 2), res.echo.slots, hexToText(res.payload));
+        else this.strip.lockSpans(res.spans || [], hexToText(res.payload));
         this.verdict("ok", `A frame planted with <b>${rung.id.replace(/-Q.*$/, "")}</b> validates in this text.<span class="tag">${hexToText(res.payload)}</span>`);
       } else if (this.q("[data-verdict]").hidden) {
         this.verdict("no", `No frame validates under <b>${rung.id.replace(/-Q.*$/, "")}</b>. That means one of: unmarked text, another model wrote it, or the words were changed after writing.`);
@@ -168,8 +176,5 @@ export class ReadPanel {
   }
 }
 
-function hexToText(hexStr) {
-  if (!hexStr) return "";
-  const bytes = new Uint8Array(hexStr.match(/../g).map(h => parseInt(h, 16)));
-  try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return "0x" + hexStr; }
-}
+function hexToText(hexStr) { return decodeHexMessage(hexStr); }
+
