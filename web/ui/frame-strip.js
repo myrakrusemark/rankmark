@@ -150,8 +150,8 @@ export class FrameStrip {
     if (this.cells[i] && this.filled < this.frameBits) this.cells[i].classList.add("next");
   }
 
-  // writing: the next bit leaves its cell and lands under the word, which
-  // takes the section's color
+  // writing: the word sends its bit, a 1 or a 0, into the next cell, which
+  // lights when it lands; the word takes the section's color
   // slot: the echo names the cell a word votes on; framed profiles fill in order
   plant(bit, tokenEl, slot) {
     const i = slot ?? (this.filled % this.frameBits);
@@ -161,14 +161,14 @@ export class FrameStrip {
     const votes = (Number(cell.dataset.votes) || 0) + 1;
     cell.dataset.votes = votes;
     if (votes > 1) {
-      // a further vote or copy: the bit flies out again and its cell takes a ring;
+      // a further vote or copy: the bit flies in again and its cell takes a ring;
       // the first landing stays lit underneath
-      this.fly(cell, tokenEl, bit, cell.dataset.kind, () => { cell.classList.add("again"); tokenEl?.classList.add("in"); });
+      this.fly(tokenEl, cell, bit, cell.dataset.kind, () => { cell.classList.add("again"); tokenEl?.classList.add("in"); });
       this.filled++;
       if (slot !== undefined) this.sealIfCovered();
       return;
     }
-    this.fly(cell, tokenEl, bit, cell.dataset.kind, () => {
+    this.fly(tokenEl, cell, bit, cell.dataset.kind, () => {
       cell.classList.add(bit ? "v1" : "v0", "spent");
       tokenEl?.classList.add("in");
       this.land(cell.dataset.kind, bit, Number(cell.dataset.pos));
@@ -279,6 +279,7 @@ export class FrameStrip {
   // the frame no longer validates after an edit
   kill() { this.root.classList.remove("locked", "sealed"); for (const c of this.cells) if (c.classList.contains("v0") || c.classList.contains("v1")) c.classList.add("dead"); }
 
+  // the bit in flight is its digit, from under the word to the middle of the cell
   fly(fromEl, toEl, bit, kind, done) {
     if (!fromEl || !toEl || prefersReduced()) { done(); return; }
     const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
@@ -286,11 +287,14 @@ export class FrameStrip {
     const el = document.createElement("i");
     el.className = "fly " + (bit ? "b1" : "b0");
     el.dataset.kind = kind;
-    el.style.left = `${a.left + a.width / 2 - 5}px`;
-    el.style.top = `${a.top + a.height - 4}px`;
+    el.textContent = bit ? "1" : "0";
     document.body.appendChild(el);
-    const dx = (b.left + b.width / 2 - 5) - (a.left + a.width / 2 - 5);
-    const dy = (b.top + b.height - 4) - (a.top + a.height - 4);
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const x0 = a.left + a.width / 2 - w / 2, y0 = a.top + a.height - h / 2;
+    el.style.left = `${x0}px`;
+    el.style.top = `${y0}px`;
+    const dx = (b.left + b.width / 2 - w / 2) - x0;
+    const dy = (b.top + b.height / 2 - h / 2) - y0;
     // slow enough to follow with the eye; several bits may be in the air at once
     const anim = el.animate(
       [{ transform: "translate(0,0)", opacity: 1 }, { transform: `translate(${dx}px, ${dy}px)`, opacity: 0.9 }],

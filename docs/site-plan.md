@@ -25,7 +25,7 @@ What changed from v1: no server inference, no WebGPU, no hero, no two-release sp
    one rung, read with another). Same tokenizer, same family, and it still fails the checksum, which is the sharper
    lesson: close is not the key. The gpt2-derived test vectors in `web/test/vectors.json` stay; they test the frame
    stack, not a model, and need no gpt2 in the browser.
-8. **Motion only inside the tool**, and only where data moves: bits leaving the frame strip for the text, bits pulled
+8. **Motion only inside the tool**, and only where data moves: bits flying from the words into the frame strip, bits pulled
    back out on read, bits dying under an edit. Nothing below the tool animates.
 
 ## 1. Positioning
@@ -61,7 +61,7 @@ reveals; motion only where data moves. Section one runs on its own when in view 
 |---|---|---|
 | 1. The model chooses every word from a list | `#st-ranked` | A sentence grows a word at a time beside the model's ranked list for the next word with the odds at the chosen temperature. Plays from `snapshot.ranked`; "run it live" samples 24 tokens with the loaded model. |
 | 2. Where the labs hide the mark | none | Anthropic's SynthID-Text deployment, keyed, detector held by the lab; why the key, not the model, is what keeps the detector theirs. |
-| 3. You can do this yourself | `#st-write` | Opening text (harbor default), a message ("hello" default), the model writing with bits flowing from the frame strip into the words. Replay of the recorded run for phones. |
+| 3. You can do this yourself | `#st-write` | Opening text (harbor default), a message ("hello" default), the model writing with bits flying from the words into the frame strip. Replay of the recorded run for phones. |
 | 4. Read it back | `#st-read` | The marked text, carried over, read by the same model: bits pulled out word by word, the frame locks, the message returns. |
 | 5. Edit it and it still works... well, most of the time | `#st-evidence` | Edit buttons (cut the start, cut the end, swap words) re-run the read; the meter shows planted vs survived bits and a z-score, so a partial frame is still evidence of the model. |
 | 6. Whose text is it | `#st-lineup` | Sibling agreement bars from `measurements.json`: a different model orders the near-ties differently. |
@@ -75,8 +75,8 @@ The earlier plan for the tool page follows; its tabs, callouts and copy survive 
 *Write.* Left column: the opening text the model continues, the tag, and a plain-language robustness choice (lean /
 standard / robust, mapped to profiles 0/1/2 with the bit counts shown). Advanced, folded: temperature, seed, tau.
 Center: the generated text streaming in. Right rail: the frame as a strip of bits, segments labelled knock, label,
-your tag, seal, repair. As each carrier word is chosen, its bit slides out of the strip and lands under the word as a
-solid (1) or hollow (0) underline. Words the model was sure about arrive with a brief dim pulse and no bit.
+your tag, seal, repair. As each carrier word is chosen, its bit, a 1 or a 0, flies from under the word into the strip's
+next cell, and the word takes the section's color. Words the model was sure about arrive with a brief dim pulse and no bit.
 
 Callouts appear once each, anchored to the thing they explain, the first time it happens, dismissible, each with a
 "more" that expands into the matching part of the explainer below:
@@ -227,7 +227,7 @@ order is replaced with a teaching order.
 From the motion skill: declare the page type as editorial/product with the "surgical" personality at the start, or
 its default animates every paragraph. Its vanilla-JS prescriptions hold: CSS transitions and keyframes, animate only
 transform/opacity, `prefers-reduced-motion` on everything, no `transition: all`. Signature moments, all inside the tool:
-a bit leaving the strip and landing under a word (transform only, under 300 ms); the seal border drawing when the CRC
+a bit leaving a word and landing in the strip (transform only); the seal border drawing when the CRC
 validates; bits pulled out of words on read, arriving faint when damaged; the frame snapping into place; ranks
 scattering when the wrong lens reads. Streaming words fade in by opacity, never translate. Reduced motion: bits appear
 in place, no travel.

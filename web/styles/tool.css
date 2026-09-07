@@ -129,8 +129,9 @@ details.adv .field { margin-top: 10px; }
 .strip.sealed .seal::after { animation: sweep 560ms var(--ease-out) forwards; }
 @keyframes draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @keyframes sweep { 0% { left: -20%; opacity: 1; } 85% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
-.fly { position: fixed; z-index: 20; width: 12px; height: 5px; border-radius: 3px; background: var(--seg); pointer-events: none; box-shadow: 0 0 0 1px color-mix(in srgb, var(--seg) 30%, transparent); }
-.fly.b0 { opacity: 0.5; }
+/* the bit in flight: its digit on a small tag in the section's color; a 1 is solid, a 0 hollow */
+.fly { position: fixed; z-index: 20; font: 700 11px/1 var(--font-mono); padding: 2px 4px; border-radius: 3px; background: var(--seg); color: #fff; border: 1px solid var(--seg); pointer-events: none; font-style: normal; }
+.fly.b0 { background: var(--ground); color: var(--seg); }
 .strip-note { font-size: 13px; color: var(--ink-2); }
 .strip-note b { color: var(--ink); }
 .verdict { border-radius: var(--radius-sm); padding: 12px 14px; font-size: 14px; border: 1px solid var(--line); background: var(--surface); }

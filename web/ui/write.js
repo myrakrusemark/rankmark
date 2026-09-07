@@ -1,6 +1,6 @@
 // Write: the model continues your opening text and hides your tag in its
-// word choices. The strip on the right holds the frame; each bit leaves it
-// for the word that carries it.
+// word choices. The strip on the right holds the frame; each word that
+// carries a bit sends it into the frame's next cell.
 
 import { frameLenBits, layoutOf, PROFILES } from "../engine/framing.js";
 import { markCard } from "../engine/fingerprint.js";
