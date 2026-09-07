@@ -101,13 +101,16 @@ details.adv .field { margin-top: 10px; }
 .strip .fseg-head { display: flex; justify-content: space-between; gap: 8px; font: 12px/1.3 var(--font-mono); color: var(--muted); margin-bottom: 5px; }
 .strip .fseg-head b { color: var(--seg); font-weight: 600; }
 .strip .row { display: flex; flex-wrap: wrap; gap: 2px; }
-.strip .bit { width: 7px; height: 12px; background: var(--surface-2); border-radius: 2px; transition: background-color var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out); }
-.strip .bit.v0 { background: var(--seg); opacity: 0.45; }
-.strip .bit.v1 { background: var(--seg); }
+/* one look for bits everywhere: a hollow cell outlined in its section's color; a 0 lands as a full-strength
+   outline, a 1 fills the cell, the same as the digit tags in flight */
+.strip .bit { width: 7px; height: 12px; border-radius: 2px; background: transparent; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--seg) 55%, transparent); transition: background-color var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out); }
+.strip .bit[data-kind=""] { box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.strip .bit.v0 { box-shadow: inset 0 0 0 1.5px var(--seg); }
+.strip .bit.v1 { background: var(--seg); box-shadow: none; }
 .strip .bit.spent { transform: scaleY(0.5); }
-.strip .bit.next { box-shadow: 0 0 0 1px var(--seg); }
-.strip .bit.dead { background: var(--warn); opacity: 1; }
-.strip .bit.again { box-shadow: inset 0 0 0 1px var(--ground); }
+.strip .bit.next { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--seg) 55%, transparent), 0 0 0 1px var(--seg); }
+.strip .bit.dead { background: var(--warn); box-shadow: none; opacity: 1; }
+.strip .bit.again { box-shadow: inset 0 0 0 1.5px var(--ground); }
 .strip .fseg-letters { margin-top: 6px; font: 600 15px/1.3 var(--font-mono); letter-spacing: 0.1em; }
 .strip .fseg-letters span { transition: color var(--t-move) var(--ease-out), opacity var(--t-move) var(--ease-out); }
 .strip .fseg-letters .lit { color: var(--seg); }
