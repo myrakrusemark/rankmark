@@ -16,8 +16,10 @@ export class WritePanel {
     this.profile = Number(root.querySelector('.seg button[aria-pressed="true"]')?.dataset.profile ?? 3);
     this.running = false;
     this.result = null;
-    this.q("[data-run]").addEventListener("click", () => this.run());
-    this.q("[data-stop]").addEventListener("click", () => this.engine.cancel());
+    // one button: it starts the write, and while the model writes it reads Stop
+    const run = this.q("[data-run]");
+    run.dataset.label = run.textContent;
+    run.addEventListener("click", () => (this.running ? this.engine.cancel() : this.run()));
     this.q("[data-tag]").addEventListener("input", () => this.renderTag());
     this.q("[data-temp]")?.addEventListener("input", () => { const o = this.q("[data-temp-out]"); if (o) o.textContent = Number(this.q("[data-temp]").value).toFixed(1); });
     for (const b of root.querySelectorAll(".seg button")) b.addEventListener("click", () => { this.profile = Number(b.dataset.profile); this.renderProfile(); });
@@ -48,8 +50,9 @@ export class WritePanel {
 
   setBusy(on) {
     this.running = on;
-    this.q("[data-run]").hidden = on;
-    this.q("[data-stop]").hidden = !on;
+    const run = this.q("[data-run]");
+    run.textContent = on ? "Stop" : run.dataset.label;
+    run.classList.toggle("stop", on);
     this.root.querySelectorAll("input, textarea, select, .seg button").forEach(el => { el.disabled = on; });
     // the one-box layout: the opening box locks while the model writes into it
     const box = this.q("[data-box-edit]");

@@ -14,8 +14,12 @@ export class ReadPanel {
     this.ta = this.q("[data-paste]");
     this.original = null;   // the text before any break-it edit
     this.running = false;
-    this.q("[data-run]").addEventListener("click", () => this.run());
-    this.q("[data-stop]").addEventListener("click", () => this.engine.cancel());
+    // one button: it starts the read, and while the model reads it reads Stop.
+    // The evidence station keeps it hidden between reads (its edits start them).
+    const run = this.q("[data-run]");
+    run.dataset.label = run.textContent;
+    this.runHidden = run.hidden;
+    run.addEventListener("click", () => (this.running ? this.engine.cancel() : this.run()));
     this.q("[data-edit]")?.addEventListener("click", () => this.edit());
     this.view.root.addEventListener("click", e => { if (!this.running && !e.target.closest("a")) this.edit(); });
     for (const b of root.querySelectorAll("[data-break]")) b.addEventListener("click", () => this.breakIt(b.dataset.break));
@@ -57,8 +61,10 @@ export class ReadPanel {
 
   setBusy(on) {
     this.running = on;
-    this.q("[data-run]").hidden = on;
-    this.q("[data-stop]").hidden = !on;
+    const run = this.q("[data-run]");
+    run.textContent = on ? "Stop" : run.dataset.label;
+    run.classList.toggle("stop", on);
+    run.hidden = on ? false : this.runHidden;
     const ed = this.q("[data-edit]"); if (ed) ed.disabled = on;
     this.root.querySelectorAll("[data-break], [data-lineup]").forEach(el => { el.disabled = on; });
   }

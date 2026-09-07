@@ -57,11 +57,11 @@ try {
     const t = st.querySelector("[data-temp]"); if (t) { t.value = temp; t.dispatchEvent(new Event("input")); }
     st.querySelector("[data-run]").click();
   }, { opening: OPENING, message: MESSAGE, temp: TEMP });
-  await page.waitForFunction(() => !document.querySelector("#st-write [data-stop]").hidden, null, { timeout: 30000 });
+  await page.waitForFunction(() => document.querySelector("#st-write [data-run]").classList.contains("stop"), null, { timeout: 30000 });
   await page.waitForTimeout(8000);
   await page.screenshot({ path: join(OUT_DIR, "write-running.png") });
   log("read box while writing:", JSON.stringify(await page.evaluate(() => ({ chars: document.querySelector("#st-read [data-paste]").value.length, head: document.querySelector("#st-read [data-head]").textContent }))));
-  await page.waitForFunction(() => document.querySelector("#st-write [data-stop]").hidden, null, { timeout: 1500000 });
+  await page.waitForFunction(() => !document.querySelector("#st-write [data-run]").classList.contains("stop"), null, { timeout: 1500000 });
   const write = await page.evaluate(() => {
     const st = document.querySelector("#st-write");
     const bySeg = {};
@@ -84,7 +84,7 @@ try {
   await page.evaluate(() => { const rd = document.querySelector("#st-read"); rd.scrollIntoView({ block: "start" }); rd.querySelector("[data-run]").click(); });
   await page.waitForTimeout(6000);
   await page.screenshot({ path: join(OUT_DIR, "read-running.png") });
-  await page.waitForFunction(() => { const rd = document.querySelector("#st-read"); const stop = rd.querySelector("[data-stop]"); return (!stop || stop.hidden) && rd.querySelector(".verdict")?.textContent.trim(); }, null, { timeout: 1500000 });
+  await page.waitForFunction(() => { const rd = document.querySelector("#st-read"); return !rd.querySelector("[data-run]").classList.contains("stop") && rd.querySelector(".verdict")?.textContent.trim(); }, null, { timeout: 1500000 });
   await page.waitForTimeout(1500);
   const read = await page.evaluate(() => {
     const rd = document.querySelector("#st-read");
@@ -103,7 +103,7 @@ try {
   // evidence station: one edit, which reads again on its own
   await page.evaluate(() => { const ev = document.querySelector("#st-evidence"); ev.scrollIntoView({ block: "start" }); ev.querySelector('[data-break="swap"]').click(); });
   await page.waitForTimeout(3000);
-  await page.waitForFunction(() => { const ev = document.querySelector("#st-evidence"); const stop = ev.querySelector("[data-stop]"); return (!stop || stop.hidden) && !ev.querySelector("[data-evidence]").hidden; }, null, { timeout: 1500000 });
+  await page.waitForFunction(() => { const ev = document.querySelector("#st-evidence"); return !ev.querySelector("[data-run]").classList.contains("stop") && !ev.querySelector("[data-evidence]").hidden; }, null, { timeout: 1500000 });
   await page.waitForTimeout(1000);
   log("evidence:", JSON.stringify(await page.evaluate(() => document.querySelector("#st-evidence [data-evidence]").innerText.replace(/\s+/g, " ").slice(0, 700))));
   await page.screenshot({ path: join(OUT_DIR, "evidence-swap.png") });

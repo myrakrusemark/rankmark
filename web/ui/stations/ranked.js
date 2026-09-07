@@ -44,7 +44,7 @@ export class RankedChoice {
       btn.disabled = !this.recorded;
     }
     this.q("[data-temp]").addEventListener("input", () => this.renderList());
-    btn.addEventListener("click", () => this.start());
+    btn.addEventListener("click", () => (this.running ? this.stop() : this.start()));
     this.renderList();
     // out of view, the landing waits before the next word
     new IntersectionObserver(([e]) => {
@@ -63,6 +63,16 @@ export class RankedChoice {
   }
 
   whenVisible() { return this.visible ? Promise.resolve() : new Promise(r => this.waiters.push(r)); }
+
+  // stop now: cancel the engine's job, drop the words still queued to land,
+  // and wake a landing that is waiting for the station to scroll into view
+  stop() {
+    if (!this.running || this.stopping) return;
+    this.stopping = true;
+    this.q("[data-start]").disabled = true;
+    if (this.engine) this.engine.cancel();
+    const w = this.waiters; this.waiters = []; for (const r of w) r();
+  }
 
   // odds of each candidate at the chosen temperature, from the recorded scores
   odds(top, t) {
@@ -111,13 +121,17 @@ export class RankedChoice {
     const step = this.steps[k];
     if (!step) return;
     await this.whenVisible();
+    if (this.stopping) return;
     this.busy = true;
     try {
       if (this.shown !== k || this.chosen) this.showList(k, false);
       await wait(PACE.list);
+      if (this.stopping) return;
       this.showList(k, true);
       await wait(PACE.hold);
+      if (this.stopping) return;
       await this.fly(k, PACE.fly);
+      if (this.stopping) return;
       this.i = k + 1;
       this.renderSentence();
       await wait(PACE.after);
@@ -152,8 +166,10 @@ export class RankedChoice {
   async start() {
     if (this.running) return;
     this.running = true;
+    this.stopping = false;
     const btn = this.q("[data-start]"), box = this.q("[data-sentence]");
-    btn.disabled = true;
+    btn.textContent = "Stop";
+    btn.classList.add("stop");
     this.steps = [];
     this.i = 0;
     box.contentEditable = "false";   // locked while it writes
@@ -163,6 +179,8 @@ export class RankedChoice {
       else await this.replay();
     } finally {
       this.running = false;
+      this.stopping = false;
+      btn.classList.remove("stop");
       this.renderSentence(false);
       if (this.engine) { box.contentEditable = "true"; this.ready(true); }
       else { btn.disabled = false; btn.textContent = "Watch it again"; }
@@ -182,10 +200,9 @@ export class RankedChoice {
     this.showList(0, false);
     this.source = `${name}, writing on this computer`;
     this.renderSource();
-    btn.textContent = "Writing";
     // the engine runs ahead; the words land one at a time at the animation's pace
     let queue = Promise.resolve();
-    const land = k => { queue = queue.then(() => this.choose(k)); };
+    const land = k => { queue = queue.then(() => (this.stopping ? null : this.choose(k))); };
     await this.engine.run("sample", { rung, opts: { prompt: this.prompt, maxNew: WORDS, temperature: this.temp() } }, {
       onEvent: e => {
         if (e.type !== "token") return;
@@ -194,6 +211,7 @@ export class RankedChoice {
       },
     });
     await queue;
+    if (this.stopping) { this.steps.length = this.i; this.showList(this.i ? this.i - 1 : null, true); }   // keep only the words that landed
     this.source = this.steps.length ? `${name} wrote this on your computer` : "";
   }
 
@@ -204,6 +222,7 @@ export class RankedChoice {
     this.source = "a recorded run";
     this.renderSource();
     for (const s of this.recorded.steps) {
+      if (this.stopping) break;
       this.steps.push(s);
       await this.choose(this.steps.length - 1);
     }
