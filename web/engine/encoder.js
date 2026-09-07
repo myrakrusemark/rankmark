@@ -5,7 +5,7 @@
 import { hexToBytes } from "./bits.js";
 import { buildFrame, layoutOf, tagOf, ECHO_PROFILE } from "./framing.js";
 import { buildEcho, echoLayout, EchoSlots, ECHO } from "./echo.js";
-import { entropyOf, sortedTokenIds } from "./logits.js";
+import { entropyOf, rankOf, sortedTokenIds } from "./logits.js";
 import { mulberry32, randomSeed, sampleSoftmax } from "./sampling.js";
 import { textHash } from "./fingerprint.js";
 
@@ -75,9 +75,16 @@ export async function embed(lens, opts, onEvent) {
   const maxNew = Math.min(opts.maxNew || need, cap);
 
   let planted = 0, carriers = 0, nextIdx = 0;
+  // the echo counts its votes per slot, and the strays the opening will cast: a
+  // reader cannot tell the opening from the rest, so its carrier words vote too,
+  // with whatever parity they happen to have. The writer sees those words go by
+  // during the replay, scores them the way the reader will, and keeps writing
+  // until its own votes outnumber the contrary strays on every slot.
   const votes = echo ? new Array(frameBits).fill(0) : null;
+  const strays = echo ? new Array(frameBits).fill(0) : null;
   let minVotes = 0;
-  const complete = () => (echo ? minVotes >= copies : planted >= frameBits * copies);
+  const margin = () => Math.min(...votes.map((v, j) => v - strays[j]));
+  const complete = () => (echo ? margin() >= copies : planted >= frameBits * copies);
   onEvent({
     type: "start", frame_bits: frameBits, max_new: maxNew, seed, temperature, tau, copies, echo,
     layout: echo ? echoLayout(nbytes) : layoutOf(nbytes, profile), context_tokens: context.length,
@@ -95,7 +102,17 @@ export async function embed(lens, opts, onEvent) {
   const slotRule = echo ? new EchoSlots(frameBits) : null;
 
   const decide = logits => {
-    if (ri < replay.length) { const id = replay[ri++]; history.push(id); return id; } // still feeding the context (the prompt casts no votes)
+    if (ri < replay.length) {
+      // still feeding the context: the reader will score these words too
+      const id = replay[ri++];
+      if (echo && entropyOf(logits) >= tau) {
+        const step = slotRule.peek(history.slice(-ECHO.k));
+        slotRule.commit(step);
+        if (rankOf(logits, id) % 2 !== packet[step.slot]) strays[step.slot]++;
+      }
+      history.push(id);
+      return id;
+    }
     let slot = null, step = null, nextBit;
     if (echo) { step = slotRule.peek(history.slice(-ECHO.k)); slot = step.slot; nextBit = packet[slot]; }
     else nextBit = frame[nextIdx % frameBits];
@@ -104,7 +121,7 @@ export async function embed(lens, opts, onEvent) {
     history.push(choice.tokenId);
     if (choice.planted) {
       planted++; carriers++;
-      if (echo) { slotRule.commit(step); votes[slot]++; minVotes = Math.min(...votes); } else nextIdx++;
+      if (echo) { slotRule.commit(step); votes[slot]++; minVotes = margin(); } else nextIdx++;
     }
     onEvent({
       type: "token",
