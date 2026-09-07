@@ -1,29 +1,31 @@
-/* Design tokens. Light editorial ground, one warm accent, two families.
+/* Design tokens: the myrakrusemark.com sub-page family. Reading happens on
+   cream paper cards over the forest; the tokens below are the paper. The
+   chrome around it (arrival card, footer) uses the forest set at the end.
    Motion personality: surgical. Three curves, nothing else. */
 :root {
-  --ground: #FAFAF9;
-  --surface: #F3F2EF;
-  --surface-2: #ECEAE6;
-  --ink: #1A1A1A;
-  --ink-2: #4A4744;
-  --muted: #6F6B66;
-  --line: rgba(26, 26, 26, 0.10);
-  --line-strong: rgba(26, 26, 26, 0.22);
-  --accent: #B8781A;
-  --accent-ink: #7A4E0E;
-  --accent-soft: rgba(184, 120, 26, 0.12);
-  --ok: #2E6F4E;
+  --ground: #fffdf6;                 /* the paper */
+  --surface: #f5f2e9;                /* a station, a box on the paper */
+  --surface-2: #e8e4d8;              /* empty cells, bars */
+  --ink: #23261f;
+  --ink-2: rgba(35, 38, 31, 0.82);
+  --muted: rgba(35, 38, 31, 0.55);
+  --line: rgba(35, 38, 31, 0.12);
+  --line-strong: rgba(35, 38, 31, 0.28);
+  --accent: #d4573c;
+  --accent-ink: #b8402a;
+  --accent-soft: rgba(212, 87, 60, 0.12);
+  --ok: #2e6f4e;
   --ok-soft: rgba(46, 111, 78, 0.12);
-  --warn: #9A3E2A;
+  --warn: #9a3e2a;
   --warn-soft: rgba(154, 62, 42, 0.10);
 
-  --font-display: "Outfit", "Inter", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Jost", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   --radius: 10px;
   --radius-sm: 6px;
-  --measure: 65ch;
+  --measure: 70ch;
   --gutter: clamp(16px, 4vw, 40px);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -31,69 +33,23 @@
   --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
   --t-fast: 150ms;
   --t-move: 240ms;
+
+  /* the forest: the site's dark chrome around the paper */
+  --forest: #101410;
+  --chrome: rgba(10, 12, 9, 0.9);
+  --cream: #efe9db;
+  --cream-strong: #fbfaf6;
+  --cream-muted: rgba(239, 233, 219, 0.6);
+  --coral: #ff9d84;
+  --coral-soft: rgba(255, 157, 132, 0.14);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --ground: #151412;
-    --surface: #1D1B18;
-    --surface-2: #26231F;
-    --ink: #EDEAE4;
-    --ink-2: #C9C4BC;
-    --muted: #8F8981;
-    --line: rgba(237, 234, 228, 0.12);
-    --line-strong: rgba(237, 234, 228, 0.26);
-    --accent: #D89A3C;
-    --accent-ink: #F0C27A;
-    --accent-soft: rgba(216, 154, 60, 0.16);
-    --ok: #6FBF92;
-    --ok-soft: rgba(111, 191, 146, 0.14);
-    --warn: #E0836C;
-    --warn-soft: rgba(224, 131, 108, 0.14);
-  }
-}
-:root[data-theme="dark"] {
-  --ground: #151412;
-  --surface: #1D1B18;
-  --surface-2: #26231F;
-  --ink: #EDEAE4;
-  --ink-2: #C9C4BC;
-  --muted: #8F8981;
-  --line: rgba(237, 234, 228, 0.12);
-  --line-strong: rgba(237, 234, 228, 0.26);
-  --accent: #D89A3C;
-  --accent-ink: #F0C27A;
-  --accent-soft: rgba(216, 154, 60, 0.16);
-  --ok: #6FBF92;
-  --ok-soft: rgba(111, 191, 146, 0.14);
-  --warn: #E0836C;
-  --warn-soft: rgba(224, 131, 108, 0.14);
-}
-
-/* the frame's five sections: knock, label, message, seal, repair (woven shares the message color) */
+/* the frame's sections: knock, label, message, seal, repair (woven shares the message color) */
 :root {
-  --seg-sync: #3B6EA8;
-  --seg-header: #2A8C7A;
-  --seg-payload: #B8781A;
-  --seg-checksum: #7A4FA3;
-  --seg-parity: #B04A6E;
-  --seg-woven: #B8781A;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --seg-sync: #7FA7DE;
-    --seg-header: #5FC4B0;
-    --seg-payload: #D89A3C;
-    --seg-checksum: #B48AE0;
-    --seg-parity: #E27A9C;
-    --seg-woven: #D89A3C;
-  }
-}
-:root[data-theme="dark"] {
-  --seg-sync: #7FA7DE;
-  --seg-header: #5FC4B0;
-  --seg-payload: #D89A3C;
-  --seg-checksum: #B48AE0;
-  --seg-parity: #E27A9C;
-  --seg-woven: #D89A3C;
+  --seg-sync: #3b6ea8;
+  --seg-header: #2a8c7a;
+  --seg-payload: #b8781a;
+  --seg-checksum: #7a4fa3;
+  --seg-parity: #b04a6e;
+  --seg-woven: #b8781a;
 }

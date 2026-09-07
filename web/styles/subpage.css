@@ -1,0 +1,143 @@
+/* subpage.css: the family look of myrakrusemark.com for everything that is not
+   the homepage, carried over here (a copy, because this page's isolation
+   headers keep it from loading assets from the main site). The forest as a
+   still: Myra's own path photo, blurred to bokeh, fixed behind a deep scrim.
+   Reading happens on cream paper cards. Source: myrakrusemark.com/subpage.css. */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  color: var(--cream);
+  background: var(--forest);
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: url('../assets/bg-bokeh.jpg') center 40% / cover no-repeat;
+  filter: brightness(0.55) saturate(0.9);
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: linear-gradient(180deg, rgba(6,9,6,0.45) 0%, rgba(6,9,6,0.72) 100%);
+}
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 940px; margin: 0 auto;
+  padding: clamp(36px, 7vh, 80px) clamp(20px, 4vw, 48px) 40px;
+}
+.wrap--wide { max-width: 1180px; padding-top: 0; padding-bottom: 90px; }
+
+/* ---- header ---- */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(239,233,219,0.66);
+  margin-bottom: 16px;
+}
+.eyebrow em { font-style: normal; color: var(--coral); }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 200;
+  font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+  line-height: 1.02; letter-spacing: -0.02em;
+  color: var(--cream-strong);
+  margin-bottom: 18px;
+  text-shadow: 0 2px 30px rgba(0,0,0,0.35);
+}
+header .note {
+  font-family: var(--font-display); font-weight: 300;
+  font-size: clamp(1.1rem, 1.7vw, 1.35rem); line-height: 1.5;
+  color: rgba(251,250,246,0.88);
+  max-width: 56ch; margin-bottom: 28px;
+}
+.back {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--cream-strong); text-decoration: none;
+  background: var(--coral-soft);
+  border: 1px solid rgba(255,157,132,0.65);
+  padding: 12px 24px; border-radius: 999px;
+  backdrop-filter: blur(8px);
+  transition: background 0.25s var(--ease-snap), border-color 0.25s var(--ease-snap);
+}
+.back:hover { background: rgba(255,157,132,0.26); border-color: var(--coral); }
+.back + .back { margin-left: 10px; }
+
+/* ---- spec strip ---- */
+.spec {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  border: 1px solid rgba(239,233,219,0.25);
+  border-radius: 12px; overflow: hidden;
+  margin: 34px 0 10px;
+  backdrop-filter: blur(6px);
+  background: rgba(6,9,6,0.35);
+}
+.spec > div { padding: 12px 16px 14px; border-right: 1px solid rgba(239,233,219,0.16); }
+.spec > div:last-child { border-right: none; }
+.spec .k {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(239,233,219,0.5); margin-bottom: 4px;
+}
+.spec .v { font-size: 13px; color: rgba(239,233,219,0.9); line-height: 1.45; overflow-wrap: anywhere; }
+.spec .v a { color: var(--cream-strong); text-decoration: none; border-bottom: 1px solid rgba(255,157,132,0.6); }
+@media (max-width: 700px) { .spec { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .spec > div:nth-child(2n) { border-right: none; } }
+
+/* ---- reading: cream paper cards ---- */
+.paper {
+  position: relative;
+  background: var(--ground); color: var(--ink);
+  border-radius: 14px;
+  padding: clamp(22px, 3.5vw, 40px);
+  margin: 34px 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18), 0 22px 54px -20px rgba(0,0,0,0.5);
+}
+.paper h2 {
+  font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(1.5rem, 2.6vw, 1.9rem);
+  line-height: 1.15;
+  color: var(--ink); margin-bottom: 14px;
+}
+.paper h2 small {
+  display: block;
+  font: 500 10.5px/1.4 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(35,38,31,0.5); margin-bottom: 8px;
+}
+.paper h3 {
+  font-family: var(--font-display); font-weight: 500;
+  font-size: 1.15rem; color: var(--ink);
+  margin: 26px 0 8px;
+}
+.paper p, .paper ul { font-size: 1rem; line-height: 1.7; color: var(--ink-2); margin: 0 0 14px; max-width: var(--measure); }
+.paper ul { padding-left: 22px; }
+.paper li { margin-bottom: 6px; }
+.paper blockquote {
+  margin: 22px 0; padding: 4px 0 4px 20px;
+  border-left: 3px solid var(--accent);
+  font-family: var(--font-display); font-weight: 400;
+  font-size: 1.25rem; line-height: 1.5; color: var(--ink);
+}
+.paper a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid rgba(212,87,60,0.4); }
+.paper a:hover { color: var(--accent); }
+.paper figure { margin: 22px 0; }
+.paper figcaption {
+  font-family: var(--font-mono);
+  font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(35,38,31,0.55); margin-top: 8px; text-align: center;
+}
+
+/* ---- footer ---- */
+footer {
+  position: relative; z-index: 1;
+  background: var(--chrome);
+  color: var(--cream-muted);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em;
+  line-height: 1.8;
+  padding: 26px clamp(20px, 5vw, 64px); text-align: center;
+}
+footer a { color: rgba(239,233,219,0.85); }

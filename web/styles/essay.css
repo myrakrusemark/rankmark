@@ -1,14 +1,10 @@
-/* The essay and its stations. Reading measure for prose; stations break out
-   to the full width. */
-.essay { padding: 36px 0 24px; }
-.essay .standfirst { font-size: 19px; line-height: 1.5; color: var(--ink-2); max-width: 46ch; margin: 10px 0 6px; }
-.essay h1 { font-size: clamp(34px, 5vw, 56px); letter-spacing: -0.02em; max-width: 18ch; }
-.essay .skip { font-size: 14px; }
-.essay h2 { font-size: clamp(24px, 3vw, 34px); margin: 56px 0 14px; max-width: 24ch; }
-.essay h2 small { display: block; font: 500 12px/1.4 var(--font-mono); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
-.essay .prose { max-width: var(--measure); font-size: 17px; line-height: 1.65; }
-.essay .prose p { margin: 0 0 1.1em; }
-.essay .aside { max-width: var(--measure); border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--ink-2); font-size: 15.5px; margin: 18px 0; }
+/* The essay's stations, on the paper cards that subpage.css draws. */
+.paper .prose { max-width: var(--measure); }
+.paper .prose p { margin: 0 0 1.1em; }
+.paper .aside { max-width: var(--measure); border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--ink-2); font-size: 15.5px; margin: 18px 0; }
+.paper .station p, .paper .tool p { max-width: none; }
+.paper .station ul, .paper .tool ul, .paper .al-list { font-size: inherit; line-height: inherit; }
+.paper .ranked li, .paper .al-list li { margin-bottom: 0; }
 
 .station { margin: 26px 0 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
 .station .st-head { display: flex; align-items: baseline; gap: 12px; font: 500 12px/1.4 var(--font-mono); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 14px; }
@@ -118,51 +114,49 @@
 .lu-pct { font-family: var(--font-mono); text-align: right; }
 .lu-label { color: var(--muted); }
 
-/* the full tool at the bottom */
-.tool-section { border-top: 1px solid var(--line); margin-top: 56px; padding-top: 32px; }
-.tool-section h2 { font-size: clamp(24px, 3vw, 34px); margin: 0 0 6px; }
-
-/* the model that loads on arrival: a fixed card with a bar and a cancel button */
+/* the model that loads on arrival: a fixed card in the site's dark chrome, with a bar and a cancel button */
 .autoload {
   position: fixed; right: 20px; bottom: 20px; z-index: 40; width: min(400px, calc(100% - 32px)); max-height: calc(100vh - 40px); overflow: auto;
-  background: var(--ground); border: 1px solid var(--line-strong); border-left: 3px solid var(--accent); border-radius: var(--radius-sm);
-  padding: 12px 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); font-size: 13.5px; line-height: 1.45; color: var(--ink-2);
+  background: var(--chrome); border: 1px solid rgba(255,157,132,0.5); border-left: 3px solid var(--coral); border-radius: 12px;
+  backdrop-filter: blur(8px);
+  padding: 12px 14px; box-shadow: 0 6px 24px rgba(0,0,0,0.4); font-size: 13.5px; line-height: 1.45; color: var(--cream);
   transition: opacity var(--t-move) var(--ease-out), transform var(--t-move) var(--ease-out);
 }
-.autoload b { color: var(--ink); }
+.autoload b { color: var(--cream-strong); }
 .autoload.off { opacity: 0; transform: translateY(6px); pointer-events: none; }
-.al-bar { height: 3px; background: var(--line); border-radius: 2px; margin: 10px 0 8px; overflow: hidden; }
-.al-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform 300ms var(--ease-out); }
+.al-bar { height: 3px; background: rgba(239,233,219,0.15); border-radius: 2px; margin: 10px 0 8px; overflow: hidden; }
+.al-bar i { display: block; height: 100%; background: var(--coral); transform-origin: left; transform: scaleX(0); transition: transform 300ms var(--ease-out); }
 .al-bar.wait i { transform: none; width: 30%; animation: al-slide 1.2s var(--ease-in-out) infinite; }
 @keyframes al-slide { from { translate: -100% 0; } to { translate: 340% 0; } }
-.al-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 12px/1.2 var(--font-mono); color: var(--muted); }
-.autoload .btn { padding: 5px 10px; font-size: 12px; }
-.al-more { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
-.al-more summary { cursor: pointer; font-size: 12.5px; color: var(--ink-2); list-style: none; display: flex; align-items: center; gap: 6px; }
+.al-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 12px/1.2 var(--font-mono); color: var(--cream-muted); }
+.autoload .btn { padding: 5px 10px; font-size: 12px; background: transparent; color: var(--cream-strong); border-color: rgba(239,233,219,0.4); }
+.autoload .btn:hover { background: rgba(239,233,219,0.08); }
+.al-more { margin-top: 10px; border-top: 1px dashed rgba(239,233,219,0.25); padding-top: 8px; }
+.al-more summary { cursor: pointer; font-size: 12.5px; color: var(--cream); list-style: none; display: flex; align-items: center; gap: 6px; }
 .al-more summary::-webkit-details-marker { display: none; }
-.al-more summary::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: rotate(-45deg); transition: transform var(--t-fast) var(--ease-snap); }
+.al-more summary::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid var(--cream-muted); border-bottom: 1.5px solid var(--cream-muted); transform: rotate(-45deg); transition: transform var(--t-fast) var(--ease-snap); }
 .al-more[open] summary::before { transform: rotate(45deg); }
-.al-more summary:hover { color: var(--ink); }
-.al-req { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+.al-more summary:hover { color: var(--cream-strong); }
+.al-req { margin: 8px 0 0; font-size: 12.5px; color: var(--cream-muted); }
 .al-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .al-list button {
   width: 100%; text-align: left; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 6px 9px; cursor: pointer;
-  font: inherit; font-size: 12.5px; line-height: 1.35; color: var(--ink-2);
+  border: 1px solid rgba(239,233,219,0.2); border-radius: 6px; background: rgba(239,233,219,0.05); padding: 6px 9px; cursor: pointer;
+  font: inherit; font-size: 12.5px; line-height: 1.35; color: rgba(239,233,219,0.8);
   transition: border-color var(--t-fast) var(--ease-snap), background-color var(--t-fast) var(--ease-snap);
 }
-.al-list button:hover:not(:disabled) { border-color: var(--line-strong); background: var(--ground); }
-.al-list button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.al-list button:hover:not(:disabled) { border-color: rgba(239,233,219,0.4); background: rgba(239,233,219,0.1); }
+.al-list button[aria-pressed="true"] { border-color: var(--coral); background: var(--coral-soft); }
 .al-list button:disabled { opacity: 0.55; cursor: default; }
-.al-list b { color: var(--ink); font-weight: 600; }
-.al-list i { font: 11px/1.2 var(--font-mono); font-style: normal; color: var(--accent); margin-left: auto; }
+.al-list b { color: var(--cream-strong); font-weight: 600; }
+.al-list i { font: 11px/1.2 var(--font-mono); font-style: normal; color: var(--coral); margin-left: auto; }
 .al-list span { flex: 1 1 100%; }
 /* shrunk to a pill once the model is in (or the download was cancelled); click to reopen */
 .autoload.mini { width: auto; padding: 0; }
 .autoload.mini .al-body { display: none; }
-.al-pill { border: 0; background: none; padding: 9px 12px; font: inherit; font-size: 12.5px; color: var(--ink-2); cursor: pointer; display: flex; gap: 6px; align-items: center; }
-.al-pill b { color: var(--ink); }
-.al-pill u { color: var(--accent); text-decoration: none; }
+.al-pill { border: 0; background: none; padding: 9px 12px; font: inherit; font-size: 12.5px; color: var(--cream); cursor: pointer; display: flex; gap: 6px; align-items: center; }
+.al-pill b { color: var(--cream-strong); }
+.al-pill u { color: var(--coral); text-decoration: none; }
 .al-pill:hover u { text-decoration: underline; }
 
 /* the copy button sits in the output box's top right corner once there is a marked text to copy */
