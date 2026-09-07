@@ -14,7 +14,7 @@ No server, no WebGPU.
 | `encoder.js` | `embed(lens, opts, onEvent)`: greedy or same-parity temperature sampling (port of `channel.py`), the end-of-generation set banned until one frame is planted, token budget `ceil(frameBits / carrierRate * 2.0)` capped by the context, and a stop at the first sentence end past the seal. |
 | `decoder.js` | `decode(lens, text, opts, onEvent)`: teacher-forced single steps, soft bits, frame parse. |
 | `sampling.js` | mulberry32 seeded RNG, softmax sampling. The JS sampler is its own reference; a seed reproduces a browser run, not a Python one. |
-| `fingerprint.js` | Lens fingerprint (engine commit, model, sha256, quant, threads, attention kernel, n_ctx), text hash, mark card build and parse. |
+| `mark.js` | Lens fingerprint (engine commit, model, sha256, quant, threads, attention kernel, n_ctx), text hash, mark card build and parse. |
 | `worker.js` | Owns the lens. Commands: `load`, `embed`, `decode`, `cancel`, `unload`, `info`. Replies: `progress`, `ready`, `event`, `done`, `cancelled`, `error`. |
 | `probe.js` | Main-thread feature tests: Memory64, JSPI, isolation, `deviceMemory`, storage quota. Recommends the largest passing rung up to the 4B tier; 8B is offered, never recommended, because `deviceMemory` is capped at 8. |
 | `logits.js`, `bits.js`, `framing.js`, `ecc.js` | Unchanged frame stack, validated by the 90 Python vectors. |

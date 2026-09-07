@@ -5,7 +5,7 @@
 
 import { embed } from "../engine/encoder.js";
 import { decode } from "../engine/decoder.js";
-import { fingerprint, fingerprintDiff, markCard, parseMarkCard, textHash } from "../engine/fingerprint.js";
+import { fingerprint, fingerprintDiff, markCard, parseMarkCard, textHash } from "../engine/mark.js";
 
 const VOCAB = 64;
 

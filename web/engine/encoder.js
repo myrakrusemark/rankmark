@@ -7,7 +7,7 @@ import { buildFrame, layoutOf, tagOf, ECHO_PROFILE } from "./framing.js";
 import { buildEcho, echoLayout, EchoSlots, ECHO } from "./echo.js";
 import { entropyOf, rankOf, sortedTokenIds } from "./logits.js";
 import { mulberry32, randomSeed, sampleSoftmax } from "./sampling.js";
-import { textHash } from "./fingerprint.js";
+import { textHash } from "./mark.js";
 
 // encode_step: below the gate emit rank 0 (a null); above it emit the top token
 // whose rank parity == nextBit. Banned tokens (the end-of-generation set, until

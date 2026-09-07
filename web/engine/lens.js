@@ -6,7 +6,7 @@
 import { Wllama } from "../vendor/wllama/index.js";
 import { entropyOf, rankOf, sortedTokenIds } from "./logits.js";
 import { fileUrl } from "./models.js";
-import { fingerprint } from "./fingerprint.js";
+import { fingerprint } from "./mark.js";
 
 export { entropyOf, rankOf, sortedTokenIds };
 

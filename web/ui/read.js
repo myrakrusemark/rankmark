@@ -3,7 +3,7 @@
 // the text ends without one. Click the words to edit them; break-it edits the
 // text for you and reads again.
 
-import { parseMarkCard } from "../engine/fingerprint.js";
+import { parseMarkCard } from "../engine/mark.js";
 import { decodeHexMessage } from "../engine/textcode.js";
 import { echoLayout } from "../engine/echo.js";
 

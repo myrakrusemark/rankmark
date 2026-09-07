@@ -3,7 +3,7 @@
 // carries a bit sends it into the frame's next cell.
 
 import { frameLenBits, layoutOf, PROFILES } from "../engine/framing.js";
-import { markCard } from "../engine/fingerprint.js";
+import { markCard } from "../engine/mark.js";
 import { encodeMessage } from "../engine/textcode.js";
 
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");

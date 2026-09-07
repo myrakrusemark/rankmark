@@ -7,7 +7,7 @@ import { loadLens, currentLens, unloadLens, Cancelled } from "./lens.js";
 import { embed } from "./encoder.js";
 import { decode } from "./decoder.js";
 import { sample } from "./sampler.js";
-import { parseMarkCard, textHash } from "./fingerprint.js";
+import { parseMarkCard, textHash } from "./mark.js";
 
 async function ensureLens(args, reqId) {
   const lens = await loadLens(args.rung, {
