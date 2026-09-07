@@ -232,7 +232,7 @@ async function autoload() {
     await picker.scanCache();
     renderList("ready");
     modelReady(true);
-    shrinkTimer = setTimeout(shrink, 10000);
+    shrinkTimer = setTimeout(shrink, 2000);
   };
   cancel.addEventListener("click", async () => { await stop(); shrink(); });
   pill.addEventListener("click", show);
