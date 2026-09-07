@@ -225,12 +225,14 @@
   <div class="prose">
     <p>A key buys two properties this page does not have. Nobody can plant Claude's mark without the key, while anyone with Qwen's weights can plant this one. And because the labs count agreement over the last few words, an edit anywhere costs them little, while this demo loses everything after an edit. What the keyless version has instead is that anyone can check it, because the verification and the model are both public. The same trick also names which open model wrote a text, which a keyed scheme cannot do for models it does not own.</p>
     <div class="table-wrap">
-    <table>
-      <tr><th></th><th>Keyed</th><th>Who can check</th><th>What it says</th><th>Forgeable</th></tr>
-      <tr><td>Claude (SynthID-Text variant, since August 2026)</td><td>yes</td><td>eligible organizations, by API</td><td>likelihood Claude was involved</td><td>hard without the key</td></tr>
-      <tr><td>Gemini (SynthID-Text, since 2024)</td><td>yes</td><td>Google, and a limited portal</td><td>likelihood</td><td>hard without the key</td></tr>
-      <tr><td>ChatGPT</td><td colspan="4">no text watermark shipped as of September 2026</td></tr>
-      <tr><td>Rankmark, this page</td><td>no, the model is the key</td><td>anyone with the same weights</td><td>which model validates, and your message</td><td>yes, by anyone with the weights</td></tr>
+    <table class="compare">
+      <thead><tr><th scope="col"></th><th scope="col">Keyed</th><th scope="col">Who can check</th><th scope="col">What it says</th><th scope="col">Forgeable</th></tr></thead>
+      <tbody>
+      <tr><th scope="row">Claude <small>SynthID-Text variant, since August 2026</small></th><td>yes</td><td>eligible organizations, by API</td><td>likelihood Claude was involved</td><td>hard without the key</td></tr>
+      <tr><th scope="row">Gemini <small>SynthID-Text, since 2024</small></th><td>yes</td><td>Google, and a limited portal</td><td>likelihood</td><td>hard without the key</td></tr>
+      <tr><th scope="row">ChatGPT</th><td colspan="4" class="span">no text watermark shipped as of September 2026</td></tr>
+      <tr><th scope="row">Rankmark <small>this page</small></th><td>no, the model is the key</td><td>anyone with the same weights</td><td>which model validates, and your message</td><td>yes, by anyone with the weights</td></tr>
+      </tbody>
     </table>
     </div>
     <div class="limits">

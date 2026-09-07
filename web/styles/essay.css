@@ -4,6 +4,17 @@
 .paper .prose .lede { font-size: 1.3rem; line-height: 1.5; color: var(--ink); margin-bottom: 0.7em; }
 .paper .aside { max-width: var(--measure); border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--ink-2); font-size: 15.5px; margin: 18px 0; }
 .paper .station p, .paper .tool p { max-width: none; }
+/* the comparison table in the last section */
+.paper .table-wrap { overflow-x: auto; margin: 6px 0 22px; }
+.paper .compare { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; line-height: 1.45; }
+.paper .compare th, .paper .compare td { text-align: left; vertical-align: top; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+.paper .compare th + th, .paper .compare th + td, .paper .compare td + td { padding-left: 12px; }
+.paper .compare thead th { font: 500 11px/1.4 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border-bottom-color: var(--line-strong); padding-top: 0; }
+.paper .compare tbody th { font-weight: 600; color: var(--ink); width: 22%; }
+.paper .compare tbody th small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 2px; }
+.paper .compare td { color: var(--ink-2); }
+.paper .compare td.span { color: var(--muted); font-style: italic; }
+.paper .compare tbody tr:last-child th, .paper .compare tbody tr:last-child td { border-bottom: 0; }
 .paper .station ul, .paper .tool ul, .paper .al-list { font-size: inherit; line-height: inherit; }
 .paper .ranked li, .paper .al-list li { margin-bottom: 0; }
 
