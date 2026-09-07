@@ -212,6 +212,19 @@ against the registry. On 2026-09-05 all twelve produced the same logit row (`ca3
 the same ranks and the same carrier bits, and this laptop matches them. A text written on one machine reads on
 another; "portable" is measured, not argued.
 
+## Reading again after an edit: the sentence cache
+
+Under sentence scope a token's logits depend only on its own sentence so far and the sentence before it, so a
+read's scores (rank and entropy per token) can be cached per sentence pair, keyed by the two sentences' token
+ids. `Lens.runScored()` splits the text into the sentences `run()` would score, replays a pair it has seen and
+runs the model only on the others, rebuilding the model's cache from the previous sentence first, the way `run()`
+rebuilds it at every sentence end. The worker keeps the cache per lens fingerprint across reads. Measured on the
+1.7B with `web/test/ci/reuse.mjs` (2026-09-07, an 81-token text): a fresh full read 86 s; the same text again
+49 ms; two words swapped in the third sentence 26 s, with 13 of 81 tokens computed; the end cut off 8 s, with 10
+computed. Every reused read matched the fresh read token for token in rank, carrier and bit. The page's edit
+station reads its baseline from the cache once the read station has read the text, and each edit costs the
+model only the sentences it touched.
+
 Since 2026-09-07 the lens feeds a run of tokens (the opening, or a sentence being rebuilt under sentence scope)
 three per engine call instead of all in one, so that a cancel is seen within about a second instead of after the
 whole feed. The engine decodes the tokens one at a time either way, so the logits are the same bits: the 0.6B's

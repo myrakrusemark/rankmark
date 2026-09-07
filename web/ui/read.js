@@ -127,7 +127,7 @@ export class ReadPanel {
         },
       });
       if (res.cancelled) { head.textContent = "stopped"; return null; }
-      head.textContent = `${this.view.tokens.length} words, ${carriers} carry bits`;
+      head.textContent = `${this.view.tokens.length} words, ${carriers} carry bits${res.reuse && res.reuse.cached ? ` · ${res.reuse.computed} re-read, ${res.reuse.cached} known` : ""}`;
       if (res.valid) {
         if (res.echo) this.strip.lockEcho(echoLayout(res.payload.length / 2), res.echo.slots, hexToText(res.payload));
         else this.strip.lockSpans(res.spans || [], hexToText(res.payload));

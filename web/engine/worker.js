@@ -29,6 +29,7 @@ function info(lens) {
 
 // one job at a time: two runs interleaving on one lens would corrupt both.
 // cancel and info bypass the queue so a stuck job can be stopped.
+const readCache = { fp: null, map: new Map() };
 let chain = Promise.resolve();
 self.onmessage = ev => {
   const { cmd } = ev.data;
@@ -75,6 +76,10 @@ async function handle(ev) {
     }
     if (cmd === "decode") {
       const lens = await ensureLens(args, reqId);
+      // scores per sentence pair, kept across reads of this lens: an edit then
+      // costs the model only the sentences it touched
+      if (readCache.fp !== lens.fp) { readCache.fp = lens.fp; readCache.map = new Map(); }
+      args.opts = { ...args.opts, cache: args.opts?.cache === false ? null : readCache.map };
       // a pasted mark card names its lens and hashes the written text; strip
       // the footer before tokenizing, and say "altered" when the hash differs
       const card = parseMarkCard(args.text);

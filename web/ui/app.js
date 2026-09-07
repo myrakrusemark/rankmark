@@ -47,6 +47,17 @@ const stEvView = new TextView($("#st-ev-text"), { boxed: false });
 const stRead = new ReadPanel($("#st-read"), { engine, picker, callouts: quiet, strip: stReadStrip, view: stReadView });
 const stEv = new ReadPanel($("#st-evidence"), { engine, picker, callouts: quiet, strip: stEvStrip, view: stEvView });
 attachEvidence(stEv, $("#st-evidence [data-evidence]"));
+// once the read station has read the text, the edit station reads the same
+// text as its baseline: every sentence pair is already scored, so it costs the
+// model nothing and shows the planted bits all agreeing before any edit
+{
+  const origRun = stRead.run.bind(stRead);
+  stRead.run = async o => {
+    const r = await origRun(o);
+    if (r && !stEv.running && stEv.reference && stEv.ta.value === stRead.ta.value) stEv.run({ quiet: true });
+    return r;
+  };
+}
 
 const stWrite = new WritePanel($("#st-write"), {
   engine, picker, callouts: quiet, strip: stWriteStrip, view: stWriteView,

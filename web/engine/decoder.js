@@ -64,12 +64,13 @@ export async function decode(lens, text, opts, onEvent) {
     return frames;
   };
 
-  const decide = logits => {
-    const tid = targets[t++];
+  // one token's score, whether the model just produced it or a cache replayed it
+  const pace = opts.pace ?? 12;   // ms between replayed tokens, so the strip fills at a pace the eye can follow
+  const score = async (tid, { rank, entropy }, fromCache) => {
+    t++;
     const prev = allIds.slice(Math.max(0, t - ECHO.k), t);   // the k ids before this token
     const steps = echoes.map(e => e.rule.peek(prev));
-    const entropy = entropyOf(logits);
-    const rank = rankOf(logits, tid);
+    if (fromCache && pace) await new Promise(r => setTimeout(r, pace));
     if (entropy >= tau) {
       const bit = rank % 2;
       llrs.push(llrOf(rank, entropy, tau));
@@ -93,13 +94,26 @@ export async function decode(lens, text, opts, onEvent) {
     } else {
       onEvent({ type: "token", id: tid, carrier: false, piece: lens.decodeOne(tid), rank });
     }
-    return tid; // force the real next token
   };
 
-  await lens.run(seed, targets.length, decide);
+  // under sentence scope the scores of an unchanged sentence pair are the same
+  // bits as before, so a read reuses them and runs the model on the rest
+  let reuse = null;
+  if (lens.scope === "sentence" && !lens.window && opts.cache) {
+    reuse = await lens.runScored(seed, targets, score, opts.cache);
+  } else {
+    const pending = [];
+    await lens.run(seed, targets.length, logits => {
+      const tid = targets[t];
+      pending.push(score(tid, { rank: rankOf(logits, tid), entropy: entropyOf(logits) }, false));
+      return tid; // force the real next token
+    });
+    await Promise.all(pending);
+  }
   const frames = finalize();
   return {
     valid: frames.length > 0,
+    reuse,
     llrs: Array.from(llrs),
     payload: frames[0] ? bytesToHex(frames[0].payload) : null,
     combined: frames[0] ? (frames[0].combined ?? 1) : null,

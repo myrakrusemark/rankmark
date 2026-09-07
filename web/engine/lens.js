@@ -225,6 +225,55 @@ export class Lens {
     return soFar >= 60 && piece.startsWith(" ") && (id * 2654435761 >>> 0) % 8 === 0;
   }
 
+  // The sentences run() would score, from the ids alone: the first holds the
+  // seed. Under sentence scope a token's logits depend only on its sentence so
+  // far and the one before it, so a reader can cache scores per sentence pair.
+  splitSentences(seed, targets) {
+    const sentences = [];
+    let cur = [seed];
+    for (let i = 0; i < targets.length; i++) {
+      const id = targets[i];
+      cur.push(id);
+      if (i + 1 < targets.length && this.endsSentence(id, cur.length)) { sentences.push(cur); cur = []; }
+    }
+    if (cur.length) sentences.push(cur);
+    return sentences;
+  }
+
+  // Score known tokens (a read) with the same logits run() would give, sentence
+  // by sentence: a sentence whose scores are cached, keyed by itself and the
+  // one before it, is replayed without the model; the others are run live,
+  // the model's cache rebuilt from the previous sentence first, exactly as
+  // run() rebuilds it at every sentence end. score(id, {rank, entropy}, cached).
+  // Returns how many tokens were replayed and how many computed.
+  async runScored(seed, targets, score, cache) {
+    const sentences = this.splitSentences(seed, targets);
+    let cached = 0, computed = 0;
+    for (let k = 0; k < sentences.length; k++) {
+      const cur = sentences[k], prev = k ? sentences[k - 1] : [];
+      const key = `${prev.join(",")}|${cur.join(",")}`;
+      const toks = k ? cur : cur.slice(1);   // the seed is never scored
+      const hit = cache?.get(key);
+      if (hit && hit.length === toks.length) {
+        for (let j = 0; j < toks.length; j++) { await score(toks[j], hit[j], true); cached++; }
+        continue;
+      }
+      // the model's cache holds the previous sentence alone (the seed alone for
+      // the first), rebuilt the way run() rebuilds it at every sentence end
+      let logits = await this.step(k ? prev : [seed], true);
+      const entries = [];
+      for (let j = 0; j < toks.length; j++) {
+        const id = toks[j];
+        const entry = { rank: rankOf(logits, id), entropy: entropyOf(logits) };
+        entries.push(entry);
+        await score(id, entry, false); computed++;
+        if (j + 1 < toks.length) logits = await this.step([id]);
+      }
+      cache?.set(key, entries);
+    }
+    return { cached, computed };
+  }
+
   // Prefill is the seed alone; every later token is chosen by decide() from the
   // previous step's logits and fed back as a single step. stopOn ends the run
   // early when decide() returns one of those ids (the encoder passes the
