@@ -35,9 +35,9 @@
 <article class="essay">
 
   <section class="paper">
-  <h2>The model chooses every word from a list</h2>
   <div class="prose">
-    <p>On August 14, Anthropic posted a short note saying that future Claude models will write text that carries a watermark. Google has done this in Gemini since 2024. The reason is a European law that, from this August, requires text from these systems to be marked in a way software can detect. The odd part is that nobody can point at the mark. Copy a paragraph out of Claude and read it as many times as you like; there is nothing there.</p>
+    <p class="lede">On August 14, Anthropic posted a short note saying that future Claude models will write text that carries a watermark.</p>
+    <p>Google has done this in Gemini since 2024. The reason is a European law that, from this August, requires text from these systems to be marked in a way software can detect. The odd part is that nobody can point at the mark. Copy a paragraph out of Claude and read it as many times as you like; there is nothing there.</p>
     <p>The mark lives in a decision you never see. A language model does not write words the way a person types them. At every step it gives a score to every token it knows, about 150,000 pieces of words for the models on this page, and then something has to pick one from the top of that list. Usually the pick is the highest score, and sometimes, on purpose, it is the second or third, because a model that always takes the top word repeats itself. How far down the list the pick can wander is a setting called temperature.</p>
     <p>Try it below. Give the model an opening, set a temperature, and start it. The sentence grows one word at a time, and the list beside it is the model's top eight for the next word, with the one it took.</p>
   </div>

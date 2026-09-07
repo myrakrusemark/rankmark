@@ -1,6 +1,7 @@
 /* The essay's stations, on the paper cards that subpage.css draws. */
 .paper .prose { max-width: var(--measure); }
 .paper .prose p { margin: 0 0 1.1em; }
+.paper .prose .lede { font-size: 1.3rem; line-height: 1.5; color: var(--ink); margin-bottom: 0.7em; }
 .paper .aside { max-width: var(--measure); border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--ink-2); font-size: 15.5px; margin: 18px 0; }
 .paper .station p, .paper .tool p { max-width: none; }
 .paper .station ul, .paper .tool ul, .paper .al-list { font-size: inherit; line-height: inherit; }
