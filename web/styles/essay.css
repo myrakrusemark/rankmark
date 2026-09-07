@@ -178,6 +178,11 @@
 .al-pill u { color: var(--coral); text-decoration: none; }
 .al-pill:hover u { text-decoration: underline; }
 
+/* the write station's box runs the full height of the frame beside it */
+#st-write .two { align-items: stretch; }
+#st-write .two > div:first-child { display: flex; flex-direction: column; }
+#st-write .box-wrap { flex: 1; display: flex; flex-direction: column; }
+#st-write .box-wrap > [data-box-edit] { flex: 1; }
 /* the copy button sits in the output box's top right corner once there is a marked text to copy */
 .station .box-wrap { position: relative; }
 .station .box-wrap .copy-btn { position: absolute; top: 8px; right: 8px; padding: 5px 10px; font-size: 12px; z-index: 2; }
