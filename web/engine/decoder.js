@@ -67,13 +67,13 @@ export async function decode(lens, text, opts, onEvent) {
   const decide = logits => {
     const tid = targets[t++];
     const prev = allIds.slice(Math.max(0, t - ECHO.k), t);   // the k ids before this token
-    const slotsNow = echoes.map(e => e.rule.next(prev));
+    const steps = echoes.map(e => e.rule.peek(prev));
     const entropy = entropyOf(logits);
     const rank = rankOf(logits, tid);
     if (entropy >= tau) {
       const bit = rank % 2;
       llrs.push(llrOf(rank, entropy, tau));
-      echoes.forEach((e, i) => e.slots.push(slotsNow[i]));
+      echoes.forEach((e, i) => e.slots.push(e.rule.commit(steps[i])));
       onEvent({ type: "token", id: tid, carrier: true, bit, piece: lens.decodeOne(tid), rank });
       // cheap: repaint the forming frame every carrier; full parse periodically
       onEvent({ type: "partial", spans: partialSpans(llrs) });

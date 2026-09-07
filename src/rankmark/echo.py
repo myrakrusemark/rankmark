@@ -42,14 +42,20 @@ class EchoSlots:
         self.start: int | None = None
         self.offset = 0
 
-    def next(self, prev_ids: list[int]) -> int:
+    def peek(self, prev_ids: list[int]) -> tuple[int, int, int]:
+        """(slot, start, offset) a carrier here would take; commit() takes the step."""
         h = echo_hash(prev_ids)
-        if self.start is None or (h >> 8) % ANCHOR_EVERY == 0:
-            self.start = (h >> 11) % self.n
-            self.offset = 0
-        else:
-            self.offset += 1
-        return (self.start + self.offset) % self.n
+        anchor = self.start is None or (h >> 8) % ANCHOR_EVERY == 0
+        start = (h >> 11) % self.n if anchor else self.start
+        offset = 0 if anchor else self.offset + 1
+        return (start + offset) % self.n, start, offset
+
+    def commit(self, step: tuple[int, int, int]) -> int:
+        slot, self.start, self.offset = step
+        return slot
+
+    def next(self, prev_ids: list[int]) -> int:
+        return self.commit(self.peek(prev_ids))
 
 
 @dataclass

@@ -70,7 +70,7 @@ export async function embed(lens, opts, onEvent) {
   const rate = lens.rung?.carrierRate || 0.12;
   // the run stops at the first sentence end past the last copy, so slack is free on a
   // normal text; the echo's random-ish slots need more words to cover every bit
-  const need = Math.ceil((frameBits * (copies + 2) * (echo ? 1.6 : 1)) / rate);
+  const need = Math.ceil((frameBits * (echo ? (copies + 3) * 2 : copies + 2)) / rate);
   const cap = Math.max(64, (lens.nCtx ?? 2048) - context.length - 8);
   const maxNew = Math.min(opts.maxNew || need, cap);
 
@@ -95,16 +95,16 @@ export async function embed(lens, opts, onEvent) {
   const slotRule = echo ? new EchoSlots(frameBits) : null;
 
   const decide = logits => {
-    if (ri < replay.length) { const id = replay[ri++]; if (echo) slotRule.next(history.slice(-ECHO.k)); history.push(id); return id; } // still feeding the context
-    let slot = null, nextBit;
-    if (echo) { slot = slotRule.next(history.slice(-ECHO.k)); nextBit = packet[slot]; }
+    if (ri < replay.length) { const id = replay[ri++]; history.push(id); return id; } // still feeding the context (the prompt casts no votes)
+    let slot = null, step = null, nextBit;
+    if (echo) { step = slotRule.peek(history.slice(-ECHO.k)); slot = step.slot; nextBit = packet[slot]; }
     else nextBit = frame[nextIdx % frameBits];
     const ban = complete() ? null : eog;   // no ending the passage before the last copy is in
     const choice = encodeStep(logits, nextBit, tau, ban, sampler);
     history.push(choice.tokenId);
     if (choice.planted) {
       planted++; carriers++;
-      if (echo) { votes[slot]++; minVotes = Math.min(...votes); } else nextIdx++;
+      if (echo) { slotRule.commit(step); votes[slot]++; minVotes = Math.min(...votes); } else nextIdx++;
     }
     onEvent({
       type: "token",

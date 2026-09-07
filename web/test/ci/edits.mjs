@@ -24,7 +24,8 @@ const DUMP = process.env.DUMP || "";               // save every variant's LLRs 
 const SCOPE = process.env.SCOPE || "all";          // "sentence": score each sentence against only the one before
 const PROMPT = "It was late in the harbor when the last boat came in, and";
 const stamp = () => new Date().toISOString().slice(11, 19);
-const log = (...a) => console.log(stamp(), ...a);
+const PROGRESS = process.env.PROGRESS || "";   // a file that gets every log line as it happens
+const log = (...a) => { const line = [stamp(), ...a].join(" "); console.log(line); if (PROGRESS) { import("node:fs").then(fs => fs.appendFileSync(PROGRESS, line + "\n")); } };
 
 const server = spawn(process.execPath, [join(webRoot, "serve.mjs")], { env: { ...process.env, PORT }, stdio: ["ignore", "inherit", "inherit"] });
 await new Promise(r => setTimeout(r, 1500));
@@ -37,6 +38,7 @@ try {
 
   for (const profile of PROFILES) for (const copies of COPIES) {
     log(`profile ${profile}, ${copies} cop${copies === 1 ? "y" : "ies"}: writing`);
+    const ticker = setInterval(async () => { try { log("  stage:", await page.evaluate(() => window.__stage || "writing")); } catch { /* page busy */ } }, 120000);
     const out = await page.evaluate(async ({ rungId, profile, prompt, copies, win, scope }) => {
       const { agreement } = await import("/engine/compare.js");
       const rung = { ...window.engine.registry.rungs.find(r => r.id === rungId), window: win, scope };
@@ -57,8 +59,10 @@ try {
         "last 20% cut": text.slice(0, text.lastIndexOf(" ", Math.floor(text.length * 0.8))),
       };
       const results = {};
+      window.__stage = "written";
       for (const [name, v] of Object.entries(variants)) {
         if (!v) continue;
+        window.__stage = "reading: " + name;
         const read = [];
         const dec = await window.engine.runJob("decode", { rung, text: v, opts: {} }, { onEvent: e => { if (e.type === "token") read.push({ id: e.id, carrier: e.carrier, bit: e.bit ?? null }); } });
         const a = agreement(written, read);
@@ -70,6 +74,7 @@ try {
       }
       return { tokens: written.length, carriers: written.filter(t => t.carrier).length, framesPlanted: emb.framesPlanted, frameBits: emb.frameBits ?? null, results, written, text };
     }, { rungId: RUNG, profile, prompt: PROMPT, copies, win: WINDOW, scope: SCOPE });
+    clearInterval(ticker);
     log(`profile ${profile}, ${copies} copies${WINDOW ? `, window ${WINDOW}` : ""}${SCOPE !== "all" ? `, scope ${SCOPE}` : ""}: ${out.tokens} tokens, ${out.carriers} carriers, ${out.framesPlanted?.toFixed(2)} frames`);
     for (const [name, r] of Object.entries(out.results)) log(`  ${name.padEnd(26)} valid ${String(r.valid).padEnd(5)}${r.valid && r.combined > 1 ? ` (${r.combined} copies combined)` : ""}  agree ${String(r.agree).padStart(5)}% (${r.survived}/${r.planted})  z ${r.z}  flips by tenth ${r.flipsByTenth.join(" ")}  lost ${r.lostByTenth.join(" ")}`);
     if (DUMP) {

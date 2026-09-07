@@ -27,15 +27,21 @@ export function echoHash(ids) {
   return h;
 }
 
-// the slot rule, one state per bit stream and packet length
+// the slot rule, one state per bit stream and packet length. It advances only
+// at carriers, so a run of slots is a run of votes: peek() says which slot a
+// word would vote on, and commit() takes the step once the word turns out to
+// carry. Runs then tile the packet instead of scattering over it.
 export class EchoSlots {
   constructor(n) { this.n = n; this.start = null; this.offset = 0; }
-  next(prevIds) {
+  peek(prevIds) {
     const h = echoHash(prevIds);
-    if (this.start === null || ((h >>> 8) % ECHO.anchorEvery) === 0) { this.start = (h >>> 11) % this.n; this.offset = 0; }
-    else this.offset++;
-    return (this.start + this.offset) % this.n;
+    const anchor = this.start === null || ((h >>> 8) % ECHO.anchorEvery) === 0;
+    const start = anchor ? (h >>> 11) % this.n : this.start;
+    const offset = anchor ? 0 : this.offset + 1;
+    return { slot: (start + offset) % this.n, start, offset };
   }
+  commit(step) { this.start = step.start; this.offset = step.offset; return step.slot; }
+  next(prevIds) { return this.commit(this.peek(prevIds)); }
 }
 
 // tally the votes: the summed confidence per slot decides each bit; the tag
