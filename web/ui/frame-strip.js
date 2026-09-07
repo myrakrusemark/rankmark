@@ -180,13 +180,18 @@ export class FrameStrip {
   // the echo seals when every cell has a vote
   sealIfCovered() { if (this.cells.every(c => Number(c.dataset.votes) > 0)) this.root.classList.add("sealed"); }
 
-  // reading: the strip has no layout yet; it grows one line of cells, one per
-  // carrier, and the bit under the word is pulled back into it. As the parser
-  // makes out the frame, cells and words take the section colors, and the
-  // message spells out in big type as its bytes come in.
-  growMode() {
+  // reading: the strip does not know the frame yet. It starts as one frame's
+  // worth of hollow cells in the colors the reader expects (the layout for the
+  // message as typed), a guess; each carrier's bit is pulled from its word into
+  // the next cell and takes the guessed color, the row growing past the guess
+  // if the text carries more. As the parser makes out the frame, cells and
+  // words take the parser's colors instead, and the message spells out in big
+  // type as its bytes come in. At lock the colors are final and cells outside
+  // the frame go grey.
+  growMode(expected = null) {
     this.frameBits = Infinity;
     this.filled = 0;
+    this.expected = expected;
     this.root.classList.remove("sealed", "locked");
     this.segs.innerHTML = "";
     this.cells = [];
@@ -194,35 +199,45 @@ export class FrameStrip {
     this.clearLanded();
     this.readRow = this.section("read", 0);
     this.readRow.querySelector(".fseg-note").remove();
+    this.readRow.querySelector("[data-count]").textContent = "one per carrier word";
     this.readMsg = document.createElement("div");
     this.readMsg.className = "read-message";
     this.readMsg.hidden = true;
     this.readRow.appendChild(this.readMsg);
     this.segs.appendChild(this.readRow);
-  }
-  // before a read: the row's shape, a run of empty cells
-  previewRead(n = 48) {
-    this.growMode();
     const row = this.readRow.querySelector(".row");
-    for (let i = 0; i < n; i++) { const c = document.createElement("i"); c.className = "bit"; c.dataset.kind = ""; row.appendChild(c); }
-    this.readRow.querySelector("[data-count]").textContent = "one per carrier word";
+    const n = expected ? expected.reduce((a, s) => a + s.len, 0) : 48;
+    for (let i = 0; i < n; i++) { const c = document.createElement("i"); c.className = "bit ghost"; c.dataset.kind = this.guessKind(i); row.appendChild(c); }
+  }
+  // the section the reader expects at read position i: one frame's layout, repeating
+  guessKind(i) {
+    if (!this.expected) return "";
+    const total = this.expected.reduce((a, s) => a + s.len, 0);
+    const j = i % total;
+    return this.expected.find(s => j >= s.start && j < s.start + s.len)?.kind ?? "";
   }
   pull(bit, tokenEl) {
-    const cell = document.createElement("i");
-    cell.className = "bit";
-    cell.dataset.kind = "";
+    const row = this.readRow.querySelector(".row");
+    const i = this.cells.length;
+    const kind = this.guessKind(i);
+    let cell = row.querySelector(".ghost");
+    if (cell) cell.classList.remove("ghost");
+    else { cell = document.createElement("i"); cell.className = "bit"; row.appendChild(cell); }
+    cell.dataset.kind = kind;
+    cell.dataset.est = kind;
     cell.dataset.bit = bit;
-    this.readRow.querySelector(".row").appendChild(cell);
+    if (tokenEl && kind) tokenEl.dataset.seg = kind;
     this.cells.push(cell);
     this.pulled.push(tokenEl);
     this.readRow.querySelector("[data-count]").textContent = `${this.cells.length} bit${this.cells.length === 1 ? "" : "s"}`;
-    this.fly(tokenEl, cell, bit, "", () => cell.classList.add(bit ? "v1" : "v0"));
+    this.fly(tokenEl, cell, bit, kind, () => cell.classList.add(bit ? "v1" : "v0"));
   }
 
-  // color cells and words by the frame the parser currently makes out
-  colorSpans(spans) {
-    for (const c of this.cells) c.dataset.kind = "";
-    for (const t of this.pulled) if (t) delete t.dataset.seg;
+  // color cells and words by the frame the parser currently makes out; outside
+  // its spans, the reader's guess while reading, grey once the frame is final
+  colorSpans(spans, { guess = true } = {}) {
+    this.cells.forEach((c, i) => { c.dataset.kind = guess ? (c.dataset.est ?? "") : ""; });
+    this.pulled.forEach((t, i) => { if (!t) return; const k = guess ? this.cells[i]?.dataset.est : ""; if (k) t.dataset.seg = k; else delete t.dataset.seg; });
     for (const s of spans) for (let i = 0; i < s.len; i++) {
       const c = this.cells[s.start + i];
       if (!c) continue;
@@ -258,7 +273,7 @@ export class FrameStrip {
   // checksum vouches for
   lockSpans(spans, message = "") {
     if (spans.length) {
-      this.colorSpans(spans);
+      this.colorSpans(spans, { guess: false });
       for (const c of this.cells) c.classList.add("locked");
       this.spellRead(spans, message);
     }

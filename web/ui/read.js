@@ -4,7 +4,8 @@
 // text for you and reads again.
 
 import { parseMarkCard } from "../engine/mark.js";
-import { decodeHexMessage } from "../engine/textcode.js";
+import { decodeHexMessage, encodeMessage } from "../engine/textcode.js";
+import { layoutOf } from "../engine/framing.js";
 import { echoLayout } from "../engine/echo.js";
 
 export class ReadPanel {
@@ -25,7 +26,16 @@ export class ReadPanel {
     for (const b of root.querySelectorAll("[data-break]")) b.addEventListener("click", () => this.breakIt(b.dataset.break));
     this.q("[data-lineup]")?.addEventListener("click", () => this.lineup());
     this.ta.addEventListener("input", () => { this.original = null; });
-    this.strip.previewRead();
+    this.strip.growMode(this.expectedLayout());
+    // the guess follows the message as typed in the write station, until a read has pulled bits
+    document.querySelector("#st-tag")?.addEventListener("input", () => { if (!this.running && !this.strip.cells.length) this.strip.growMode(this.expectedLayout()); });
+  }
+
+  // the frame the reader expects before it finds one: the layout for the
+  // message as typed in the write station, in the copies profile
+  expectedLayout() {
+    const text = document.querySelector("#st-tag")?.value.trim() || "hello";
+    return layoutOf(Math.max(1, encodeMessage(text).length), 3);
   }
 
   load(card) {
@@ -94,7 +104,7 @@ export class ReadPanel {
     this.setBusy(true);
     this.view.clear();
     this.annotate(card);
-    this.strip.growMode();
+    this.strip.growMode(this.expectedLayout());
     this.q("[data-verdict]").hidden = true;
     const head = this.q("[data-head]");
     head.textContent = "";
