@@ -76,7 +76,7 @@ header .note {
   backdrop-filter: blur(6px);
   background: rgba(6,9,6,0.35);
 }
-.spec > div { padding: 12px 16px 14px; border-right: 1px solid rgba(239,233,219,0.16); }
+.spec > div { min-width: 0; padding: 12px 16px 14px; border-right: 1px solid rgba(239,233,219,0.16); }
 .spec > div:last-child { border-right: none; }
 .spec .k {
   display: block;
@@ -85,7 +85,7 @@ header .note {
   color: rgba(239,233,219,0.5); margin-bottom: 4px;
 }
 .spec .v { font-size: 13px; color: rgba(239,233,219,0.9); line-height: 1.45; overflow-wrap: anywhere; }
-.spec .v a { color: var(--cream-strong); text-decoration: none; border-bottom: 1px solid rgba(255,157,132,0.6); }
+.spec .v a { color: var(--cream-strong); text-decoration: none; border-bottom: 1px solid rgba(255,157,132,0.6); overflow-wrap: anywhere; word-break: break-word; }
 @media (max-width: 700px) { .spec { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .spec > div:nth-child(2n) { border-right: none; } }
 
 /* ---- reading: cream paper cards ---- */
