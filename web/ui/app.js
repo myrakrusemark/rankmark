@@ -133,6 +133,13 @@ if (!canRun) {
 }
 window.rankmark = { engine, picker, registry, hw, snapshot };
 
+// every example's go button follows the model: off with a note while it loads
+// (or after a cancel), on when it is in
+function modelReady(on, label) {
+  ranked.ready(on, label);
+  for (const panel of [stWrite, stRead, stEv, toolWrite, toolRead]) panel?.modelReady(on, label);
+}
+
 // ---- the model that loads on arrival ------------------------------------------
 // the examples need a model, so the small one starts loading as soon as the page
 // can run one (or the rung the visitor downloaded and picked before). A card says
@@ -140,7 +147,8 @@ window.rankmark = { engine, picker, registry, hw, snapshot };
 // cancels this download and starts that one.
 async function autoload() {
   const card = $("#autoload");
-  if (!card || hw.saveData) return;
+  if (!card || hw.saveData) { modelReady(true); return; }   // data saver: each example asks before it downloads
+  modelReady(false, "Loading the model");
   const q = s => card.querySelector(s);
   const msg = q("[data-al-msg]"), fill = q("[data-al-fill]"), pct = q("[data-al-pct]"), bar = q(".al-bar"), cancel = q("[data-al-cancel]"), list = q("[data-al-list]"), pill = q("[data-al-pill]");
   const name = r => r.id.replace(/-Q.*$/, "");
@@ -170,7 +178,7 @@ async function autoload() {
     if (!job) return;
     job = null;
     loaded = null;
-    ranked.ready(false, "No model loaded");
+    modelReady(false, "No model loaded");
     picker.granted.delete(current.id);
     engine.restart();
     await picker.dropPartial(current);
@@ -190,7 +198,7 @@ async function autoload() {
     cancel.textContent = "Cancel";
     renderList(fromCache ? "loading" : "downloading");
     show();
-    ranked.ready(false, "Loading the model");
+    modelReady(false, "Loading the model");
     picker.granted.add(rung.id);
     const mine = engine.run("load", { rung }, {
       onProgress: p => {
@@ -209,7 +217,7 @@ async function autoload() {
       bar.classList.remove("wait");
       msg.textContent = `The download did not finish (${err.message}). Each example asks again when you run it.`;
       cancel.textContent = "Close";
-      ranked.ready(false, "No model loaded");
+      modelReady(false, "No model loaded");
       renderList("");
       return;
     }
@@ -223,7 +231,7 @@ async function autoload() {
     cancel.textContent = "Close";
     await picker.scanCache();
     renderList("ready");
-    ranked.ready(true);
+    modelReady(true);
     shrinkTimer = setTimeout(shrink, 10000);
   };
   cancel.addEventListener("click", async () => { await stop(); shrink(); });

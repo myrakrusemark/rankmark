@@ -40,7 +40,7 @@ try {
   await page.waitForFunction(() => !!window.rankmark, null, { timeout: 60000 });
 
   log("waiting for the arrival card's model");
-  const loaded = async () => page.evaluate(async () => (await window.rankmark.engine.info())?.model || null);
+  const loaded = async () => page.evaluate(async () => (document.querySelector("#st-write [data-run]").disabled ? null : (await window.rankmark.engine.info())?.model) || null);
   for (let i = 0; i < 300 && !(await loaded()); i++) await page.waitForTimeout(1000);
   log("model in:", await loaded());
 

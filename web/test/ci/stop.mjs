@@ -17,8 +17,17 @@ try {
   const page = await ctx.newPage();
   await page.goto(url, { waitUntil: "load" });
   await page.waitForFunction(() => !!window.rankmark, null, { timeout: 60000 });
+  // while the model loads, every go button is off and says so
+  const GO = ["#st-ranked [data-start]", "#st-write [data-run]", "#st-read [data-run]", "#st-evidence [data-run]", "#panel-write [data-run]", "#panel-read [data-run]"];
+  const state = () => page.evaluate(sel => sel.map(q => { const b = document.querySelector(q); return [b.disabled, b.textContent]; }), GO);
+  const loading = await state();
+  ok(loading.every(([off, text]) => off && text === "Loading the model"), `while loading: ${JSON.stringify(loading)}`);
+  ok(await page.evaluate(() => [...document.querySelectorAll("#st-evidence [data-break]")].every(b => b.disabled)), "while loading: the edit buttons are off");
   // the model is in when the ranked station's button is enabled
   ok((await until(page, () => !document.querySelector("#st-ranked [data-start]").disabled, 180000)) >= 0, "model loaded");
+  const ready = await state();
+  ok(ready.map(([off, text]) => `${off ? "off" : "on"}:${text}`).join(",") === "on:Write the next 24 words,on:Write,on:Read it back,on:Read,on:Write with a mark,on:Read the marks", `loaded: ${JSON.stringify(ready)}`);
+  ok(await page.evaluate(() => [...document.querySelectorAll("#st-evidence [data-break]")].every(b => !b.disabled)), "loaded: the edit buttons are on");
 
   // ranked choice
   await page.evaluate(() => { const st = document.querySelector("#st-ranked"); st.scrollIntoView({ block: "center" }); st.querySelector("[data-start]").click(); });

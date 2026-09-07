@@ -59,14 +59,22 @@ export class ReadPanel {
     else foot.hidden = true;
   }
 
+  // the go button follows the model: off with a note while it loads (or when
+  // none is loaded), back to its own label once the model is in
+  modelReady(on, label) {
+    this.offLabel = on ? null : label;
+    if (!this.running) this.setBusy(false);
+  }
+
   setBusy(on) {
     this.running = on;
     const run = this.q("[data-run]");
-    run.textContent = on ? "Stop" : run.dataset.label;
+    run.textContent = on ? "Stop" : (this.offLabel ?? run.dataset.label);
+    run.disabled = !on && !!this.offLabel;
     run.classList.toggle("stop", on);
     run.hidden = on ? false : this.runHidden;
     const ed = this.q("[data-edit]"); if (ed) ed.disabled = on;
-    this.root.querySelectorAll("[data-break], [data-lineup]").forEach(el => { el.disabled = on; });
+    this.root.querySelectorAll("[data-break], [data-lineup]").forEach(el => { el.disabled = on || !!this.offLabel; });
   }
 
   verdict(kind, html) {

@@ -48,10 +48,18 @@ export class WritePanel {
     }
   }
 
+  // the go button follows the model: off with a note while it loads (or when
+  // none is loaded), back to its own label once the model is in
+  modelReady(on, label) {
+    this.offLabel = on ? null : label;
+    if (!this.running) this.setBusy(false);
+  }
+
   setBusy(on) {
     this.running = on;
     const run = this.q("[data-run]");
-    run.textContent = on ? "Stop" : run.dataset.label;
+    run.textContent = on ? "Stop" : (this.offLabel ?? run.dataset.label);
+    run.disabled = !on && !!this.offLabel;
     run.classList.toggle("stop", on);
     this.root.querySelectorAll("input, textarea, select, .seg button").forEach(el => { el.disabled = on; });
     // the one-box layout: the opening box locks while the model writes into it
