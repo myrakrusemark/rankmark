@@ -52,15 +52,15 @@ const stWrite = new WritePanel($("#st-write"), {
   engine, picker, callouts: quiet, strip: stWriteStrip, view: stWriteView,
   // the text flows on into the read and evidence stations: as it is written,
   // then finished with its footer line, so nothing needs pasting
-  onText: text => { stRead.preview(text); $("#st-read [data-head]").textContent = "the text from section three, still being written"; },
+  onText: text => { stRead.preview(text); $("#st-read [data-head]").textContent = "the text you wrote above, still being written"; },
   onDone: ({ card, tokens, mode, planted, frameBits, layout, tag, rung, echo }) => {
-    if (mode === "stalled") { $("#st-read [data-head]").textContent = `the text from section three; its frame stopped at ${planted} of ${frameBits} bits, so a read finds nothing`; return; }
+    if (mode === "stalled") { $("#st-read [data-head]").textContent = `the text you wrote above; its frame stopped at ${planted} of ${frameBits} bits, so a read finds nothing`; return; }
     if (mode !== "done") return;
     stRead.load(card);
     stEv.load(card);
     stEv.reference = tokens;
     stEv.frame = { layout, frameBits, message: tag, rung, echo };   // what was planted, section by section
-    $("#st-read [data-head]").textContent = "the text from section three, with its footer line";
+    $("#st-read [data-head]").textContent = "the text you wrote above, with its footer line";
     $("#st-read [data-paste]").placeholder = "";
   },
 });

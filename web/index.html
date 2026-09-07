@@ -35,7 +35,7 @@
 <article class="essay">
 
   <section class="paper">
-  <h2><small>1</small>The model chooses every word from a list</h2>
+  <h2>The model chooses every word from a list</h2>
   <div class="prose">
     <p>On August 14, Anthropic posted a short note saying that future Claude models will write text that carries a watermark. Google has done this in Gemini since 2024. The reason is a European law that, from this August, requires text from these systems to be marked in a way software can detect. The odd part is that nobody can point at the mark. Copy a paragraph out of Claude and read it as many times as you like; there is nothing there.</p>
     <p>The mark lives in a decision you never see. A language model does not write words the way a person types them. At every step it gives a score to every token it knows, about 150,000 pieces of words for the models on this page, and then something has to pick one from the top of that list. Usually the pick is the highest score, and sometimes, on purpose, it is the second or third, because a model that always takes the top word repeats itself. How far down the list the pick can wander is a setting called temperature.</p>
@@ -83,7 +83,7 @@
 
   </section>
   <section class="paper">
-  <h2><small>2</small>Where the labs hide the mark</h2>
+  <h2>Where the labs hide the mark</h2>
   <div class="prose">
     <p>Most of the time the list has an obvious winner. When it does not, when the top two or three words score about the same, the model is free to take any of them and the sentence reads the same either way. Those free choices are the hiding places, and there are a lot of them in any paragraph.</p>
     <p>Anthropic's version, which is a variant of Google DeepMind's SynthID-Text, uses a secret number, the key. At each free choice, the key and the few words before it decide which of the near-equal words the model should prefer, a preference so slight that the text is not worse for it. Later, a detector holding the same key walks through the text, works out at each word which candidate the key would have preferred, and counts how often the text agrees. Unmarked text agrees about half the time, by chance. Marked text agrees far more often than that. The detector reports that likelihood and nothing else: not who wrote it, not what it says, only how likely it is that Claude was involved.</p>
@@ -92,10 +92,10 @@
 
   </section>
   <section class="paper">
-  <h2><small>3</small>You can do this yourself</h2>
+  <h2>You can do this yourself</h2>
   <div class="prose">
     <p>You cannot see inside Claude, but you can see inside an open model, and that is enough to build the same idea without a key. This page runs Qwen3, an open model from Alibaba, entirely in your browser. At every free choice, first place means a 0 and second place means a 1, and that is the whole channel. Around your message goes a frame, which opens with a fixed pattern of bits to knock with, so a reader can find the start anywhere in the text. Then come a label with the message length and a short tag for the model, the message itself, and a checksum to seal it. Ask for two or three copies and the model keeps writing until each one is in; a reader that finds every copy damaged can still add them up, since the bits an edit flips are rarely the same ones twice. The tool at the bottom also offers the echo, which is how the labs do it: no frame at all, every word voting on one bit of the message chosen by the words before it. It needs more words to carry the same message, which is why the copies are the default here.</p>
-    <p>I designed this version and directed the AI coding agents that built it, mostly to find out how far the idea goes without a key. Further than I expected, with one honest difference from the labs' schemes that section five gets to.</p>
+    <p>I designed this version and directed the AI coding agents that built it, mostly to find out how far the idea goes without a key. Further than I expected, with one honest difference from the labs' schemes that the last section gets to.</p>
     <p>Try it. The opening line is yours to change, and so is the message. The 1.7B model is the default: a short message takes it about three minutes on a laptop, and it stays on task. The smallest one is quicker but wanders off into quiz questions; the bigger ones are slower and surer of themselves, which leaves fewer free choices to hide in. Then watch the two columns: the words as they are written, and the frame's bits leaving the strip for the words that carry them, each in the color of the part of the frame it belongs to.</p>
   </div>
   <div class="station" id="st-write">
@@ -142,7 +142,7 @@
 
   </section>
   <section class="paper">
-  <h2><small>4</small>Read it back</h2>
+  <h2>Read it back</h2>
   <div class="prose">
     <p>Reading is the same walk in reverse. The reader runs the same model over the same words and asks, at each one, where that word stood in the model's list. At a free choice, first place reads as 0 and second place as 1. The bits go into the strip in the order they come until the knock, the label and the checksum line up, and the checksum decides whether a frame is really there.</p>
     <p>Read back what you just wrote, and watch the words stay where they are while the bits come out of them.</p>
@@ -152,7 +152,7 @@
     <div class="two">
       <div>
         <div class="text" data-box>
-          <textarea class="paste" name="marked" data-paste placeholder="Write something in section three first, or paste marked text here." aria-label="Marked text"></textarea>
+          <textarea class="paste" name="marked" data-paste placeholder="Write something with a mark above first, or paste marked text here." aria-label="Marked text"></textarea>
           <div id="st-read-text" role="log" aria-live="off" hidden></div>
         </div>
         <div class="btn-row" style="margin-top: 10px">
@@ -172,7 +172,7 @@
 
   </section>
   <section class="paper">
-  <h2><small>5</small>Edit it, and it still tells</h2>
+  <h2>Edit it, and it still tells</h2>
   <div class="prose">
     <p>What if someone changes the text? Delete a sentence, swap a few words, cut the end. The full message often does not come back: a checksum needs every bit. But that is not the question a detector answers. A detector asks how many of the surviving bits agree with what was planted, and even a mangled paragraph keeps most of its evidence. Fifty percent agreement is chance, and ninety percent over a hundred bits is not what an unmarked text does. Measured on this page's models: swapping one word flips about one in ten of the bits that come after it, so a text with a hundred carrier bits still agrees 88 to 94% after a swap; deleting a sentence leaves about 75%; cutting the end costs only the bits that were in the cut.</p>
     <p>The meter below lines up what the reader recovered against what the writer planted, edit by edit. The model scores each sentence against only the one before it, rebuilt fresh from the text, so a changed word costs the two sentences it touches and nothing after them; the labs score each word against only the last few words, so an edit costs them a few words. The counting is the same. The window is a sentence instead of a few words, and it takes a second pass over the text to pay for it, because here the model itself has to be run to read.</p>
@@ -182,7 +182,7 @@
     <div class="two">
       <div>
         <div class="text" data-box>
-          <textarea class="paste" name="edited" data-paste placeholder="Write something in section three first." aria-label="Marked text to edit"></textarea>
+          <textarea class="paste" name="edited" data-paste placeholder="Write something with a mark above first." aria-label="Marked text to edit"></textarea>
           <div id="st-ev-text" role="log" aria-live="off" hidden></div>
         </div>
         <div class="breakit" style="margin-top: 10px">
@@ -209,7 +209,7 @@
 
   </section>
   <section class="paper">
-  <h2><small>6</small>Whose text is it</h2>
+  <h2>Whose text is it</h2>
   <div class="prose">
     <p>Every model ranks its near ties its own way. Give this paragraph to a different model and ask for the bits, and it agrees with the writer on about six bits in ten, where a coin gets five and the writer gets all of them. That gap is enough to say which model wrote a text, and it is why this page calls the model the key: nothing secret, just the one set of scores that lines up.</p>
     <p>The bars below are measured on the laptop this was built on: each model's text, read back by the others.</p>
@@ -221,7 +221,7 @@
 
   </section>
   <section class="paper">
-  <h2><small>7</small>What the key buys</h2>
+  <h2>What the key buys</h2>
   <div class="prose">
     <p>A key buys two properties this page does not have. Nobody can plant Claude's mark without the key, while anyone with Qwen's weights can plant this one. And because the labs count agreement over the last few words, an edit anywhere costs them little, while this demo loses everything after an edit. What the keyless version has instead is that anyone can check it, because the verification and the model are both public. The same trick also names which open model wrote a text, which a keyed scheme cannot do for models it does not own.</p>
     <div class="table-wrap">
