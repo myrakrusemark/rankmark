@@ -105,15 +105,23 @@
     </div>
     <div class="pair">
       <div class="field temp-field">
-        <div class="label-row"><label for="st-temp">Temperature</label><span class="hint" data-temp-out>0.7</span></div>
-        <div class="range-box"><input id="st-temp" type="range" data-temp min="0" max="1.5" step="0.1" value="0.7"></div>
+        <div class="label-row"><label id="st-temp-label">Temperature</label></div>
+        <div class="seg" data-pick="temp" role="group" aria-labelledby="st-temp-label">
+          <button type="button" data-value="0.4" aria-pressed="false">low chaos</button>
+          <button type="button" data-value="0.7" aria-pressed="true">medium</button>
+          <button type="button" data-value="1.0" aria-pressed="false">high chaos</button>
+        </div>
       </div>
       <div class="field">
-        <div class="label-row"><label for="st-copies">Copies</label><span class="hint">more survive edits</span></div>
-        <select id="st-copies" data-copies><option value="1">1, the quickest</option><option value="2" selected>2</option><option value="3">3, the sturdiest</option></select>
+        <div class="label-row"><label id="st-copies-label">Copies</label><span class="hint">more survive edits</span></div>
+        <div class="seg" data-pick="copies" role="group" aria-labelledby="st-copies-label">
+          <button type="button" data-value="1" aria-pressed="false">1</button>
+          <button type="button" data-value="2" aria-pressed="true">2</button>
+          <button type="button" data-value="3" aria-pressed="false">3</button>
+        </div>
       </div>
     </div>
-    <p class="temp-note">Hotter temperature means more chaotic choices, and more chaotic choices mean more room for the message. At any one step the dial does not change which words are free choices, since the gate reads the model's own scores first; but stranger words lead into sentences the model cannot predict, and those have more free choices to hide bits in. Cold text settles into stock phrases and runs out of room. The price is worse writing; 0.7 is about where this small model stops repeating itself without talking nonsense.</p>
+    <p class="temp-note">Hotter text is less predictable, so it has more free choices to hide bits in, at the cost of worse writing. Each copy needs room of its own, and more copies survive more edits.</p>
     <div class="two">
       <div>
         <label class="box-label" id="st-box-label" for="st-write-text">Write anything here; the model continues it, with your message hidden in the words it picks.</label>

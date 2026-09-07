@@ -2,7 +2,7 @@
 // word choices. The strip on the right holds the frame; each bit leaves it
 // for the word that carries it.
 
-import { frameLenBits, PROFILES } from "../engine/framing.js";
+import { frameLenBits, layoutOf, PROFILES } from "../engine/framing.js";
 import { markCard } from "../engine/fingerprint.js";
 import { encodeMessage } from "../engine/textcode.js";
 
@@ -22,9 +22,27 @@ export class WritePanel {
     run.addEventListener("click", () => (this.running ? this.engine.cancel() : this.run()));
     this.q("[data-tag]").addEventListener("input", () => this.renderTag());
     this.q("[data-temp]")?.addEventListener("input", () => { const o = this.q("[data-temp-out]"); if (o) o.textContent = Number(this.q("[data-temp]").value).toFixed(1); });
-    for (const b of root.querySelectorAll(".seg button")) b.addEventListener("click", () => { this.profile = Number(b.dataset.profile); this.renderProfile(); });
+    for (const b of root.querySelectorAll(".seg button[data-profile]")) b.addEventListener("click", () => { this.profile = Number(b.dataset.profile); this.renderProfile(); this.preview(); });
+    // the pickers (temperature, copies): one pressed button per group
+    for (const g of root.querySelectorAll(".seg[data-pick]")) {
+      for (const b of g.querySelectorAll("button")) b.addEventListener("click", () => {
+        for (const o of g.querySelectorAll("button")) o.setAttribute("aria-pressed", String(o === b));
+      });
+    }
     this.renderTag();
     this.renderProfile();
+    this.preview();
+  }
+
+  // a picker's value, or null when the panel has no such picker
+  pick(name) { return this.q(`.seg[data-pick="${name}"] button[aria-pressed="true"]`)?.dataset.value ?? null; }
+
+  // the frame's shape for the message as typed, empty, until a write fills it
+  preview() {
+    if (this.running) return;
+    const n = Math.max(1, this.tagBytes().length);
+    this.strip.setLayout(layoutOf(n, this.profile), frameLenBits(n, this.profile));
+    this.strip.setMessage(this.q("[data-tag]").value.trim());
   }
 
   // the message as the frame carries it: the fixed text code, about a third shorter than UTF-8
@@ -37,11 +55,12 @@ export class WritePanel {
     hint.textContent = n === 0 ? `about ${cap * 2 - 1} letters fit` : `${n} byte${n === 1 ? "" : "s"} of ${cap}, coded`;
     hint.classList.toggle("warn", n > cap);
     this.renderProfile();
+    this.preview();
   }
 
   renderProfile() {
     const n = Math.max(1, this.tagBytes().length);
-    for (const b of this.root.querySelectorAll(".seg button")) {
+    for (const b of this.root.querySelectorAll(".seg button[data-profile]")) {
       const p = Number(b.dataset.profile);
       b.setAttribute("aria-pressed", String(p === this.profile));
       b.querySelector("small").textContent = `${frameLenBits(n, p)} bits`;
@@ -86,8 +105,8 @@ export class WritePanel {
     if (!prompt) { (box || this.q("[data-prompt]")).focus(); return; }
     if (!(await this.picker.consent(rung))) return;
 
-    const temperature = Number(this.q("[data-temp]")?.value ?? 0.7);
-    const copies = Math.max(1, Number(this.q("[data-copies]")?.value ?? 1));
+    const temperature = Number(this.pick("temp") ?? this.q("[data-temp]")?.value ?? 0.7);
+    const copies = Math.max(1, Number(this.pick("copies") ?? this.q("[data-copies]")?.value ?? 1));
     const seedRaw = (this.q("[data-seed]")?.value ?? "").trim();
     const opts = { prompt, payloadHex: hex(bytes), profile: this.profile, temperature, copies };
     if (seedRaw) opts.seed = Number(seedRaw) >>> 0;
