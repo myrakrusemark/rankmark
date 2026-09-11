@@ -2,6 +2,7 @@
 // Port of encoder.py: greedy and same-parity temperature sampling, full
 // context (no window in the browser engine).
 
+import { keyFor, keyBit } from "./keying.js";
 import { hexToBytes } from "./bits.js";
 import { buildFrame, layoutOf, tagOf, ECHO_PROFILE } from "./framing.js";
 import { buildEcho, echoLayout, EchoSlots, ECHO } from "./echo.js";
@@ -53,6 +54,7 @@ export async function embed(lens, opts, onEvent) {
   const seed = temperature > 0 ? (opts.seed ?? randomSeed()) : null;
   const sampler = temperature > 0 ? { temperature, topK, rng: mulberry32(seed) } : null;
 
+  const key = await keyFor(opts.passphrase);
   const payload = hexToBytes(payloadHex);
   const nbytes = payload.length;
   // the echo has no frame: a packet whose bits are voted on by slot
@@ -101,15 +103,17 @@ export async function embed(lens, opts, onEvent) {
   const history = [...context];
   const slotRule = echo ? new EchoSlots(frameBits) : null;
 
-  const decide = logits => {
+  const keyHistory = [context[0]];
+  const decide = async logits => {
     if (ri < replay.length) {
       // still feeding the context: the reader will score these words too
       const id = replay[ri++];
       if (echo && entropyOf(logits) >= tau) {
         const step = slotRule.peek(history.slice(-ECHO.k));
         slotRule.commit(step);
-        if (rankOf(logits, id) % 2 !== packet[step.slot]) strays[step.slot]++;
+        if ((rankOf(logits, id) % 2 ^ await keyBit(key, keyHistory)) !== packet[step.slot]) strays[step.slot]++;
       }
+      keyHistory.push(id);
       history.push(id);
       return id;
     }
@@ -117,7 +121,9 @@ export async function embed(lens, opts, onEvent) {
     if (echo) { step = slotRule.peek(history.slice(-ECHO.k)); slot = step.slot; nextBit = packet[slot]; }
     else nextBit = frame[nextIdx % frameBits];
     const ban = complete() ? null : eog;   // no ending the passage before the last copy is in
-    const choice = encodeStep(logits, nextBit, tau, ban, sampler);
+    const mask = await keyBit(key, keyHistory);
+    const choice = encodeStep(logits, nextBit ^ mask, tau, ban, sampler);
+    keyHistory.push(choice.tokenId);
     history.push(choice.tokenId);
     if (choice.planted) {
       planted++; carriers++;
@@ -130,7 +136,7 @@ export async function embed(lens, opts, onEvent) {
       rank: choice.rank,
       entropy: Math.round(choice.entropy * 1000) / 1000,
       carrier: choice.planted,
-      bit: choice.rank % 2,
+      bit: choice.rank % 2 ^ mask,
       slot: choice.planted && echo ? slot : undefined,
       top: topOf(logits, lens, 8),
     });

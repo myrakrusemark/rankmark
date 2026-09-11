@@ -1,4 +1,4 @@
-// Minimal static server for the browser demo. Sets COOP/COEP so transformers.js
+// Minimal static server for the browser demo. Sets COOP/COEP so the model engine
 // can use SharedArrayBuffer (multi-threaded wasm); falls back gracefully without.
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -27,4 +27,4 @@ createServer(async (req, res) => {
     res.statusCode = 404;
     res.end("not found");
   }
-}).listen(PORT, () => console.log(`rankmark web demo at http://127.0.0.1:${PORT}`));
+}).listen(PORT, "127.0.0.1", () => console.log(`rankmark web demo at http://127.0.0.1:${PORT}`));

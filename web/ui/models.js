@@ -1,15 +1,14 @@
 // Model picker: what this machine can run, what is already downloaded, the
-// consent dialog with size and time before any download, and the cache panel.
+// consent dialog with size and time before any download.
 
 import { frameLenBits } from "../engine/framing.js";
 
 export const GB = b => (b / 1e9).toFixed(b >= 1e9 ? 1 : 2) + " GB";
 
 export class ModelPicker {
-  constructor({ select, status, cacheList, registry, probe, onChange }) {
+  constructor({ select, status, registry, probe, onChange }) {
     this.select = select;
     this.status = status;
-    this.cacheList = cacheList;
     this.registry = registry;
     this.probe = probe;
     this.onChange = onChange;
@@ -92,19 +91,6 @@ export class ModelPicker {
       }
     } catch { /* no OPFS: nothing cached */ }
     this.render(this.select.value);
-    this.renderCache();
-  }
-
-  async remove(id) {
-    const entry = this.cached.get(id);
-    if (!entry) return;
-    try {
-      const root = await navigator.storage.getDirectory();
-      const dir = await root.getDirectoryHandle("cache");
-      await dir.removeEntry(entry.name).catch(() => {});
-      await dir.removeEntry("__metadata__" + entry.name).catch(() => {});
-    } catch { /* ignore */ }
-    await this.scanCache();
   }
 
   // a cancelled download leaves a short file behind; remove it and its metadata
@@ -121,12 +107,4 @@ export class ModelPicker {
     } catch { /* ignore */ }
   }
 
-  renderCache() {
-    if (!this.cacheList) return;
-    const items = [...this.cached.keys()].map(id => this.registry.rungs.find(r => r.id === id));
-    this.cacheList.innerHTML = items.length
-      ? items.map(r => `<li><span>${r.id.replace(/-Q.*$/, "")} · ${GB(r.bytes)}</span><button type="button" data-remove="${r.id}">Remove</button></li>`).join("")
-      : `<li><span>Nothing downloaded yet.</span></li>`;
-    this.cacheList.querySelectorAll("[data-remove]").forEach(b => b.addEventListener("click", () => this.remove(b.dataset.remove)));
-  }
 }

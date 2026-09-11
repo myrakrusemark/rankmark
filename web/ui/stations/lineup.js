@@ -9,15 +9,15 @@ export async function renderLineup(root, url) {
   const rows = [];
   for (const [writer, l] of Object.entries(data.lineups)) {
     rows.push(`<div class="lu-writer">written by <b>${short(writer)}</b></div>`);
-    rows.push(bar(short(writer), 100, "validates", true));
-    for (const r of l.results) {
+
+    for (const r of [...l.results].sort((a, b) => Number(b.reader === writer) - Number(a.reader === writer))) {
       const pct = r.bitAgreement === null ? 0 : Math.round(r.bitAgreement * 100);
-      rows.push(bar(short(r.reader), pct, r.valid ? "validates" : "no frame", false));
+      rows.push(bar(short(r.reader) + (r.reader === writer ? " (writer)" : ""), pct, `${r.valid === true ? "message recovered" : r.valid === false ? "message not recovered" : "recovery not measured"} · ${r.bothCarrier}/${r.writerCarriers} shared carriers`, r.reader === writer));
     }
   }
-  root.innerHTML = `<div class="lu-grid">${rows.join("")}</div><p class="note">Bars: how many of the planted bits a reader recovers with the right value. The writer gets all of them; a sibling from the same family lands near 60%; a coin gets 50%. Measured on ${data.updated?.slice(0, 10) || "this laptop"}, 200-word texts.</p>`;
+  root.innerHTML = `<p class="note">Green bars use the writer’s own model. Percentages show matching bits, not a probability of authorship.</p><div class="lu-grid">${rows.join("")}</div><p class="note">Bars show agreement at places where both models say a bit could go. <a href="data/measurements.json">Based on real generated data.</a></p>`;
 }
 
 function bar(name, pct, label, self) {
-  return `<div class="lu-row ${self ? "self" : ""}"><span class="lu-name">${name}</span><span class="lu-bar"><i style="transform: scaleX(${pct / 100})"></i><b style="left:50%"></b></span><span class="lu-pct">${pct}%</span><span class="lu-label">${label}</span></div>`;
+  return `<div class="lu-row ${self ? "self" : ""}"><span class="lu-name">${name}</span><span class="lu-bar"><i style="transform: scaleX(${pct / 100})"></i></span><span class="lu-pct">${pct}%</span></div>`;
 }

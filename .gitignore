@@ -17,3 +17,6 @@ web/test/ci/out/
 ci-out/
 web/dist/
 .wrangler/
+
+# Private historical feedback; keep locally, outside source releases
+/review/annotations.jsonl

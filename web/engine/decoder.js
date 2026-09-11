@@ -2,6 +2,7 @@
 // Teacher-forces the known tokens through the SAME single-step path encode
 // used, so the ranks line up. Port of decoder.py + the server's streaming events.
 
+import { keyFor, keyBit } from "./keying.js";
 import { bytesToHex } from "./bits.js";
 import {
   frameSpans, llrOf, parseFramesSoft, partialSpans, tagOf,
@@ -10,6 +11,7 @@ import { entropyOf, rankOf } from "./logits.js";
 import { echoLengths, EchoSlots, parseEcho, ECHO } from "./echo.js";
 
 export async function decode(lens, text, opts, onEvent) {
+  const key = await keyFor(opts.passphrase);
   const tau = opts.tau ?? lens.rung?.tau ?? 2.0;
   const lensTag = tagOf(lens.name);
   const ids = await lens.encodeText(text);
@@ -72,8 +74,9 @@ export async function decode(lens, text, opts, onEvent) {
     const steps = echoes.map(e => e.rule.peek(prev));
     if (fromCache && pace) await new Promise(r => setTimeout(r, pace));
     if (entropy >= tau) {
-      const bit = rank % 2;
-      llrs.push(llrOf(rank, entropy, tau));
+      const mask = await keyBit(key, allIds.slice(0, t));
+      const bit = rank % 2 ^ mask;
+      llrs.push(llrOf(rank, entropy, tau) * (mask ? -1 : 1));
       echoes.forEach((e, i) => e.slots.push(e.rule.commit(steps[i])));
       onEvent({ type: "token", id: tid, carrier: true, bit, piece: lens.decodeOne(tid), rank });
       // cheap: repaint the forming frame every carrier; full parse periodically
@@ -102,13 +105,12 @@ export async function decode(lens, text, opts, onEvent) {
   if (lens.scope === "sentence" && !lens.window && opts.cache) {
     reuse = await lens.runScored(seed, targets, score, opts.cache);
   } else {
-    const pending = [];
-    await lens.run(seed, targets.length, logits => {
+    await lens.run(seed, targets.length, async logits => {
       const tid = targets[t];
-      pending.push(score(tid, { rank: rankOf(logits, tid), entropy: entropyOf(logits) }, false));
+      await score(tid, { rank: rankOf(logits, tid), entropy: entropyOf(logits) }, false);
       return tid; // force the real next token
     });
-    await Promise.all(pending);
+
   }
   const frames = finalize();
   return {

@@ -1,25 +1,17 @@
-// Station: every word is a ranked choice. The visitor gives an opening and a
-// temperature and starts it; the page's model writes the next 24 words. For
-// each word the list on the right shows the model's top candidates with their
-// odds at that temperature, the pick lights up, and the word flies into the
-// sentence. Words land as the engine picks them and the landing pauses while
-// the station is out of view. The model is shared with every other station,
-// so this is one short job. Without a model (phones) the button plays the
-// recorded run from the snapshot.
+// Live ranked-token generation with a user-selected temperature.
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-const WORDS = 24;
+const TOKENS = 24;
 const PACE = { list: 800, hold: 550, fly: 450, after: 250 };   // ms per word: about two seconds
 const TEMP = 0.75;   // the station's temperature when it has no slider: warm enough to wander, not enough to babble
 
 export class RankedChoice {
-  constructor(root, { engine, picker, snapshot, consent }) {
+  constructor(root, { engine, picker, consent }) {
     Object.assign(this, { root, engine, picker, consent });
     this.q = s => root.querySelector(s);
-    this.recorded = snapshot?.ranked || null;
-    this.prompt = this.recorded?.prompt || "It was late in the harbor when the last boat came in, and";
+    this.prompt = "It was late in the harbor when the last boat came in, and";
     this.steps = [];
     this.i = 0;            // words landed in the sentence
     this.shown = null;     // the step whose list is on the right
@@ -41,10 +33,10 @@ export class RankedChoice {
       this.ready(false, "Loading the model");   // app.js enables it when the model is in
     } else {
       box.contentEditable = "false";
-      btn.textContent = "Watch a recorded run";
-      btn.disabled = !this.recorded;
+      btn.textContent = "Live generation unavailable";
+      btn.disabled = true;
     }
-    this.q("[data-temp]")?.addEventListener("input", () => this.renderList());
+    root.querySelectorAll("[name=ranked-temperature]").forEach(el => el.addEventListener("change", () => { if (!this.steps.length) this.renderList(); }));
     btn.addEventListener("click", () => (this.running ? this.stop() : this.start()));
     this.renderList();
     // out of view, the landing waits before the next word
@@ -54,13 +46,13 @@ export class RankedChoice {
     }, { threshold: 0.25 }).observe(root);
   }
 
-  temp() { const el = this.q("[data-temp]"); return el ? Number(el.value) : TEMP; }
+  temp() { const el = this.q("[name=ranked-temperature]:checked") || this.q("[data-temp]"); return el ? Number(el.value) : TEMP; }
 
   // the start button follows the model: off while it loads or after a cancel
   ready(on, label) {
     const btn = this.q("[data-start]");
     btn.disabled = !on || this.running;
-    btn.textContent = label || (this.steps.length ? "Write it again" : `Write the next ${WORDS} words`);
+    btn.textContent = label || (this.steps.length ? "Write it again" : `Write the next ${TOKENS} tokens`);
   }
 
   whenVisible() { return this.visible ? Promise.resolve() : new Promise(r => this.waiters.push(r)); }
@@ -75,7 +67,7 @@ export class RankedChoice {
     const w = this.waiters; this.waiters = []; for (const r of w) r();
   }
 
-  // odds of each candidate at the chosen temperature, from the recorded scores
+  // odds of each candidate at the chosen temperature, from the live scores
   odds(top, t) {
     if (t <= 0) return top.map((_, k) => (k === 0 ? 1 : 0));
     const m = Math.max(...top.map(c => c.logit));
@@ -94,7 +86,7 @@ export class RankedChoice {
   showList(k, chosen) { this.shown = k; this.chosen = chosen; this.renderList(); }
 
   renderList() {
-    const t = this.temp();
+    const t = this.runTemperature ?? this.temp();
     const out = this.q("[data-temp-out]"); if (out) out.textContent = t.toFixed(1);
     const list = this.q("[data-list]"), head = this.q("[data-list-head]");
     const step = this.steps[this.shown];
@@ -109,11 +101,14 @@ export class RankedChoice {
         <span class="pct"></span>
       </li>`).join("");
       list.classList.remove("chosen");
-      head.textContent = "the model's top 8 for the next word";
+      head.textContent = "the model's top 8 for the next token";
       return;
     }
     const p = this.odds(step.top, t);
-    head.textContent = `word ${this.shown + 1}: the model's top ${step.top.length}`;
+    head.textContent = `token ${this.shown + 1}: relative probabilities among these ${step.top.length}`;
+    if (this.chosen && step.rank >= step.top.length) {
+      head.textContent += ` · picked #${step.rank + 1}: ${step.piece.replace(/^ /, "␣")} (outside this list)`;
+    }
     list.classList.toggle("chosen", this.chosen);
     list.innerHTML = step.top.map((c, k) => `
       <li class="${this.chosen && k === step.rank ? "took" : ""}">
@@ -173,7 +168,9 @@ export class RankedChoice {
   }
 
   async start() {
-    if (this.running) return;
+    if (this.running || !this.engine) return;
+    this.prompt = this.q("[data-sentence]").textContent.trim() || this.prompt;
+    this.runTemperature = this.temp();
     this.running = true;
     this.stopping = false;
     const btn = this.q("[data-start]"), box = this.q("[data-sentence]");
@@ -184,15 +181,15 @@ export class RankedChoice {
     box.contentEditable = "false";   // locked while it writes
     box.blur();
     try {
-      if (this.engine) await this.live(btn);
-      else await this.replay();
+      await this.live(btn);
+    } catch (err) {
+      this.source = `Could not generate: ${err.message}`;
     } finally {
       this.running = false;
       this.stopping = false;
       btn.classList.remove("stop");
       this.renderSentence(false);
       if (this.engine) { box.contentEditable = "true"; this.ready(true); }
-      else { btn.disabled = false; btn.textContent = "Watch it again"; }
       this.renderSource();
     }
   }
@@ -212,7 +209,7 @@ export class RankedChoice {
     // the engine runs ahead; the words land one at a time at the animation's pace
     let queue = Promise.resolve();
     const land = k => { queue = queue.then(() => (this.stopping ? null : this.choose(k))); };
-    await this.engine.run("sample", { rung, opts: { prompt: this.prompt, maxNew: WORDS, temperature: this.temp() } }, {
+    await this.engine.run("sample", { rung, opts: { prompt: this.prompt, maxNew: TOKENS, temperature: this.runTemperature } }, {
       onEvent: e => {
         if (e.type !== "token") return;
         this.steps.push({ piece: e.piece, rank: e.rank, entropy: e.entropy, top: e.top });
@@ -224,18 +221,6 @@ export class RankedChoice {
     this.source = this.steps.length ? `${name} wrote this on your computer` : "";
   }
 
-  // no model here: the recorded run, one word at a time
-  async replay() {
-    this.prompt = this.recorded.prompt;
-    this.renderSentence();
-    this.source = "a recorded run";
-    this.renderSource();
-    for (const s of this.recorded.steps) {
-      if (this.stopping) break;
-      this.steps.push(s);
-      await this.choose(this.steps.length - 1);
-    }
-  }
 }
 
 function escapeHtml(s) { return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }

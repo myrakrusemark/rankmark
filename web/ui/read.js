@@ -20,7 +20,24 @@ export class ReadPanel {
     const run = this.q("[data-run]");
     run.dataset.label = run.textContent;
     this.runHidden = run.hidden;
-    run.addEventListener("click", () => (this.running ? this.engine.cancel() : this.run()));
+    run.addEventListener("click", () => {
+      if (this.running || this.batchRunning) { this.batchCancelled = true; this.engine.cancel(); }
+      else this.run();
+    });
+    const reader = this.q('[data-reader]');
+    if (reader) {
+      const current = new Option('', 'current');
+      const updateCurrent = () => { current.textContent = `Current model (${picker.rung.id.replace(/-Q.*$/, '')})`; };
+      updateCurrent();
+      reader.add(current);
+      for (const rung of picker.registry.rungs) {
+        const option = new Option(rung.id.replace(/-Q.*$/, ''), rung.id);
+        option.disabled = !picker.probe.rungs.some(p => p.id === rung.id && p.ok);
+        reader.add(option);
+      }
+      reader.add(new Option('All supported models', 'all'));
+      picker.select.addEventListener('change', updateCurrent);
+    }
     this.q("[data-edit]")?.addEventListener("click", () => this.edit());
     this.view.root.addEventListener("click", e => { if (!this.running && !e.target.closest("a")) this.edit(); });
     for (const b of root.querySelectorAll("[data-break]")) b.addEventListener("click", () => this.breakIt(b.dataset.break));
@@ -78,7 +95,9 @@ export class ReadPanel {
   }
 
   setBusy(on) {
+    on = on || !!this.batchRunning;
     this.running = on;
+    this.root.querySelectorAll("[data-reader], [data-key]").forEach(el => { el.disabled = on; });
     const run = this.q("[data-run]");
     run.textContent = on ? "Stop" : (this.offLabel ?? run.dataset.label);
     run.disabled = !on && !!this.offLabel;
@@ -95,7 +114,14 @@ export class ReadPanel {
     v.hidden = false;
   }
 
-  async run({ rung = this.picker.rung, quiet = false } = {}) {
+  async run({ rung = null, quiet = false } = {}) {
+    if (!rung) {
+      const selection = this.q('[data-reader]')?.value;
+      if (selection === 'all') return this.lineup();
+      rung = this.picker.registry.rungs.find(r => r.id === selection) || this.picker.rung;
+      const results = this.q('[data-lineup-out]');
+      if (results) results.hidden = true;
+    }
     const raw = this.ta.value;
     if (!raw.trim()) { this.edit(); this.ta.focus(); return null; }
     if (!(await this.picker.consent(rung))) return null;
@@ -110,7 +136,7 @@ export class ReadPanel {
     head.textContent = "";
     let carriers = 0, sawPull = false, locked = false;
     try {
-      const res = await this.engine.run("decode", { rung, text: raw, opts: {} }, {
+      const res = await this.engine.run("decode", { rung, text: raw, opts: { passphrase: this.q("[data-key]")?.value || "" } }, {
         onProgress: p => { head.textContent = `downloading ${Math.round(100 * p.loaded / p.total)}%`; },
         onReady: () => { head.textContent = `${rung.id.replace(/-Q.*$/, "")} is reading`; },
         onEvent: e => {
@@ -137,13 +163,13 @@ export class ReadPanel {
         },
       });
       if (res.cancelled) { head.textContent = "stopped"; return null; }
-      head.textContent = `${this.view.tokens.length} words, ${carriers} carry bits${res.reuse && res.reuse.cached ? ` · ${res.reuse.computed} re-read, ${res.reuse.cached} known` : ""}`;
+      head.textContent = `${this.view.tokens.length} tokens, ${carriers} carry bits${res.reuse && res.reuse.cached ? ` · ${res.reuse.computed} re-read, ${res.reuse.cached} known` : ""}`;
       if (res.valid) {
         if (res.echo) this.strip.lockEcho(echoLayout(res.payload.length / 2), res.echo.slots, hexToText(res.payload));
         else this.strip.lockSpans(res.spans || [], hexToText(res.payload));
         this.verdict("ok", `A frame planted with <b>${rung.id.replace(/-Q.*$/, "")}</b> validates in this text.<span class="tag">${hexToText(res.payload)}</span>`);
       } else if (this.q("[data-verdict]").hidden) {
-        this.verdict("no", `No frame validates under <b>${rung.id.replace(/-Q.*$/, "")}</b>. That means one of: unmarked text, another model wrote it, or the words were changed after writing.`);
+        this.verdict("no", `No frame validates under <b>${rung.id.replace(/-Q.*$/, "")}</b>. Possible reasons include unmarked or edited text, insufficient surviving data, or a different model, engine, or context configuration. This does not establish who wrote it.`);
       }
       return res;
     } catch (err) {
@@ -185,18 +211,31 @@ export class ReadPanel {
 
   // every downloaded model reads the same text
   async lineup() {
-    const ids = [...this.picker.cached.keys()];
-    const box = this.q("[data-lineup-out]");
-    if (ids.length < 2) { box.innerHTML = `<p class="note">Download a second model to line them up. Only the writer's model should validate.</p>`; box.hidden = false; return; }
+    if (!this.ta.value.trim()) { this.edit(); this.ta.focus(); return; }
+    const box = this.q('[data-lineup-out]');
+    const models = this.picker.registry.rungs.filter(r => this.picker.probe.rungs.some(p => p.id === r.id && p.ok));
     box.hidden = false;
-    box.innerHTML = `<table><tr><th>model</th><th>bits carried</th><th>verdict</th></tr></table>`;
-    const table = box.querySelector("table");
-    for (const id of ids) {
-      const rung = this.picker.registry.rungs.find(r => r.id === id);
-      const res = await this.run({ rung, quiet: true });
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${id.replace(/-Q.*$/, "")}</td><td>${res ? res.carriers : "?"}</td><td>${res && res.valid ? `validates: ${hexToText(res.payload)}` : "no frame"}</td>`;
-      table.appendChild(tr);
+    box.innerHTML = '<table><thead><tr><th>Reader</th><th>Result</th></tr></thead><tbody></tbody></table>';
+    const body = box.querySelector('tbody');
+    this.batchRunning = true;
+    this.batchCancelled = false;
+    this.setBusy(true);
+    try {
+      for (const rung of models) {
+        if (this.batchCancelled) break;
+        const row = document.createElement('tr');
+        const name = document.createElement('td');
+        const status = document.createElement('td');
+        name.textContent = rung.id.replace(/-Q.*$/, '');
+        status.textContent = 'Reading…';
+        row.append(name, status); body.append(row);
+        const res = await this.run({ rung, quiet: true });
+        status.textContent = this.batchCancelled ? 'Stopped' : !res ? 'Not read' : res.valid ? `Message recovered: ${hexToText(res.payload)}` : 'No message recovered';
+        if (!res || this.batchCancelled) break;
+      }
+    } finally {
+      this.batchRunning = false;
+      this.setBusy(false);
     }
   }
 }

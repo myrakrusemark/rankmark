@@ -42,7 +42,7 @@ class FakeLens {
     const ids = [seedId];
     for (let i = 0; i < maxNew; i++) {
       const logits = fakeLogits(ids[ids.length - 1]);
-      const id = decide(logits);
+      const id = await decide(logits);
       ids.push(id);
       if (stopOn && stopOn.has(id)) break;
       if (stopWhen && stopWhen(id)) break;
@@ -140,6 +140,18 @@ ok(parseMarkCard(markCard("t", "r", fp)).textHash === null, "a card without a te
 ok(parseMarkCard("plain text with no footer") === null, "plain text has no card");
 ok(parseMarkCard(card + "\n").text === "Some marked text.", "trailing newline after the footer is tolerated");
 ok((await textHash("Some marked text!")) !== th, "an edited text hashes differently");
+
+// Keyed and unkeyed channels remain distinct across framing profiles.
+for (const profile of [0, 1, 2, 3, 4]) {
+  const keyed = await embed(lens, { prompt: 'seed text here', payloadHex: '2a', profile, temperature: .7, seed: 42, copies: 2, passphrase: 'test phrase' }, () => {});
+  const good = await decode(lens, keyed.text, { passphrase: 'test phrase', pace: 0 }, () => {});
+  const bad = await decode(lens, keyed.text, { passphrase: 'other phrase', pace: 0 }, () => {});
+  const absent = await decode(lens, keyed.text, { pace: 0 }, () => {});
+  ok(good.valid && good.payload === '2a', `keyed profile ${profile} recovers with the same key`);
+  ok(!bad.valid && !absent.valid, `keyed profile ${profile} rejects wrong or absent keys in this fixture`);
+}
+const keyedCard = markCard('text', 'model', fp, th, true);
+ok(parseMarkCard(keyedCard).keyed && !parseMarkCard(card).keyed, 'footer records keyed mode without recording the key');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -246,7 +246,7 @@ const engine = {
       results.push(res);
       log(`lineup ${writerId} -> ${rid}: valid ${res.valid}, agreement ${res.bitAgreement} over ${both}, mean rank ${res.meanRank}`);
     }
-    return { writer: writerId, seed, text: emb.text, results };
+    return { writer: writerId, seed, maxNew, measuredAt: new Date().toISOString(), text: emb.text, results };
   },
 
   // plan: [{id, n, cuts}] in order; the lineup covers every plan rung as writer and reader
@@ -254,7 +254,7 @@ const engine = {
     const out = { generated: new Date().toISOString(), engine: registry.engine, env: window.engine.results.probe || null, plan, lineupTokens, measurements: {}, lineups: [] };
     for (const p of plan) { out.measurements[p.id] = await this.measure(p.id, p.n, { cuts: p.cuts }); log(`measured ${p.id}`); }
     const ids = plan.map(p => p.id);
-    for (const wId of ids) { out.lineups.push(await this.lineup(wId, ids.filter(x => x !== wId), 777, lineupTokens)); }
+    for (const wId of ids) { out.lineups.push(await this.lineup(wId, [wId, ...ids.filter(x => x !== wId)], 777, lineupTokens)); }
     return out;
   },
 

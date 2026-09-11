@@ -12,7 +12,7 @@ export const COPY = {
   carrier0: { text: "This word carries a 0: the model's first and second choices were about as good, and it took the first.", more: "#how-parity" },
   carrier1: { text: "This word carries a 1: a near tie again, and it took the second choice.", more: "#how-parity" },
   knock: { text: "The knock is in: a fixed pattern of bits a reader can find at any offset, so it never needs to know where the frame starts.", more: "#how-frame" },
-  seal: { text: "Sealed. The checksum now covers the whole frame, and only the model that wrote it will see the bits line up.", more: "#how-frame" },
+  seal: { text: "Sealed. The checksum helps the reader check the recovered message. Passing it does not establish authorship.", more: "#how-frame" },
   done: { text: "Your tag is in the words. Read it back with the same model, or cut the text and watch what survives.", more: "#how-read" },
   pulled: { text: "Reading pulls each word's bit back out. Words the writer was unsure about are the ones that carry.", more: "#how-read" },
   locked: { text: "The frame validates: the checksum came out right, so these bits were planted by this model.", more: "#how-key" },

@@ -1,6 +1,8 @@
-/* The essay's stations, on the paper cards that subpage.css draws. */
-/* one card for the whole essay: space alone separates the sections */
-.essay > section + section { margin-top: 72px; }
+/* Each lesson and its example share one paper card. */
+.essay { display: grid; gap: 28px; margin-top: 34px; }
+.essay > .paper { margin: 0; min-width: 0; }
+.essay > .paper > .prose > p { max-width: 68ch; }
+.essay > .paper > :last-child { margin-bottom: 0; }
 .paper .prose p { margin: 0 0 1.1em; }
 .paper .prose .lede { font-size: 1.3rem; line-height: 1.5; color: var(--ink); margin-bottom: 0.7em; }
 .paper .aside { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--ink-2); font-size: 15.5px; margin: 18px 0; }
@@ -18,7 +20,7 @@
 .paper .station ul, .paper .tool ul, .paper .al-list { font-size: inherit; line-height: inherit; }
 .paper .ranked li, .paper .al-list li { margin-bottom: 0; }
 
-.station { margin: 26px 0 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+.station { margin: 24px 0 0; background: none; border: 0; border-radius: 0; padding: 0; }
 .station .st-head { display: flex; align-items: baseline; gap: 12px; font: 500 12px/1.4 var(--font-mono); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 14px; }
 .station .st-head .meter { margin-left: auto; text-transform: none; letter-spacing: 0; }
 .station .text { background: var(--ground); }
@@ -194,3 +196,119 @@
 .station .box-wrap { position: relative; }
 .station .box-wrap .copy-btn { position: absolute; top: 8px; right: 8px; padding: 5px 10px; font-size: 12px; z-index: 2; }
 .station .box-wrap:has(.copy-btn:not([hidden])) .text { padding-right: 84px; }
+
+/* Two accessible text trees contrast creative freedom with practical constraints. */
+.choice-examples { margin: 28px 0; }
+.choice-examples-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.choice-example { min-width: 0; padding: 0; }
+.paper .choice-example h3 { margin: 0 0 12px; font-size: 18px; }
+.choice-example .choice-opening { margin: 0; font-weight: 500; }
+.choice-branches { list-style: none; padding: 0 0 0 18px; margin: 0 0 18px 8px; }
+.choice-branches li { position: relative; padding: 16px 0 0 18px; border-left: 2px solid var(--line-strong); }
+.choice-branches li::before { content: ""; position: absolute; left: 0; top: 28px; width: 12px; border-top: 2px solid var(--line-strong); }
+.choice-example > p:last-child { margin-bottom: 0; }
+.choice-examples figcaption { margin-top: 14px; font-size: 13px; line-height: 1.6; color: var(--muted); }
+@media (max-width: 700px) { .choice-examples-grid { grid-template-columns: 1fr; } }
+
+/* A quiet rule separates the two illustrations without another box. */
+.paper .choice-examples + .choice-examples { border-top: 1px solid var(--line); padding-top: 24px; }
+.paper .choice-examples:last-child { margin-bottom: 0; }
+.paper .choice-examples figcaption { text-align: left; letter-spacing: 0; text-transform: none; }
+@media (max-width: 700px) {
+  .essay { gap: 20px; }
+  .station .pair { grid-template-columns: minmax(0, 1fr); }
+  .station .two > div { min-width: 0; }
+}
+
+/* Native radio behavior, presented as the same joined selector as the tools. */
+.temperature-picker { border: 0; padding: 0; margin: 12px 0; max-width: 320px; }
+.temperature-picker legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.seg-radio label { position: relative; flex: 1; cursor: pointer; }
+.seg-radio input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg-radio span { display: block; padding: 8px 16px; text-align: center; font-size: 13px; color: var(--muted); transition: background-color var(--t-fast) var(--ease-snap); }
+.seg-radio input:checked + span { background: var(--accent-soft); color: var(--ink); }
+.seg-radio label:hover span { color: var(--ink); }
+.seg-radio input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -3px; }
+
+/* A softly tinted introduction leads into the working example on plain paper. */
+.essay > .paper { --card-padding: clamp(22px, 3.5vw, 40px); padding: var(--card-padding); }
+.section-intro {
+  margin: calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding)) 24px;
+  padding: var(--card-padding) var(--card-padding) 22px;
+  border-radius: 14px 14px 0 0;
+  background: color-mix(in srgb, var(--accent) 6%, var(--ground));
+}
+.paper .section-intro .prose p { max-width: 68ch; margin-bottom: 0; }
+.section-intro + .station { margin-top: 0; }
+
+.station .example-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 18px 40px; margin: 18px 0 32px; }
+.station .example-actions > .btn { flex: 1 1 140px; min-height: 44px; }
+.station .example-actions .temperature-picker,
+.station .example-actions .temp-field { flex: 0 1 300px; margin: 0; min-width: 220px; }
+.station .example-actions .seg { min-height: 44px; }
+.station .example-actions .seg-radio span { padding-block: 11px; }
+
+.station .st-head:has(.meter:empty),
+.station .st-head:has(.meter > span:only-child:empty) { display: none; }
+
+.station .example-actions .copies-field { flex: 0 1 220px; margin: 0; }
+
+.paper .choice-step { display: flex; align-items: baseline; gap: 10px; margin: 0 0 22px; font-size: 20px; }
+.choice-step > span { display: inline-grid; place-items: center; flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); font: 500 13px/1 var(--font-mono); }
+.choice-example h4 { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.choice-example mark { background: var(--accent-soft); color: inherit; padding: 1px 3px; border-radius: 3px; }
+.paper .choice-examples figcaption { font-family: var(--font-body); font-size: 14px; line-height: 1.6; }
+.illustration-note { display: block; margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+.lu-row { grid-template-columns: 100px minmax(0, 1fr) 44px 160px; }
+@media (max-width: 600px) {
+  .lu-row { grid-template-columns: 90px minmax(0, 1fr) 40px; }
+  .lu-label { grid-column: 2 / -1; margin-bottom: 8px; }
+}
+
+.key-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.key-controls .btn { margin-top: 12px; }
+.paper .key-passage { margin: 28px 0 18px; font-size: 20px; line-height: 1.9; }
+.key-word { background: var(--accent-soft); }
+.key-match { background: var(--ok-soft); text-decoration: underline; text-decoration-color: var(--ok); text-underline-offset: 4px; }
+.key-miss { text-decoration: line-through; text-decoration-color: var(--warn); }
+.key-background { margin-bottom: 24px; }
+@media (max-width: 600px) { .key-controls { grid-template-columns: 1fr; } }
+
+.message-capacity { height: 8px; margin-top: 9px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.message-capacity span { display: block; height: 100%; background: var(--accent); transition: width 120ms ease; }
+.message-capacity.over span { background: var(--warn); }
+.lu-row { grid-template-columns: 110px minmax(0, 1fr) 44px; }
+
+/* The capacity meter forms the message field's bottom edge. */
+#st-tag { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; }
+#st-tag + .message-capacity { margin-top: 0; height: 6px; border: 1px solid var(--line-strong); border-top: 0; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+#st-tag:focus + .message-capacity { border-color: var(--accent); }
+
+/* The full tool follows the examples: controls above text and bits. */
+.paper--tool { --card-padding: clamp(22px, 3.5vw, 40px); }
+#tool .tool-grid { grid-template-columns: minmax(0, 1.4fr) minmax(280px, .9fr); gap: 24px 28px; align-items: start; }
+#tool .tool-grid > .form { grid-column: 1 / -1; }
+#tool .tool-message { max-width: 440px; }
+#tool .form .example-actions { margin-bottom: 18px; }
+#tool .form > .adv { margin-bottom: 8px; }
+#tool .form > .adv > .field { margin-top: 14px; max-width: 560px; }
+#tool .text-col .text { min-height: 240px; }
+#tool .text-col .text-head:has(> span:empty):not(:has(> span:not(:empty))) { display: none; }
+#tag { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; }
+#tag + .message-capacity { margin-top: 0; height: 6px; border: 1px solid var(--line-strong); border-top: 0; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+#tag:focus + .message-capacity { border-color: var(--accent); }
+@media (max-width: 800px) { #tool .tool-grid { grid-template-columns: minmax(0, 1fr); } }
+
+#tool .message-key-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; align-items: start; }
+#tool .message-key-row .tool-message { max-width: none; min-width: 0; }
+@media (max-width: 700px) { #tool .message-key-row { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+
+#keyed-example .key-controls .btn { width: 100%; }
+
+.station .example-actions > .btn { max-width: 50%; }
+#keyed-example .key-controls .btn { max-width: 50%; }
+.station .example-actions .reader-field { flex: 1 1 280px; margin: 0; }
+.station .reader-field select { min-height: 44px; }
+
+header .back { margin-bottom: 10px; }

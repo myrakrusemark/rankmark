@@ -21,7 +21,7 @@ execSync(`node ${join(root, "scripts/fetch-engine.mjs")}`, { stdio: "inherit" })
 
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
-for (const entry of ["index.html", "_headers", "styles", "ui", "engine", "data", "vendor"]) {
+for (const entry of ["index.html", "_headers", "assets", "styles", "ui", "engine", "data", "vendor"]) {
   const src = join(web, entry);
   if (!existsSync(src)) throw new Error(`missing ${entry}`);
   cpSync(src, join(dist, entry), { recursive: true });

@@ -32,13 +32,13 @@ export function textHash(text) {
 // The mark card is the text plus one footer line naming the lens and the text
 // hash; the reader strips it before tokenizing so the footer never enters the
 // channel.
-const FOOTER = /\n\nrankmark: (\S+) f=([0-9a-f]{12})(?: t=([0-9a-f]{12}))?\s*$/;
+const FOOTER = /\n\nrankmark: (\S+) f=([0-9a-f]{12})(?: t=([0-9a-f]{12}))?(?: k=(1))?\s*$/;
 
-export function markCard(text, rungId, fp, hash) {
-  return `${text}\n\nrankmark: ${rungId} f=${fp}${hash ? ` t=${hash}` : ""}`;
+export function markCard(text, rungId, fp, hash, keyed = false) {
+  return `${text}\n\nrankmark: ${rungId} f=${fp}${hash ? ` t=${hash}` : ""}${keyed ? " k=1" : ""}`;
 }
 
 export function parseMarkCard(s) {
   const m = FOOTER.exec(s);
-  return m ? { text: s.slice(0, m.index), rungId: m[1], fp: m[2], textHash: m[3] ?? null } : null;
+  return m ? { text: s.slice(0, m.index), rungId: m[1], fp: m[2], textHash: m[3] ?? null, keyed: m[4] === "1" } : null;
 }

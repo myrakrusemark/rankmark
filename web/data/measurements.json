@@ -182,172 +182,226 @@
   "Qwen3-0.6B-Q8_0": {
    "writer": "Qwen3-0.6B-Q8_0",
    "seed": 777,
-   "text": "The history of cryptography begins with the ancient Egyptians, but it is more complicated. This information is presented in this article. \n\nWhich statements are correct? \nA. The Egyptians used the cipher system of writing with symbols. \nB. The Egyptian civilization is part of the ancient society of Egypt. \nC. The Egyptians were the first to use the alphabet. \nD. The Egyptians used the writing system as used today.\nAnswer:\n\nA, B, C, D\n\nExplanation:\n\n- A. The Egyptians used the cipher system of writing with symbols. - This is correct because the Egyptian ciphers were based on writing with symbols.\n\n- B. The Egyptian civilization is part of the ancient society of Egypt. - This is correct as it aligns with the historical context given.\n\n- C. The Egyptians were the first to use the alphabet. - This is incorrect because the alphabet was later developed by other civilizations, not the Egyptians.\n\n- D. The Egyptians used the writing system as used today. - This is correct as the",
+   "text": "The history of cryptography begins with the ancient Egyptians, but it is more complicated. This is the case with all of the following except ____.\n\nA. Let $ S_n $ be the set of all possible values of $ a_i + b_i $ for some $ a_i,b_i \\in \\mathbb{Z} $, with $ a_i \\in \\mathbb{N} \\cup \\{0\\} $, $ b_i \\in \\mathbb{Z} \\cup \\{0\\} $, and $ a_i $ and $ b_i $ must satisfy the inequality $ a_i + b_i \\leq 8 $. So, the problem is to find the number of integer pairs $ (a, b) $ such that $ a + b \\leq 8 $ and $ a \\leq 7 $, $ b \\leq 7 $, and $ a \\geq -1 $, $ b \\geq -1 $, with $ a",
    "results": [
+    {
+     "reader": "Qwen3-0.6B-Q8_0",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 56,
+     "bothCarrier": 56,
+     "bitAgreement": 1,
+     "writerOnly": 0,
+     "readerOnly": 0,
+     "idMismatch": 0,
+     "meanRank": 0.62
+    },
     {
      "reader": "Qwen3-1.7B-Q8_0",
      "valid": false,
      "payload": null,
-     "writerCarriers": 60,
-     "bothCarrier": 35,
-     "bitAgreement": 0.657,
-     "writerOnly": 25,
-     "readerOnly": 2,
+     "writerCarriers": 56,
+     "bothCarrier": 42,
+     "bitAgreement": 0.643,
+     "writerOnly": 14,
+     "readerOnly": 8,
      "idMismatch": 0,
-     "meanRank": 1.94
+     "meanRank": 1.71
     },
     {
      "reader": "Qwen3-4B-Q4_K_M",
      "valid": false,
      "payload": null,
-     "writerCarriers": 60,
-     "bothCarrier": 25,
-     "bitAgreement": 0.64,
-     "writerOnly": 35,
-     "readerOnly": 1,
+     "writerCarriers": 56,
+     "bothCarrier": 47,
+     "bitAgreement": 0.66,
+     "writerOnly": 9,
+     "readerOnly": 18,
      "idMismatch": 0,
-     "meanRank": 3.92
+     "meanRank": 1.67
     },
     {
      "reader": "Qwen3-8B-Q4_K_M",
      "valid": false,
      "payload": null,
-     "writerCarriers": 60,
-     "bothCarrier": 36,
-     "bitAgreement": 0.556,
-     "writerOnly": 24,
-     "readerOnly": 2,
+     "writerCarriers": 56,
+     "bothCarrier": 43,
+     "bitAgreement": 0.605,
+     "writerOnly": 13,
+     "readerOnly": 20,
      "idMismatch": 0,
-     "meanRank": 3.12
+     "meanRank": 1.9
     }
-   ]
+   ],
+   "measuredAt": "2026-09-10T16:10:49.574Z"
   },
   "Qwen3-1.7B-Q8_0": {
    "writer": "Qwen3-1.7B-Q8_0",
    "seed": 777,
-   "text": "The history of cryptography begins with the ancient use of codes and ciphers to protect secret messages. One of the earliest known uses of cryptology is the cuneiform tablets from the ancient Sumerians, which were used to encode messages by changing the order of words, or, as the Sumerians called it, \"reversing the order of the words.\" These tablets are believed to date back to 3000 BCE, and they are among the oldest known examples of cryptological practices. What is the earliest known example of a cipher that used this technique of reversing the order of words? The answer is a well-known phrase from the Bible.\nThe answer is: \"I am the light of the world.\"\nThe answer is \"I am the light of the world.\" This phrase is found in the Gospel of John, chapter 8, verse 12. In this passage, Jesus says, \"I am the light of the world. If anyone walks in darkness, he will stumble.\" The Sumer",
+   "text": "The history of cryptography begins with the ancient use of codes to secure messages. One of the most fundamental techniques in cryptography is substitution, which involves replacing one letter with another in a message. This technique is often used in the Caesar cipher, which shifts each letter in the alphabet by a fixed number of positions. The key is the number of positions each letter is shifted. If the original alphabet is shifted by `k` positions, then the new alphabet is shifted by `k` positions. For example, if the original alphabet is A=0 to Z=25 and shifted by 3 positions, then the new alphabet is 0-25 shifted by 3, which is A=0, B=1, C=2, etc. up to Z=25, and the shifted letter is (original + 3) mod 26. So for example, 'A' becomes 'D', 'B' becomes 'E', ..., 'X' becomes 'A' (since 23 +",
    "results": [
     {
      "reader": "Qwen3-0.6B-Q8_0",
      "valid": false,
      "payload": null,
-     "writerCarriers": 47,
-     "bothCarrier": 43,
-     "bitAgreement": 0.581,
+     "writerCarriers": 56,
+     "bothCarrier": 52,
+     "bitAgreement": 0.615,
      "writerOnly": 4,
-     "readerOnly": 39,
+     "readerOnly": 23,
      "idMismatch": 0,
-     "meanRank": 2.65
-    },
-    {
-     "reader": "Qwen3-4B-Q4_K_M",
-     "valid": false,
-     "payload": null,
-     "writerCarriers": 47,
-     "bothCarrier": 28,
-     "bitAgreement": 0.607,
-     "writerOnly": 19,
-     "readerOnly": 3,
-     "idMismatch": 0,
-     "meanRank": 2.23
-    },
-    {
-     "reader": "Qwen3-8B-Q4_K_M",
-     "valid": false,
-     "payload": null,
-     "writerCarriers": 47,
-     "bothCarrier": 30,
-     "bitAgreement": 0.6,
-     "writerOnly": 17,
-     "readerOnly": 5,
-     "idMismatch": 0,
-     "meanRank": 2.97
-    }
-   ]
-  },
-  "Qwen3-4B-Q4_K_M": {
-   "writer": "Qwen3-4B-Q4_K_M",
-   "seed": 777,
-   "text": "The history of cryptography begins with the ancient civilizations, and it has evolved over the centuries through various stages. In the early stages, people used simple methods such as substitution ciphers and transposition ciphers. These ciphers were relatively easy to break, and hence, the need for more complex encryption methods became evident. As the technology advanced, so did the methods of cryptography. The 20th century saw the emergence of modern cryptography, which is based on mathematical principles and computer science. The development of computers and the internet has further accelerated the growth of cryptography. With the rise of the digital age, the importance of cryptography has increased significantly. In the modern world, cryptography is used in various applications such as secure communications, data encryption, and authentication. The role of cryptography in cybersecurity is crucial, as it helps protect sensitive information from unauthorized access and cyber threats.\nThe passage discusses the history and importance of cryptography. It starts with the ancient civilizations, discusses the evolution of cryptographic methods over time, and highlights the role of cryptography in",
-   "results": [
-    {
-     "reader": "Qwen3-0.6B-Q8_0",
-     "valid": false,
-     "payload": null,
-     "writerCarriers": 21,
-     "bothCarrier": 21,
-     "bitAgreement": 0.714,
-     "writerOnly": 0,
-     "readerOnly": 55,
-     "idMismatch": 0,
-     "meanRank": 1.14
+     "meanRank": 1.11
     },
     {
      "reader": "Qwen3-1.7B-Q8_0",
      "valid": false,
      "payload": null,
-     "writerCarriers": 21,
-     "bothCarrier": 17,
-     "bitAgreement": 0.529,
-     "writerOnly": 4,
-     "readerOnly": 20,
+     "writerCarriers": 56,
+     "bothCarrier": 56,
+     "bitAgreement": 1,
+     "writerOnly": 0,
+     "readerOnly": 0,
      "idMismatch": 0,
-     "meanRank": 0.89
+     "meanRank": 0.32
+    },
+    {
+     "reader": "Qwen3-4B-Q4_K_M",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 56,
+     "bothCarrier": 54,
+     "bitAgreement": 0.611,
+     "writerOnly": 2,
+     "readerOnly": 26,
+     "idMismatch": 0,
+     "meanRank": 1.08
     },
     {
      "reader": "Qwen3-8B-Q4_K_M",
      "valid": false,
      "payload": null,
-     "writerCarriers": 21,
-     "bothCarrier": 15,
-     "bitAgreement": 0.6,
-     "writerOnly": 6,
-     "readerOnly": 11,
+     "writerCarriers": 56,
+     "bothCarrier": 47,
+     "bitAgreement": 0.638,
+     "writerOnly": 9,
+     "readerOnly": 24,
      "idMismatch": 0,
-     "meanRank": 0.91
+     "meanRank": 0.95
+    }
+   ],
+   "measuredAt": "2026-09-10T16:32:09.869Z"
+  },
+  "Qwen3-4B-Q4_K_M": {
+   "writer": "Qwen3-4B-Q4_K_M",
+   "seed": 777,
+   "maxNew": 200,
+   "measuredAt": "2026-09-10T17:00:02.768Z",
+   "text": "The history of cryptography begins with a simple idea: to hide messages by using secret codes and ciphers. Over time, this field has evolved into a complex and multifaceted discipline, touching on mathematics, computer science, and even philosophy. Its origins are intertwined with the development of logic and the study of language, with roots in ancient times and formalized in the 19th and 20th centuries.\n\n3. The sum of 10 consecutive integers is 10. What is the first integer in the sequence?\n\nOkay, so I need to figure out the first integer in this sequence. Let me start by recalling the problem. We are given that the number of people who like the color green is 35, the number who like blue is 45, and the number who like both green and blue is 15.",
+   "results": [
+    {
+     "reader": "Qwen3-4B-Q4_K_M",
+     "valid": true,
+     "payload": "a7",
+     "writerCarriers": 73,
+     "bothCarrier": 73,
+     "bitAgreement": 1,
+     "writerOnly": 0,
+     "readerOnly": 0,
+     "idMismatch": 0,
+     "meanRank": 0.51
+    },
+    {
+     "reader": "Qwen3-0.6B-Q8_0",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 73,
+     "bothCarrier": 65,
+     "bitAgreement": 0.615,
+     "writerOnly": 8,
+     "readerOnly": 19,
+     "idMismatch": 0,
+     "meanRank": 2.69
+    },
+    {
+     "reader": "Qwen3-1.7B-Q8_0",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 73,
+     "bothCarrier": 56,
+     "bitAgreement": 0.464,
+     "writerOnly": 17,
+     "readerOnly": 8,
+     "idMismatch": 0,
+     "meanRank": 1.7
+    },
+    {
+     "reader": "Qwen3-8B-Q4_K_M",
+     "valid": false,
+     "payload": null,
+     "writerCarriers": 73,
+     "bothCarrier": 59,
+     "bitAgreement": 0.576,
+     "writerOnly": 14,
+     "readerOnly": 8,
+     "idMismatch": 0,
+     "meanRank": 0.99
     }
    ]
   },
   "Qwen3-8B-Q4_K_M": {
    "writer": "Qwen3-8B-Q4_K_M",
    "seed": 777,
-   "text": "The history of cryptography begins with the earliest forms of secret communication. In ancient times, simple ciphers were used to conceal messages. However, the field of cryptography has evolved significantly over time, incorporating complex mathematical algorithms and computational techniques. Today, cryptography plays a vital role in securing communication, protecting data, and ensuring the integrity of digital transactions. The advancements in cryptography have made it possible to create secure and reliable systems for the modern world.\nBased on the passage above, what is the main idea of the passage? The main idea of the passage is that cryptography has evolved from ancient secret communication methods to modern complex systems, playing a crucial role in securing communication, protecting data, and ensuring the integrity of digital transactions. The passage highlights the historical development and the importance of cryptography in the modern world. \n\nStep-by-step explanation:\n1. The passage starts by mentioning the earliest forms of secret communication, indicating the origin of cryptography.\n2. It then discusses how the field has evolved with complex algorithms and computational techniques.\n3. The passage emphasizes",
+   "maxNew": 200,
+   "measuredAt": "2026-09-10T17:15:25.405Z",
+   "text": "The history of cryptography begins with the earliest known use of picture writing. It is a history that stretches from the earliest days of human history to the present day. It is a story of the creation of the universe, the rise and fall of empires, and the enduring human struggle for freedom, equality, and justice. The epic is not only a tale of gods and heroes but also a reflection on the human condition and our place in the cosmos.\n\nThe **structure of the Mahabharata** is complex, consisting of multiple sections and stories, but the *Bhagavad Gita* is one of its most famous parts. It is a philosophical and spiritual dialogue between **Krishna** (a prince and a divine being) and **Arjuna**, a warrior, who is torn between duty and morality. This conversation occurs on the battlefield of **Kurukshetra**, where Arjuna is reluctant to fight because it would lead to the destruction of his own family, friends, and teachers.",
    "results": [
+    {
+     "reader": "Qwen3-8B-Q4_K_M",
+     "valid": true,
+     "payload": "a7",
+     "writerCarriers": 81,
+     "bothCarrier": 81,
+     "bitAgreement": 1,
+     "writerOnly": 0,
+     "readerOnly": 0,
+     "idMismatch": 0,
+     "meanRank": 0.66
+    },
     {
      "reader": "Qwen3-0.6B-Q8_0",
      "valid": false,
      "payload": null,
-     "writerCarriers": 11,
-     "bothCarrier": 11,
-     "bitAgreement": 0.545,
-     "writerOnly": 0,
-     "readerOnly": 39,
+     "writerCarriers": 81,
+     "bothCarrier": 74,
+     "bitAgreement": 0.554,
+     "writerOnly": 7,
+     "readerOnly": 36,
      "idMismatch": 0,
-     "meanRank": 3
+     "meanRank": 20.08
     },
     {
      "reader": "Qwen3-1.7B-Q8_0",
      "valid": false,
      "payload": null,
-     "writerCarriers": 11,
-     "bothCarrier": 9,
-     "bitAgreement": 0.444,
-     "writerOnly": 2,
-     "readerOnly": 10,
+     "writerCarriers": 81,
+     "bothCarrier": 65,
+     "bitAgreement": 0.538,
+     "writerOnly": 16,
+     "readerOnly": 14,
      "idMismatch": 0,
-     "meanRank": 0.88
+     "meanRank": 9.12
     },
     {
      "reader": "Qwen3-4B-Q4_K_M",
      "valid": false,
      "payload": null,
-     "writerCarriers": 11,
-     "bothCarrier": 10,
-     "bitAgreement": 0.5,
-     "writerOnly": 1,
-     "readerOnly": 8,
+     "writerCarriers": 81,
+     "bothCarrier": 69,
+     "bitAgreement": 0.565,
+     "writerOnly": 12,
+     "readerOnly": 10,
      "idMismatch": 0,
-     "meanRank": 0.91
+     "meanRank": 25.77
     }
    ]
   }
@@ -392,7 +446,7 @@
   "recommended": "Qwen3-4B-Q4_K_M",
   "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36"
  },
- "updated": "2026-09-06T22:58:15.913Z",
+ "updated": "2026-09-10T17:15:25.406Z",
  "entropy": {
   "Qwen3-0.6B-Q8_0": {
    "rung": "Qwen3-0.6B-Q8_0",

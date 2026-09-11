@@ -4,7 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The watermark you can't see</title>
-<meta name="description" content="How Claude and Gemini watermark their text, explained with a version you can run in your browser.">
+<meta name="description" content="How a language model hides a message in its word choices. An interactive explanation, with a tool to try it yourself.">
+<link rel="canonical" href="https://myrakrusemark.com/watermark/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The watermark you can't see">
+<meta property="og:description" content="How a language model hides a message in its word choices. An interactive explanation, with a tool to try it yourself.">
+<meta property="og:url" content="https://myrakrusemark.com/watermark/">
+<meta property="og:image" content="https://myrakrusemark.com/watermark/assets/watermark-thumbnail.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a1a1a'/%3E%3Crect x='7' y='22' width='4' height='4' fill='%23e8e4dc'/%3E%3Crect x='14' y='16' width='4' height='10' fill='%23e8e4dc'/%3E%3Crect x='21' y='8' width='4' height='18' fill='%23c8553d'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,31 +27,33 @@
 
 <div class="wrap">
 <header>
-  <div class="eyebrow">2026 · Rankmark · <em>an essay with the watermark running in your browser</em></div>
+  <div class="eyebrow">2026 · Rankmark · <em>Yeah well, I'm gonna go build my own watermark. With Blackjack! And hookers!</em></div>
   <h1>The watermark you can't see</h1>
-  <p class="note">Since August, text from Claude carries a watermark. Gemini's has since 2024. You cannot see it and neither can your text editor, because it lives in which words the model chose. Here is how that works, and a version of it you can run right here.</p>
+  <p class="note">A watermark lives in the words a language model chooses. Here's how it works, and a tool for rolling your own.</p>
   <a class="back" href="https://myrakrusemark.com/">← Home</a><a class="back" href="#tool">Skip to the tool</a>
 </header>
-<div class="spec">
-  <div><span class="k">Models</span><span class="v">Qwen3, 0.6B to 8B, whichever this machine can run</span></div>
-  <div><span class="k">Runs</span><span class="v">In your browser, on the processor. Nothing you type leaves the page.</span></div>
-  <div><span class="k">Engine</span><span class="v">llama.cpp compiled to WebAssembly, one token per step</span></div>
-  <div><span class="k">Code</span><span class="v"><a href="https://github.com/myrakrusemark/rankmark">myrakrusemark/rankmark on GitHub</a></span></div>
-</div>
-<article class="essay paper">
+<article class="essay">
 
-  <section>
+  <section class="paper">
+  <div class="section-intro">
+  <h2>Every token is a choice</h2>
   <div class="prose">
-    <p class="lede">On August 14, Anthropic posted a short note saying that future Claude models will write text that carries a watermark.</p>
-    <p>Google has done this in Gemini since 2024. The reason is a European law that, from this August, requires text from these systems to be marked in a way software can detect. The odd part is that nobody can point at the mark. Copy a paragraph out of Claude and read it as many times as you like; there is nothing there.</p>
-    <p>The mark lives in a decision you never see. A language model does not write words the way a person types them. At every step it gives a score to every token it knows, about 150,000 pieces of words for the models on this page, and then something has to pick one from the top of that list. Usually the pick is the highest score, and sometimes, on purpose, it is the second or third, because a model that always takes the top word repeats itself. How far down the list the pick can wander is a setting called temperature.</p>
-    <p>Try it below. Give the model an opening and start it. The sentence grows one word at a time, and the list beside it is the model's top eight for the next word, with the one it took.</p>
+    <p>At every step, a model scores the possible next tokens, then picks one from the list. Try it out below: lower temperature favors the leaders; higher temperature spreads the chances more evenly.</p>
   </div>
-  <p id="mode-note" class="note warn" hidden></p>
+  </div>
+  <p data-mode-note class="note warn" hidden></p>
   <div class="station ranked" id="st-ranked">
-    <div class="st-head"><span>every word is a ranked choice</span><span class="meter" data-source></span></div>
-    <div class="btn-row go-row">
-      <button type="button" class="btn primary" data-start>Write the next 24 words</button>
+    <div class="st-head"><span class="meter" data-source></span></div>
+    <div class="example-actions">
+      <button type="button" class="btn primary" data-start>Write the next 24 tokens</button>
+    <fieldset class="temperature-picker">
+      <legend>Temperature</legend>
+      <div class="seg seg-radio">
+        <label><input type="radio" name="ranked-temperature" value="0.4"><span>Low</span></label>
+        <label><input type="radio" name="ranked-temperature" value="0.75" checked><span>Medium</span></label>
+        <label><input type="radio" name="ranked-temperature" value="1.0"><span>High</span></label>
+      </div>
+    </fieldset>
     </div>
     <div class="two">
       <div>
@@ -53,43 +61,81 @@
         <div class="sentence" id="rk-box" data-sentence contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="rk-label" spellcheck="false" data-empty="Type an opening line."></div>
       </div>
       <div class="list-col">
-        <div class="list-head"><span data-list-head>the model's top 8 for the next word</span></div>
-        <ol data-list aria-label="the model's top candidates for the next word"></ol>
+        <div class="list-head"><span data-list-head>the model's top 8 for the next token</span></div>
+        <ol data-list aria-label="the model's top candidates for the next token"></ol>
       </div>
     </div>
   </div>
 
   </section>
-  <section>
-  <h2>Where the labs hide the mark</h2>
+  <section class="paper">
+  <div class="section-intro">
+  <h2>Hidden in plain sight</h2>
   <div class="prose">
-    <p>Most of the time the list has an obvious winner. When it does not, when the top two or three words score about the same, the model is free to take any of them and the sentence reads the same either way. Those free choices are the hiding places, and there are a lot of them in any paragraph.</p>
-    <p>Anthropic's version, which is a variant of Google DeepMind's SynthID-Text, uses a secret number, the key. At each free choice, the key and the few words before it decide which of the near-equal words the model should prefer, a preference so slight that the text is not worse for it. Later, a detector holding the same key walks through the text, works out at each word which candidate the key would have preferred, and counts how often the text agrees. Unmarked text agrees about half the time, by chance. Marked text agrees far more often than that. The detector reports that likelihood and nothing else: not who wrote it, not what it says, only how likely it is that Claude was involved.</p>
-    <p>The key has two consequences, the first being that the detector is theirs alone: it does not even need the model to run, only the key and the words. What you cannot see from outside is which choices were free and how the model ranked them, because only the company that runs the model has those scores. The second consequence is that the detector counts agreement rather than decoding a message, so it still works on text that has been edited, since the words that survive still agree far above chance.</p>
+    <p>Whenever several next words would work, watermarking can steer the choice to leave a pattern. A detector uses the same key to check for that pattern.</p>
+  </div>
+  </div>
+  <div class="prose">
+    <figure class="choice-examples" aria-labelledby="choice-step-one">
+      <h3 class="choice-step" id="choice-step-one"><span>1</span> Find room for a choice</h3>
+      <div class="choice-examples-grid">
+        <div class="choice-example">
+          <h4>A story: room to invent</h4>
+          <p class="choice-opening">“It was late in the harbor when the last boat came in, and…”</p>
+          <ul class="choice-branches">
+            <li>“…a tired sailor stepped onto the dock.”</li>
+            <li>“…the moon climbed aboard wearing a captain’s hat.”</li>
+          </ul>
+          <p>Either direction works for a story.</p>
+        </div>
+        <div class="choice-example">
+          <h4>A recipe: room within constraints</h4>
+          <p class="choice-opening">“Vegan carob pumpkin bread recipe:…”</p>
+          <ul class="choice-branches">
+            <li>“Combine pumpkin purée, flour, and carob powder…”</li>
+            <li>“Whisk the dry ingredients together first…”</li>
+          </ul>
+          <p>Either method could work; the ingredients still matter.</p>
+        </div>
+      </div>
+      <figcaption id="choice-examples-caption">The amount of freedom depends on the task.</figcaption>
+    </figure>
+    <figure class="choice-examples" aria-labelledby="choice-step-two">
+      <h3 class="choice-step" id="choice-step-two"><span>2</span> Choose words without changing the scene</h3>
+      <div class="choice-examples-grid">
+        <div class="choice-example">
+          <h4>One wording</h4>
+          <p>“The <mark>last</mark> boat <mark>reached</mark> the harbor after sunset. A <mark>tired</mark> sailor stepped onto the dock.”</p>
+        </div>
+        <div class="choice-example">
+          <h4>Another wording</h4>
+          <p>“The <mark>final</mark> boat <mark>arrived in</mark> the harbor after sunset. A <mark>weary</mark> sailor stepped onto the dock.”</p>
+        </div>
+      </div>
+      <figcaption id="same-scene-caption">Highlighted words show the choices. A watermark steers choices like these across many tokens to leave a detectable pattern.
+        <span class="illustration-note">Illustrations only; these passages are not actually watermarked.</span></figcaption>
+    </figure>
   </div>
 
   </section>
-  <section>
+  <section class="paper">
+  <div class="section-intro">
   <h2>You can do this yourself</h2>
   <div class="prose">
-    <p>You cannot see inside Claude, but you can see inside an open model, and that is enough to build the same idea without a key. This page runs Qwen3, an open model from Alibaba, entirely in your browser. At every free choice, first place means a 0 and second place means a 1, and that is the whole channel. Around your message goes a frame, which opens with a fixed pattern of bits to knock with, so a reader can find the start anywhere in the text. Then come a label with the message length and a short tag for the model, the message itself, and a checksum to seal it. Ask for two or three copies and the model keeps writing until each one is in; a reader that finds every copy damaged can still add them up, since the bits an edit flips are rarely the same ones twice. The tool at the bottom also offers the echo, which is how the labs do it: no frame at all, every word voting on one bit of the message chosen by the words before it. It needs more words to carry the same message, which is why the copies are the default here.</p>
-    <p>I designed this version and directed the AI coding agents that built it, mostly to find out how far the idea goes without a key. Further than I expected, with one honest difference from the labs' schemes that the last section gets to.</p>
-    <p>Try it. The opening line is yours to change, and so is the message. The 1.7B model is the default: a short message takes it about three minutes on a laptop, and it stays on task. The smallest one is quicker but wanders off into quiz questions; the bigger ones are slower and surer of themselves, which leaves fewer free choices to hide in. Then watch the two columns: the words as they are written, and each word that carries a bit sending it into the frame, in the color of the part of the frame it belongs to.</p>
+    <p>This demo runs Qwen3 in your browser and hides your message in its choices: at eligible steps, odd ranks carry 0 and even ranks carry 1. Write an opening, choose a message, and watch the bits fall into place.</p>
+  </div>
   </div>
   <div class="station" id="st-write">
-    <div class="st-head"><span>write with a mark</span><span class="meter" data-meter></span></div>
+    <div class="st-head"><span class="meter" data-meter></span></div>
     <div class="two row-inputs">
       <div class="field">
         <div class="label-row"><label for="st-tag">Your message</label><span class="hint" data-tag-hint></span></div>
-        <input id="st-tag" type="text" data-tag value="hello" maxlength="16" autocomplete="off">
-      </div>
-      <div class="field">
-        <div class="label-row" aria-hidden="true">&nbsp;</div>
-        <button type="button" class="btn primary wide" data-run data-live-only>Write</button>
-        <div class="progress" style="margin-top: 8px"><span class="line"><i></i></span><b>0%</b></div>
+        <input id="st-tag" type="text" data-tag value="hello" autocomplete="off">
+        <div class="message-capacity" data-tag-capacity aria-hidden="true"></div>
       </div>
     </div>
-    <div class="pair">
+    <div class="example-actions">
+      <button type="button" class="btn primary" data-run data-live-only>Write</button>
       <div class="field temp-field">
         <div class="label-row"><label id="st-temp-label">Temperature</label></div>
         <div class="seg" data-pick="temp" role="group" aria-labelledby="st-temp-label">
@@ -98,8 +144,8 @@
           <button type="button" data-value="1.0" aria-pressed="false">high chaos</button>
         </div>
       </div>
-      <div class="field">
-        <div class="label-row"><label id="st-copies-label">Copies</label><span class="hint">more survive edits</span></div>
+      <div class="field copies-field">
+        <div class="label-row"><label id="st-copies-label">Copies</label><span class="hint">more copies survive edits</span></div>
         <div class="seg" data-pick="copies" role="group" aria-labelledby="st-copies-label">
           <button type="button" data-value="1" aria-pressed="false">1</button>
           <button type="button" data-value="2" aria-pressed="true">2</button>
@@ -107,10 +153,10 @@
         </div>
       </div>
     </div>
-    <p class="temp-note">Hotter text is less predictable, so it has more free choices to hide bits in, at the cost of worse writing. Each copy needs room of its own, and more copies survive more edits.</p>
+    <div class="progress" style="margin-top: 8px"><span class="line"><i></i></span><b>0%</b></div>
     <div class="two">
       <div>
-        <label class="box-label" id="st-box-label" for="st-write-text">Write anything here; the model continues it, with your message hidden in the words it picks.</label>
+        <label class="box-label" id="st-box-label" for="st-write-text">Write anything here; the model continues it.</label>
         <div class="box-wrap">
           <div id="st-write-text" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="st-box-label" spellcheck="false" data-box-edit>It was late in the harbor when the last boat came in, and</div>
           <button type="button" class="btn copy-btn" data-copy hidden title="Copy the text with its footer line">Copy</button>
@@ -119,21 +165,22 @@
         <div class="verdict warn" data-notice hidden style="margin-top: 10px"></div>
       </div>
       <div>
-        <div class="strip-head"><span>the frame</span><span>one cell per bit</span></div>
+        <div class="strip-head"><span>the payload and its wrapper</span><span>one cell per bit</span></div>
         <div id="st-write-strip"></div>
       </div>
     </div>
   </div>
 
   </section>
-  <section>
-  <h2>Read it back</h2>
+  <section class="paper">
+  <div class="section-intro">
+  <h2>Reading it back</h2>
   <div class="prose">
-    <p>Reading is the same walk in reverse. The reader runs the same model over the same words and asks, at each one, where that word stood in the model's list. At a free choice, first place reads as 0 and second place as 1. The bits go into the strip in the order they come until the knock, the label and the checksum line up, and the checksum decides whether a frame is really there.</p>
-    <p>Read back what you just wrote, and watch the words stay where they are while the bits come out of them.</p>
+    <p>The reader runs the same model over the text to recover the bits and check the message’s checksum. Read back what you just wrote and watch the message emerge.</p>
+  </div>
   </div>
   <div class="station" id="st-read">
-    <div class="st-head"><span>read the marks</span><span class="meter"><span data-head></span></span></div>
+    <div class="st-head"><span class="meter"><span data-head></span></span></div>
     <div class="two">
       <div>
         <div class="text" data-box>
@@ -147,7 +194,7 @@
         <div class="verdict" data-verdict hidden></div>
       </div>
       <div>
-        <div class="strip-head"><span>bits recovered</span><span>in reading order</span></div>
+
         <div id="st-read-strip"></div>
         <p class="strip-note">The strip fills until a frame's knock, label and seal line up, or until the text ends without one.</p>
       </div>
@@ -155,14 +202,15 @@
   </div>
 
   </section>
-  <section>
-  <h2>Edit it and it still works... well, most of the time</h2>
+  <section class="paper">
+  <div class="section-intro">
+  <h2>What survives an edit?</h2>
   <div class="prose">
-    <p>What if someone changes the text? Delete a sentence, swap a few words, cut the end. The full message often does not come back: a checksum needs every bit. But that is not the question a detector answers. A detector asks how many of the surviving bits agree with what was planted, and even a mangled paragraph keeps most of its evidence. Fifty percent agreement is chance, and ninety percent over a hundred bits is not what an unmarked text does. Measured on this page's models: swapping one word flips about one in ten of the bits that come after it, so a text with a hundred carrier bits still agrees 88 to 94% after a swap; deleting a sentence leaves about 75%; cutting the end costs only the bits that were in the cut.</p>
-    <p>The meter below lines up what the reader recovered against what the writer planted, edit by edit. The model scores each sentence against only the one before it, rebuilt fresh from the text, so a changed word costs the two sentences it touches and nothing after them; the labs score each word against only the last few words, so an edit costs them a few words. The counting is the same. The window is a sentence instead of a few words, and it takes a second pass over the text to pay for it, because here the model itself has to be run to read.</p>
+    <p>Change the text and see which bits still match the original, which flip, and which disappear. This compares against your saved run; the percentage is agreement among surviving aligned bits, not a probability of authorship.</p>
+  </div>
   </div>
   <div class="station" id="st-evidence">
-    <div class="st-head"><span>edit, then read again</span><span class="meter"><span data-head></span></span></div>
+    <div class="st-head"><span class="meter"><span data-head></span></span></div>
     <div class="two">
       <div>
         <div class="text" data-box>
@@ -191,44 +239,65 @@
   </div>
 
   </section>
-  <section>
-  <h2>Whose text is it</h2>
+  <section class="paper">
+  <div class="section-intro">
+  <h2>Reading with different models</h2>
   <div class="prose">
-    <p>Every model ranks its near ties its own way. Give this paragraph to a different model and ask for the bits, and it agrees with the writer on about six bits in ten, where a coin gets five and the writer gets all of them. That gap is enough to say which model wrote a text, and it is why this page calls the model the key: nothing secret, just the one set of scores that lines up.</p>
-    <p>The bars below are measured on the laptop this was built on: each model's text, read back by the others.</p>
+    <p>Different models rank words differently, so they can recover different bits from the same passage. These measured examples compare known writers and readers; they do not identify the author of an unknown text.</p>
+  </div>
   </div>
   <div class="station" id="st-lineup">
-    <div class="st-head"><span>who wrote this</span></div>
+
     <div data-lineup-bars></div>
   </div>
 
   </section>
-  <section>
-  <h2>What the key buys</h2>
+  <section class="paper">
+  <div class="section-intro">
+  <h2>Give the choices a secret</h2>
   <div class="prose">
-    <p>A key buys two properties this page does not have. Nobody can plant Claude's mark without the key, while anyone with Qwen's weights can plant this one. And because the labs count agreement over the last few words, an edit anywhere costs them little, while this demo loses everything after an edit. What the keyless version has instead is that anyone can check it, because the verification and the model are both public. The same trick also names which open model wrote a text, which a keyed scheme cannot do for models it does not own.</p>
+    <p>A secret key changes which words the writer favors; a reader with the same key knows which pattern to look for. Try matching passphrases, then change only the reader’s.</p>
+  </div>
+  </div>
+  <div class="prose">
+    <details class="adv key-background">
+      <summary>How this compares with other watermarks</summary>
     <div class="table-wrap">
     <table class="compare">
       <thead><tr><th scope="col"></th><th scope="col">Keyed</th><th scope="col">Who can check</th><th scope="col">What it says</th><th scope="col">Forgeable</th></tr></thead>
       <tbody>
-      <tr><th scope="row">Claude <small>SynthID-Text variant, since August 2026</small></th><td>yes</td><td>eligible organizations, by API</td><td>likelihood Claude was involved</td><td>hard without the key</td></tr>
-      <tr><th scope="row">Gemini <small>SynthID-Text, since 2024</small></th><td>yes</td><td>Google, and a limited portal</td><td>likelihood</td><td>hard without the key</td></tr>
-      <tr><th scope="row">ChatGPT</th><td colspan="4" class="span">no text watermark shipped as of September 2026</td></tr>
-      <tr><th scope="row">Rankmark <small>this page</small></th><td>no, the model is the key</td><td>anyone with the same weights</td><td>which model validates, and your message</td><td>yes, by anyone with the weights</td></tr>
+      <tr><th scope="row">Claude <small>SynthID-Text variant, announced August 2026</small></th><td>yes</td><td>eligible organizations, by API</td><td>likelihood Claude was involved</td><td>hard without the key</td></tr>
+      <tr><th scope="row">Gemini <small>SynthID-Text, since 2024</small></th><td>yes</td><td>Google, and a limited portal</td><td>likelihood Gemini was involved</td><td>hard without the key</td></tr>
+      <tr><th scope="row">ChatGPT</th><td colspan="4" class="span">This demo does not verify or detect ChatGPT text watermarks.</td></tr>
+      <tr><th scope="row">Rankmark <small>the full tool below</small></th><td>optional passphrase</td><td>matching model, settings, and passphrase when used</td><td>a message recovered with your specific setup</td><td>unkeyed: yes; keyed protection is experimental</td></tr>
       </tbody>
     </table>
     </div>
-    <div class="limits">
-      Read every verdict on this page with these in mind:
-      <ul>
-        <li>A validating frame means a frame planted with this model validates in these words. It does not mean this model wrote the rest of the text.</li>
-        <li>No frame proves nothing. Unmarked, edited, another model, a different engine build: all look the same.</li>
-        <li>This page cannot detect Claude, Gemini or ChatGPT text, and no public tool can read their watermarks.</li>
-        <li>The mark is visible to anyone who ranks the words with the same model, dies under paraphrase, and can be forged by anyone with the weights.</li>
-        <li>"AI detectors" that guess from style are a different product. They have no key and no frame, and a 2023 Stanford study found them flagging most essays by non-native English writers as machine-written.</li>
-        <li>Reading on another machine works because the engine gives bit-identical results across the browsers and processors it is tested on with every change; the records are in the repository.</li>
-      </ul>
+    <p class="note">A checksum can match by accident, and a failed read proves nothing about who wrote the text. This tool cannot detect Claude, Gemini, or ChatGPT watermarks.</p>
+    <details class="adv">
+      <summary>Sources and privacy</summary>
+      <p>Anthropic announced watermarking for new Claude models in August 2026, with older models to follow; Gemini has used SynthID-Text since 2024. Read <a href="https://www.anthropic.com/news/claude-text-watermark">Anthropic’s explanation</a>, the <a href="https://www.nature.com/articles/s41586-024-08025-4">SynthID-Text paper</a>, and the <a href="https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act">EU marking guidance</a>.</p>
+      <p>The key stays with the provider; it is not a message hidden in the text. Watermarks can carry identifiers by design, but Anthropic says its mark does not identify users or conversations.</p>
+      <p>Our <a href="data/determinism/compare.txt">stored cross-platform results</a> cover one seeded Qwen3-0.6B run across 12 configurations; other models and setups are not guaranteed to agree.</p>
+    </details>
+    </details>
+  </div>
+  <div class="station" id="keyed-example">
+    <div class="key-controls">
+      <div class="field">
+        <label for="writer-key">Writer’s passphrase</label>
+        <input id="writer-key" data-writer-key type="text" value="lantern on the dock" autocomplete="off" spellcheck="false" maxlength="200" aria-describedby="key-example-note">
+        <button type="button" class="btn primary" data-write-key>Make the choices</button>
+      </div>
+      <div class="field">
+        <label for="reader-key">Reader’s passphrase</label>
+        <input id="reader-key" data-reader-key type="text" value="lantern on the dock" autocomplete="off" spellcheck="false" maxlength="200" aria-describedby="key-example-note">
+        <button type="button" class="btn" data-check-key disabled>Check the pattern</button>
+      </div>
     </div>
+    <p class="key-passage" data-key-text>The passage will appear here, with the chosen words highlighted.</p>
+    <p class="note" data-key-status role="status" aria-live="polite">Start with the same passphrase on both sides.</p>
+    <p class="note" id="key-example-note">A small illustration using fixed word pairs and a real keyed calculation (HMAC), not a language model. No encrypted message is hidden here; twelve choices are too few to demonstrate secure detection. Use an example passphrase, not a real password.</p>
   </div>
   </section>
 </article>
@@ -236,8 +305,10 @@
 
 <div class="wrap wrap--wide">
 <section class="paper paper--tool">
-  <h2><small>The tool</small>Write, read, or run it locally</h2>
-  <p>Everything above in one place: write with any model on the ladder, read any text, and run it locally for models bigger than a browser holds.</p>
+  <div class="section-intro">
+  <h2>Write, read, or run it locally</h2>
+  <div class="prose"><p>Use the same controls to write your own marked text, read it back, or try a local model.</p></div>
+  </div>
 <section class="tool" id="tool" aria-label="The tool" style="position: relative">
   <div class="tabs" role="tablist" aria-label="Write, read, or run locally">
     <button role="tab" id="tab-write" aria-controls="panel-write" aria-selected="true">Write</button>
@@ -246,22 +317,44 @@
     <i class="indicator" aria-hidden="true"></i>
   </div>
 
-  <p id="mode-note" class="note warn" hidden></p>
+  <p data-mode-note class="note warn" hidden></p>
 
   <!-- WRITE -->
-  <div id="panel-write" class="panel" role="tabpanel" aria-labelledby="tab-write">
+  <div id="panel-write" class="panel station" role="tabpanel" aria-labelledby="tab-write">
     <div class="tool-grid">
       <form class="form" onsubmit="return false">
-        <div class="field">
-          <label for="prompt">Opening text</label>
-          <textarea id="prompt" data-prompt>It was late in the harbor when the last boat came in, and</textarea>
-          <div class="hint">The model continues from here. Open-ended beats factual: a story opening gives it more free choices than a history lesson.</div>
+        <div class="message-key-row">
+        <div class="field tool-message">
+          <div class="label-row"><label for="tag">Your message</label><span class="hint" data-tag-hint></span></div>
+          <input id="tag" type="text" data-tag value="hello" autocomplete="off">
+          <div class="message-capacity" data-tag-capacity aria-hidden="true"></div>
         </div>
-        <div class="field">
-          <label for="tag">Your tag</label>
-          <input id="tag" type="text" data-tag value="MK" maxlength="16" autocomplete="off">
-          <div class="hint" data-tag-hint></div>
+        <div class="field tool-message">
+          <label for="tool-write-key">Passphrase (optional)</label>
+          <input id="tool-write-key" data-key type="password" autocomplete="new-password">
         </div>
+        </div>
+        <div class="example-actions">
+          <button type="button" class="btn primary" data-run data-live-only>Write</button>
+          <div class="field temp-field">
+            <div class="label-row"><label id="tool-temp-label">Temperature</label></div>
+            <div class="seg" data-pick="temp" role="group" aria-labelledby="tool-temp-label">
+              <button type="button" data-value="0.4" aria-pressed="false">low chaos</button>
+              <button type="button" data-value="0.7" aria-pressed="true">medium</button>
+              <button type="button" data-value="1.0" aria-pressed="false">high chaos</button>
+            </div>
+          </div>
+          <div class="field copies-field">
+            <div class="label-row"><label id="tool-copies-label">Copies</label><span class="hint">more copies survive edits</span></div>
+            <div class="seg" data-pick="copies" role="group" aria-labelledby="tool-copies-label">
+              <button type="button" data-value="1" aria-pressed="false">1</button>
+              <button type="button" data-value="2" aria-pressed="true">2</button>
+              <button type="button" data-value="3" aria-pressed="false">3</button>
+            </div>
+          </div>
+        </div>
+        <details class="adv">
+          <summary>Advanced</summary>
         <div class="field">
           <label>How much repair data</label>
           <div class="seg" role="group" aria-label="frame setting">
@@ -273,76 +366,55 @@
           </div>
           <div class="hint">More repair data survives more edits and needs more words.</div>
         </div>
-        <details class="adv">
-          <summary>Advanced</summary>
-          <div class="field">
-            <label for="temp">Wording variety (temperature)</label>
-            <input id="temp" type="text" data-temp value="0.7" inputmode="decimal">
-            <div class="hint">0 always takes the top choice and small models loop. 0.7 samples among near ties; the reader is unchanged either way.</div>
-          </div>
           <div class="field">
             <label for="seed">Seed</label>
             <input id="seed" type="text" data-seed placeholder="random" inputmode="numeric">
-            <div class="hint">The same seed and model reproduce the same text.</div>
+            <div class="hint">The same seed, prompt, settings, model, and compatible engine setup are needed to reproduce a run.</div>
           </div>
         </details>
-        <div class="btn-row">
-          <button type="button" class="btn primary wide" data-run data-live-only>Write with a mark</button>
-        </div>
-        <button type="button" class="btn wide" data-replay>Watch a recorded run</button>
         <div class="progress"><span class="line"><i></i></span><b>0%</b></div>
       </form>
 
       <div class="text-col">
         <div class="text-head"><span data-head></span><span class="meter" data-meter></span></div>
-        <div id="write-text" role="log" aria-live="off"></div>
-        <div class="card" data-card hidden style="margin-top: 14px">
-          <div data-card-text style="white-space: pre-wrap"></div>
-          <div class="foot" data-card-foot></div>
+        <label class="box-label" id="tool-opening-label" for="write-text">Write anything here; the model continues it.</label>
+        <div id="write-text" data-box-edit contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="tool-opening-label" spellcheck="false">It was late in the harbor when the last boat came in, and</div>
+        <div class="verdict warn" data-notice hidden></div>
+        <div class="output-actions" data-card hidden style="margin-top: 14px">
+          <div data-card-text hidden></div>
+          <div class="foot" data-card-foot hidden></div>
           <div class="btn-row" style="margin-top: 12px">
             <button type="button" class="btn" data-copy>Copy the marked text</button>
             <button type="button" class="btn primary" data-read>Read it back</button>
-            <button type="button" class="btn" data-break>Break it</button>
           </div>
         </div>
       </div>
 
       <div class="strip-col">
-        <div class="strip-head"><span>the frame</span><span>one cell per bit</span></div>
+        <div class="strip-head"><span>the payload and its wrapper</span><span>one cell per bit</span></div>
         <div id="write-strip"></div>
-        <p class="strip-note" data-strip-note>Pick a tag and write. The frame appears here and fills from the words one bit at a time.</p>
-        <div class="cache" data-live-only>
-          <span>Downloaded models</span>
-          <ul id="cache-list"></ul>
-        </div>
-        <p class="note"><button type="button" data-reset-callouts style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer">Show the callouts again</button></p>
+        <p class="strip-note" data-strip-note>Choose a message and write. The frame appears here and fills from the words one bit at a time.</p>
       </div>
     </div>
   </div>
 
   <!-- READ -->
-  <div id="panel-read" class="panel" role="tabpanel" aria-labelledby="tab-read" hidden>
+  <div id="panel-read" class="panel station" role="tabpanel" aria-labelledby="tab-read" hidden>
     <div class="tool-grid">
       <form class="form" onsubmit="return false">
-        <div class="btn-row">
-          <button type="button" class="btn primary wide" data-run data-live-only>Read the marks</button>
+        <div class="field tool-message">
+          <label for="tool-read-key">Passphrase (for keyed text)</label>
+          <input id="tool-read-key" data-key type="password" autocomplete="off">
+          <p class="hint">Use the writer’s exact passphrase. It is not included in the copied text.</p>
         </div>
-        <p class="note">Paste marked text into the box, footer and all, then read. The words stay where they are; the bits come out of them.</p>
-        <div class="field">
-          <label>Break it, then read again</label>
-          <div class="breakit">
-            <button type="button" class="btn" data-break="sentence" data-live-only>Delete a sentence</button>
-            <button type="button" class="btn" data-break="start" data-live-only>Cut the start</button>
-            <button type="button" class="btn" data-break="end" data-live-only>Cut the end</button>
-            <button type="button" class="btn" data-break="swap" data-live-only>Swap five words</button>
-            <button type="button" class="btn" data-break="undo" data-live-only>Undo</button>
+        <div class="example-actions">
+          <button type="button" class="btn primary" data-run data-live-only>Read it back</button>
+          <div class="field reader-field">
+            <div class="label-row"><label for="tool-reader">Read with</label></div>
+            <select id="tool-reader" data-reader></select>
           </div>
         </div>
-        <div class="field">
-          <label>Who wrote this?</label>
-          <button type="button" class="btn wide" data-lineup data-live-only>Read with every downloaded model</button>
-          <div class="lineup" data-lineup-out hidden></div>
-        </div>
+        <div class="lineup" data-lineup-out hidden role="status" aria-live="polite"></div>
       </form>
 
       <div class="text-col">
@@ -356,7 +428,7 @@
       </div>
 
       <div class="strip-col">
-        <div class="strip-head"><span>bits recovered</span><span>in reading order</span></div>
+
         <div id="read-strip"></div>
         <p class="strip-note">Each word that carries a bit gives it back. The strip fills until a frame's knock, label and seal line up, or until the text ends without one.</p>
       </div>
@@ -365,24 +437,28 @@
 
   <!-- LOCAL -->
   <div id="panel-local" class="panel local" role="tabpanel" aria-labelledby="tab-local" hidden>
-    <div class="cols" style="display:grid;gap:24px 40px;grid-template-columns:1fr">
-      <div class="prose">
-        <h3 style="margin-top:0">Bigger models, on your own machine</h3>
-        <p>The browser ladder stops at 8B. The Python version runs the same scheme with any model your hardware holds, on a GPU or CPU, and its outputs read back only through that same setup. Three commands:</p>
+    <div class="prose">
+      <p>Run the Python code directly to write and read marked text on your machine. <a href="https://github.com/myrakrusemark/rankmark">Github Repo</a></p>
+      <h3>Install</h3>
 <pre>git clone https://github.com/myrakrusemark/rankmark
-cd rankmark && uv venv .venv --python 3.12 && source .venv/bin/activate && uv pip install -e ".[web]"
-rankmark serve --model Qwen/Qwen3-14B</pre>
-        <p>Then open <code>http://localhost:8770</code>. The README covers which models and devices work, and why a text written on a GPU will not read on a CPU.</p>
-      </div>
-      <div class="prose">
-        <h3 style="margin-top:0">Is a local server answering?</h3>
-        <div class="field">
-          <label for="local-url">Server address</label>
-          <input id="local-url" type="text" data-url value="http://localhost:8770">
-        </div>
-        <div class="btn-row" style="margin-top:8px"><button type="button" class="btn" data-check>Check</button></div>
-        <p class="note" data-local-out style="margin-top:8px"></p>
-      </div>
+cd rankmark
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .</pre>
+      <h3>Run this page locally</h3>
+      <p>With Node.js installed, run this from the cloned <code>rankmark</code> folder:</p>
+<pre>node web/serve.mjs</pre>
+      <p>Open <a href="http://127.0.0.1:8770/">http://127.0.0.1:8770/</a>. The models run in your browser, including passphrase keying. Keep the terminal open; press Ctrl+C to stop the server. The Python installation is only needed for the commands below.</p>
+      <h3>Write</h3>
+<pre>rankmark --profile 0 --temperature 0.7 embed \
+  --model Qwen/Qwen3-0.6B \
+  --prompt "It was late in the harbor when the last boat came in, and" \
+  --payload a7 --max-tokens 800 --verify &gt; marked.txt</pre>
+      <p class="note"><code>a7</code> is a one-byte example payload in hexadecimal. The first run downloads the model; <code>--verify</code> checks that the result reads back.</p>
+      <h3>Read</h3>
+<pre>rankmark --profile 0 decode \
+  --model Qwen/Qwen3-0.6B --file marked.txt</pre>
+      <p class="note">Use the same model, device and settings for writing and reading. This Python version is unkeyed and is a separate setup from the browser engine.</p>
     </div>
   </div>
 
@@ -393,7 +469,6 @@ rankmark serve --model Qwen/Qwen3-14B</pre>
 
 <footer>
   Myra Krusemark · designed it and directed the AI coding agents that built it ·
-  <a href="https://github.com/myrakrusemark/rankmark">code, tests and measurements</a> ·
   models Qwen3 by Alibaba, Apache 2.0 · engine llama.cpp in WebAssembly
 </footer>
 
@@ -424,5 +499,6 @@ rankmark serve --model Qwen/Qwen3-14B</pre>
 </dialog>
 
 <script type="module" src="ui/app.js"></script>
+<script type="module" src="ui/stations/keyed-example.js"></script>
 </body>
 </html>

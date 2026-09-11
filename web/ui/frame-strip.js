@@ -13,14 +13,14 @@ const LABEL = {
   woven: "message, seal and repair, woven", read: "bits read",
 };
 const NOTE = {
-  sync: "A fixed pattern of bits. A reader scans for it, so the frame can start anywhere in the text.",
-  header: "How long the message is, and a short tag for the model that wrote it, each bit sent twice.",
+  sync: "A fixed pattern of bits. The reader scans for it, so the frame can start anywhere in the text.",
+  header: "How long the message is, and a short tag for the model that wrote it, with repeated bits to help the reader recover a damaged label.",
   tag: "A three-bit tag for the model that wrote it. In the echo every word votes for one bit of the packet, chosen by the words before it, so nothing has to be found first.",
   payload: "Your message itself, in a fixed code of about five bits a letter.",
-  checksum: "A checksum over the message. One wrong bit and the frame fails, so a reader never reports a match it cannot back.",
+  checksum: "A checksum checks the recovered message after any repair. It catches many errors, but accidental matches remain possible; it does not prove authorship.",
   parity: "Parity bits that put right a few bits a reader gets wrong.",
   woven: "Your message, its seal and repair data, interleaved so damage spreads thin.",
-  read: "One cell per word that carries a bit, in the order they are read.",
+  read: "One cell per token that carries a bit, in the order they are read.",
 };
 import { messageBits, decodePrefix } from "../engine/textcode.js";
 
@@ -199,7 +199,7 @@ export class FrameStrip {
     this.clearLanded();
     this.readRow = this.section("read", 0);
     this.readRow.querySelector(".fseg-note").remove();
-    this.readRow.querySelector("[data-count]").textContent = "one per carrier word";
+    this.readRow.querySelector("[data-count]").textContent = "";
     this.readMsg = document.createElement("div");
     this.readMsg.className = "read-message";
     this.readMsg.hidden = true;

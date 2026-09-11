@@ -1,5 +1,5 @@
 // Boot: registry, hardware probe, one engine worker, the essay's stations and
-// the full tool at the bottom. Decides between live runs and the recorded replay.
+// the full tool at the bottom. All generation is live; a supported model loads on arrival.
 
 import { loadRegistry } from "../engine/models.js";
 import { probe } from "../engine/probe.js";
@@ -10,8 +10,6 @@ import { TextView } from "./text-view.js";
 import { Callouts } from "./callouts.js";
 import { WritePanel } from "./write.js";
 import { ReadPanel } from "./read.js";
-import { Replay } from "./snapshot.js";
-import { initLocal } from "./local.js";
 import { RankedChoice } from "./stations/ranked.js";
 import { attachEvidence } from "./stations/evidence.js";
 import { renderLineup } from "./stations/lineup.js";
@@ -21,21 +19,17 @@ const quiet = { once() {}, dismiss() {}, reset() {} };   // stations narrate in 
 
 const registry = await loadRegistry(new URL("../engine/registry.json", import.meta.url));
 const hw = await probe(registry);
-const narrow = matchMedia("(max-width: 700px)").matches;
-const canRun = hw.isolated && hw.rungs.some(r => r.ok) && !narrow;
+const canRun = hw.isolated && hw.rungs.some(r => r.ok);
 const engine = canRun ? new EngineClient() : null;
 
-let snapshot = null;
-try { snapshot = await (await fetch(new URL("../data/snapshot.json", import.meta.url))).json(); } catch { /* no snapshot */ }
-
 const picker = new ModelPicker({
-  select: $("#model"), status: $("#model-status"), cacheList: $("#cache-list"), registry, probe: hw,
+  select: $("#model"), status: $("#model-status"), registry, probe: hw,
   onChange: () => { stWrite.renderTag(); toolWrite.renderTag(); },
 });
 const consent = r => picker.consent(r);
 
 // ---- stations ---------------------------------------------------------------
-const ranked = new RankedChoice($("#st-ranked"), { engine, picker, snapshot, consent });
+const ranked = new RankedChoice($("#st-ranked"), { engine, picker, consent });
 
 const stWriteStrip = new FrameStrip($("#st-write-strip"));
 const stWriteView = new TextView($("#st-write-text"), { emptyText: "The model's words appear here as it writes." });
@@ -94,7 +88,6 @@ select("write");
 addEventListener("resize", () => select(tabs.find(t => t.getAttribute("aria-selected") === "true").id.replace("tab-", "")));
 
 const callouts = new Callouts($("#tool .callout-layer"));
-$("[data-reset-callouts]")?.addEventListener("click", () => callouts.reset());
 const wStrip = new FrameStrip($("#write-strip"));
 const wView = new TextView($("#write-text"), { emptyText: "The model's text appears here as it writes." });
 const rStrip = new FrameStrip($("#read-strip"));
@@ -102,47 +95,24 @@ const rView = new TextView($("#read-text"), { boxed: false });
 let toolRead;
 const toolWrite = new WritePanel($("#panel-write"), {
   engine, picker, callouts, strip: wStrip, view: wView,
-  onDone: ({ card, mode }) => { if (mode === "done" || mode === "stalled") return; toolRead.load(card); select("read"); toolRead.run().then(() => { if (mode === "break") $("#panel-read [data-break]")?.focus(); }); },
+  onDone: ({ card, mode }) => { if (mode === "done") $("#tool-read-key").value = $("#tool-write-key").value; if (mode === "done" || mode === "stalled") return; toolRead.load(card); select("read"); toolRead.run().then(() => { if (mode === "break") $("#panel-read [data-break]")?.focus(); }); },
 });
 toolRead = new ReadPanel($("#panel-read"), { engine, picker, callouts, strip: rStrip, view: rView });
-initLocal($("#panel-local"));
-
-const replay = new Replay({ strip: wStrip, view: wView, callouts });
-const replayRead = new Replay({ strip: rStrip, view: rView, callouts });
-const replayBtn = $("#panel-write [data-replay]");
-if (snapshot) {
-  replayBtn.addEventListener("click", async () => {
-    if (replayBtn.disabled) return;
-    replayBtn.disabled = true;
-    if (engine) await engine.cancel();
-    $("#panel-write [data-card]").hidden = true;
-    try { await replay.write(snapshot, $("#panel-write [data-head]")); } finally { replayBtn.disabled = false; }
-    const card = snapshot.card;
-    $("#panel-write [data-card-text]").textContent = snapshot.write.text;
-    $("#panel-write [data-card-foot]").textContent = card.slice(snapshot.write.text.length + 2);
-    $("#panel-write [data-card]").hidden = false;
-    $("#panel-write [data-read]").onclick = async () => { toolRead.load(card); select("read"); toolRead.annotate(null); await replayRead.read(snapshot, $("#panel-read [data-head]")); toolRead.verdict("ok", `A frame planted with <b>${snapshot.rung.replace(/-Q.*$/, "")}</b> validates in this text.`); };
-    $("#panel-write [data-break]").onclick = $("#panel-write [data-read]").onclick;
-    callouts.once("done", $("#panel-write [data-card]"));
-  });
-} else {
-  replayBtn.hidden = true;
-}
 
 // ---- mode ---------------------------------------------------------------------
 if (!canRun) {
   const why = !hw.isolated ? "This page is not cross-origin isolated, so the engine cannot use threads here."
-    : narrow ? "On a phone the download is 0.6 GB or more and the model runs at under one word a second, so the examples on this page do not run here. Open it on a laptop to try them."
     : "No model in the ladder fits this browser.";
   for (const p of document.querySelectorAll("[data-live-only]")) p.hidden = true;
-  const note = $("#mode-note");
-  note.textContent = why;
-  note.hidden = false;
+  for (const note of document.querySelectorAll("[data-mode-note]")) {
+    note.textContent = why;
+    note.hidden = false;
+  }
 } else {
   await picker.scanCache();
-  autoload();
+  setupModelPicker();
 }
-window.rankmark = { engine, picker, registry, hw, snapshot };
+window.rankmark = { engine, picker, registry, hw };
 
 // every example's go button follows the model: off with a note while it loads
 // (or after a cancel), on when it is in
@@ -156,10 +126,10 @@ function modelReady(on, label) {
 // can run one (or the rung the visitor downloaded and picked before). A card says
 // so, with a progress bar, a cancel button and the ladder: picking another rung
 // cancels this download and starts that one.
-async function autoload() {
+function setupModelPicker() {
   const card = $("#autoload");
-  if (!card || hw.saveData) { modelReady(true); return; }   // data saver: each example asks before it downloads
-  modelReady(false, "Loading the model");
+  if (!card) { modelReady(true); return; }   // narrow screens and data saver: ask before downloading
+  modelReady(true);
   const q = s => card.querySelector(s);
   const msg = q("[data-al-msg]"), fill = q("[data-al-fill]"), pct = q("[data-al-pct]"), bar = q(".al-bar"), cancel = q("[data-al-cancel]"), list = q("[data-al-list]"), pill = q("[data-al-pill]");
   const name = r => r.id.replace(/-Q.*$/, "");
@@ -253,10 +223,10 @@ async function autoload() {
     const r = registry.rungs.find(x => x.id === b.dataset.alPick);
     if (r && r !== current) start(r);
   });
-  // the registry's default rung (the 1.7B: reliable carriers, readable prose), or the
-  // rung this visitor downloaded and picked before, or the smallest that runs here
-  const ok = r => hw.rungs.find(x => x.id === r.id)?.ok;
-  const preferred = registry.rungs.find(r => r.id === registry.defaultRung);
-  const first = picker.cached.has(picker.rung.id) ? picker.rung : (preferred && ok(preferred) ? preferred : registry.rungs.find(ok) || registry.rungs[0]);
-  if (hw.rungs.find(r => r.id === first.id)?.ok) start(first);
+  // Reuse a downloaded model first; otherwise start with the smallest supported one.
+  const supported = registry.rungs.filter(r => hw.rungs.some(p => p.id === r.id && p.ok));
+  const initial = supported.find(r => r.id === picker.rung.id && picker.cached.has(r.id))
+    || supported.find(r => picker.cached.has(r.id)) || supported[0];
+  if (initial) start(initial);
+  else { renderList(""); card.hidden = false; card.classList.remove("off"); shrink(); }
 }

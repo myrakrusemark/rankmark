@@ -1,7 +1,5 @@
-// Known-message evidence: line up what a reader recovered against what the
-// writer planted, and count agreement over the bits that survived. This is
-// what a keyed detector does with its key: it knows the expected pattern and
-// counts matches; chance is 50%, and a z-score says how far above chance.
+// Descriptive agreement against a known original. The legacy z statistic is
+// an uncalibrated diagnostic for experiments, not a detection probability.
 
 // longest common subsequence alignment of two id arrays -> pairs of indices
 function align(a, b) {
@@ -23,7 +21,7 @@ function align(a, b) {
 // written: [{id, carrier, bit}] from the writer; read: [{id, carrier, bit}] from a reader
 export function agreement(written, read) {
   const pairs = align(written.map(t => t.id), read.map(t => t.id));
-  let both = 0, agree = 0, lost = 0, extra = 0;
+  let both = 0, agree = 0, extra = 0;
   const perToken = new Array(read.length).fill(null); // null: unmatched; "ok" / "flip" / "lost"
   // per planted bit, in the writer's order: what came back for it
   const carrierIndex = new Map();
@@ -35,14 +33,14 @@ export function agreement(written, read) {
     matchedRead.add(j);
     const w = written[i], r = read[j];
     if (w.carrier && r.carrier) { both++; const ok = w.bit === r.bit; if (ok) agree++; perToken[j] = ok ? "ok" : "flip"; perPlanted[carrierIndex.get(i)] = { status: ok ? "ok" : "flip", readBit: r.bit }; readToPlanted[j] = carrierIndex.get(i); }
-    else if (w.carrier) { lost++; perToken[j] = "lost"; }
+    else if (w.carrier) { perToken[j] = "lost"; }
     else if (r.carrier) extra++;
   }
   const planted = carrierIndex.size;
   const z = both ? (agree - both / 2) / Math.sqrt(both / 4) : 0;
   return {
     planted, survived: both, agree, agreementPct: both ? Math.round((100 * agree) / both) : null,
-    lost, extra, z: Math.round(z * 10) / 10,
+    lost: planted - both, extra, z: Math.round(z * 10) / 10,
     matchedTokens: pairs.length, perToken, perPlanted, readToPlanted,
   };
 }

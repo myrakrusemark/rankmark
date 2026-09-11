@@ -1,73 +1,71 @@
-# rankmark
+# Rankmark
 
-Keyed rank-lens watermark: hide a self-validating payload in LLM-generated
-text by steering token choices against the model's own next-token ranking.
-There is no secret key — **the key is the model itself**. Text decodes (and
-checksum-validates) only through the logits of the model that generated it,
-which turns decoding into an attribution test.
+An experimental text watermark and interactive article: hide a short message
+in a language model's token choices, then recover it with a matching reader.
 
-See [docs/rankmark-build-plan.md](docs/rankmark-build-plan.md) for the full
-research plan. This repo currently implements Phase 0 (determinism harness),
-Phase 1 (Arm A: entropy-gated rank parity, GLTR heatmap), and Phase 2
-(ECC + framing + robustness).
+**[Read the article and try the tool](https://myrakrusemark.com/watermark/).**
 
-## How it works
+The browser tool runs Qwen3 locally using llama.cpp in WebAssembly. It supports
+optional passphrases that change how rank parity maps to bits. This is
+experimental keying, **not message encryption or a guarantee of authorship**.
+A checksum-valid result is evidence of a recovered frame, not proof of who
+wrote the text. Cross-model bit agreement alone does not identify a model.
 
-- **Embed**: while generating, at each high-entropy step emit the token whose
-  rank parity (rank 0 or rank 1) matches the next payload bit. Low-entropy
-  steps emit rank 0 and carry nothing (carrier-nulls), so text quality holds.
-- **Frame**: payload is wrapped as `[SYNC | HEADER | ECC(PAYLOAD‖CRC)]`,
-  repeated for as long as generation runs. A sliding correlator finds the
-  sync pattern anywhere in the carrier stream; the ECC stack (Reed–Solomon +
-  interleave + rate-1/2 convolutional with soft Viterbi, by profile) absorbs
-  edit damage; the CRC is the attribution gate. Profiles trade capacity for
-  robustness: `--profile 0` (lean, 71-bit frames — any ~150-carrier span
-  holds a whole one), `1` (standard, CRC32 + full ECC), `2` (robust, ~2^-48
-  gate).
-- **Decode**: teacher-force the text through a lens, recover each token's
-  rank, re-apply the same entropy gate, read parities as soft bits (edit
-  damage arrives quiet, not loud and wrong), scan for gate-passing frames.
-  A wrong lens desyncs the gate and fails the CRC: that is the attribution
-  signal.
-- **Truncation** (`--window N`): full-context ranks die under a head cut —
-  every downstream near-tie flips (~25% carrier parity error measured on
-  gpt2, persisting to the end of the text). With `--window`, both sides
-  score each position from at most N context tokens, so any position more
-  than N tokens past a cut sees bit-identical logits and decodes clean.
-  Costs one bounded forward pass per token instead of a cached step.
+## Run the article locally
 
-## Setup
+Requires Node.js 22 or later. Fetch the pinned engine assets once, then start
+the server (which supplies the headers needed by multi-threaded WebAssembly):
 
-```bash
-uv venv ~/.venvs/rankmark --python 3.14 --system-site-packages  # needs torch
-source ~/.venvs/rankmark/bin/activate
-uv pip install -e ".[dev]"
+```sh
+node scripts/fetch-engine.mjs
+node web/serve.mjs
 ```
 
-## Use
+Open http://127.0.0.1:8770/. Model weights download into the browser.
 
-```bash
-# generate text carrying payload 0xa7, verify the round trip
-rankmark embed --model Qwen/Qwen2.5-3B --prompt "The history of cryptography begins with" \
-  --payload a7 --max-tokens 250 --verify > marked.txt
+## Python command-line tool
 
-# read it back through a lens (exit 0 = checksum-valid frame found)
-rankmark decode --model Qwen/Qwen2.5-3B --file marked.txt --heatmap decode.html
+The Python implementation is a separate, unkeyed research tool. Its frames and
+profiles differ from the browser engine; do not mix their generated texts.
 
-# the attribution test: only the generating lens validates
-rankmark attribute --pool "Qwen/Qwen2.5-3B,gpt2" --file marked.txt
+```sh
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+
+rankmark --profile 0 --temperature 0.7 embed \
+  --model Qwen/Qwen3-0.6B \
+  --prompt 'It was late in the harbor when the last boat came in, and' \
+  --payload a7 --max-tokens 800 --verify > marked.txt
+
+rankmark --profile 0 decode --model Qwen/Qwen3-0.6B --file marked.txt
 ```
 
-## Test
+`a7` is one byte expressed in hexadecimal. Use matching model, device, and
+settings when writing and reading. Edits, truncation, and numerical differences
+can prevent recovery. The `attribute` command compares candidate readers;
+it is not a general-purpose authorship detector.
 
-```bash
-pytest            # fast, pure-logic tests
-pytest -m slow -o addopts=""   # model-backed round-trip tests (downloads gpt2)
+## Checks
+
+```sh
+pytest -q
+ruff check src tests
+node web/test/verify.mjs
+node web/test/framing_copies.mjs
+node web/test/echo.mjs
+node web/test/engine_roundtrip.mjs
+node web/test/educational_evidence.mjs
+node web/test/read_selection.mjs
 ```
 
-## Determinism caveats
+Model-backed tests and measurement scripts live under `web/test/ci/`.
+`web/data/measurements.json` preserves the measured comparisons used by the
+article. These are historical results, not prerecorded interactive examples.
 
-Encode and decode must run on the same machine, torch build, and dtype.
-Lenses load in the checkpoint's native dtype (gpt2 fp32, Qwen bf16); fp16 is
-refused. The frozen tie-break everywhere is sort by `(-logit, token_id)`.
-Cross-machine rank stability is untested (build plan Phase 4, experiment 7).
+## Publish
+
+See [the article deployment guide](scripts/ARTICLE-DEPLOY.md). The article is
+published at `/watermark/` in the main portfolio repository; this repository
+contains its source. The [research plan](docs/rankmark-build-plan.md) records
+earlier experiments and proposals, not a statement of current guarantees.

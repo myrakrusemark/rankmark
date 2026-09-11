@@ -83,6 +83,7 @@ async function handle(ev) {
       // a pasted mark card names its lens and hashes the written text; strip
       // the footer before tokenizing, and say "altered" when the hash differs
       const card = parseMarkCard(args.text);
+      if (card?.keyed && !args.opts.passphrase) throw new Error("This text is keyed. Enter its passphrase to read it.");
       const text = card ? card.text : args.text;
       const altered = card?.textHash ? (await textHash(text)) !== card.textHash : null;
       const fpMismatch = card ? card.fp !== lens.fp : null;

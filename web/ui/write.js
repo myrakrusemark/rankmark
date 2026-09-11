@@ -4,7 +4,18 @@
 
 import { frameLenBits, layoutOf, PROFILES } from "../engine/framing.js";
 import { markCard } from "../engine/mark.js";
-import { encodeMessage } from "../engine/textcode.js";
+import { encodeMessage, messageBits } from "../engine/textcode.js";
+
+// Keep a Unicode-safe prefix that fits the encoded payload capacity.
+export function fitMessage(value, capacity) {
+  let result = '';
+  for (const character of value) {
+    const candidate = result + character;
+    if (encodeMessage(candidate.trim()).length > capacity) break;
+    result = candidate;
+  }
+  return result;
+}
 
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
 
@@ -20,7 +31,48 @@ export class WritePanel {
     const run = this.q("[data-run]");
     run.dataset.label = run.textContent;
     run.addEventListener("click", () => (this.running ? this.engine.cancel() : this.run()));
-    this.q("[data-tag]").addEventListener("input", () => this.renderTag());
+    const tagInput = this.q("[data-tag]");
+    const constrainTag = () => {
+      if (this.tagComposing) return;
+      const value = tagInput.value;
+      const start = tagInput.selectionStart;
+      const end = tagInput.selectionEnd;
+      const limit = this.picker.rung.tagCapBytes ?? 8;
+      const fitted = fitMessage(value, limit);
+      if (fitted !== value) {
+        tagInput.value = fitted;
+        tagInput.setSelectionRange(Math.min(start ?? fitted.length, fitted.length), Math.min(end ?? fitted.length, fitted.length));
+      }
+      this.renderTag();
+    };
+    tagInput.addEventListener("beforeinput", e => {
+      if (e.isComposing || !e.inputType.startsWith('insert') || e.data === null) return;
+      const start = tagInput.selectionStart ?? tagInput.value.length;
+      const end = tagInput.selectionEnd ?? start;
+      const proposed = tagInput.value.slice(0, start) + e.data + tagInput.value.slice(end);
+      if (encodeMessage(proposed.trim()).length > (this.picker.rung.tagCapBytes ?? 8)) {
+        e.preventDefault();
+      }
+    });
+    tagInput.addEventListener("paste", e => {
+      if (!e.clipboardData) return;
+      e.preventDefault();
+      const start = tagInput.selectionStart ?? tagInput.value.length;
+      const end = tagInput.selectionEnd ?? start;
+      const before = tagInput.value.slice(0, start);
+      const after = tagInput.value.slice(end);
+      let insertion = '';
+      for (const character of e.clipboardData.getData('text/plain').replace(/[\r\n]/g, '')) {
+        const candidate = insertion + character;
+        if (encodeMessage((before + candidate + after).trim()).length > (this.picker.rung.tagCapBytes ?? 8)) break;
+        insertion = candidate;
+      }
+      if (insertion) tagInput.setRangeText(insertion, start, end, 'end');
+      this.renderTag();
+    });
+    tagInput.addEventListener("compositionstart", () => { this.tagComposing = true; });
+    tagInput.addEventListener("compositionend", () => { this.tagComposing = false; constrainTag(); });
+    tagInput.addEventListener("input", constrainTag);
     this.q("[data-temp]")?.addEventListener("input", () => { const o = this.q("[data-temp-out]"); if (o) o.textContent = Number(this.q("[data-temp]").value).toFixed(1); });
     for (const b of root.querySelectorAll(".seg button[data-profile]")) b.addEventListener("click", () => { this.profile = Number(b.dataset.profile); this.renderProfile(); this.preview(); });
     // the pickers (temperature, copies): one pressed button per group
@@ -49,11 +101,25 @@ export class WritePanel {
   tagBytes() { const t = this.q("[data-tag]").value.trim(); return t ? encodeMessage(t) : new Uint8Array(0); }
 
   renderTag() {
-    const n = this.tagBytes().length;
-    const cap = this.picker.rung.tagCapBytes ?? 8;
+    const input = this.q("[data-tag]");
+    const text = input.value.trim();
+    const bits = text ? messageBits(text).length : 0;
+    const limit = (this.picker.rung.tagCapBytes ?? 8) * 8;
+    const count = [...text].length;
+    this.tagInvalid = !text || bits > limit;
     const hint = this.q("[data-tag-hint]");
-    hint.textContent = n === 0 ? `about ${cap * 2 - 1} letters fit` : `${n} byte${n === 1 ? "" : "s"} of ${cap}, coded`;
-    hint.classList.toggle("warn", n > cap);
+    hint.textContent = `${count} character${count === 1 ? '' : 's'} · ${bits}/${limit} bits${bits > limit ? ' — too long' : ''}`;
+    hint.classList.toggle("warn", bits > limit);
+    input.setAttribute("aria-invalid", String(bits > limit));
+    input.setCustomValidity(bits > limit ? 'Shorten your message to fit the available space.' : '');
+    if (!this.running) this.q("[data-run]").disabled = !!this.offLabel || this.tagInvalid;
+    const capacity = this.q("[data-tag-capacity]");
+    if (capacity) {
+      const fill = document.createElement('span');
+      fill.style.width = `${Math.min(100, bits / limit * 100)}%`;
+      capacity.replaceChildren(fill);
+      capacity.classList.toggle('over', bits > limit);
+    }
     this.renderProfile();
     this.preview();
   }
@@ -78,7 +144,7 @@ export class WritePanel {
     this.running = on;
     const run = this.q("[data-run]");
     run.textContent = on ? "Stop" : (this.offLabel ?? run.dataset.label);
-    run.disabled = !on && !!this.offLabel;
+    run.disabled = !on && (!!this.offLabel || this.tagInvalid);
     run.classList.toggle("stop", on);
     this.root.querySelectorAll("input, textarea, select, .seg button").forEach(el => { el.disabled = on; });
     // the one-box layout: the opening box locks while the model writes into it
@@ -108,7 +174,7 @@ export class WritePanel {
     const temperature = Number(this.pick("temp") ?? this.q("[data-temp]")?.value ?? 0.7);
     const copies = Math.max(1, Number(this.pick("copies") ?? this.q("[data-copies]")?.value ?? 1));
     const seedRaw = (this.q("[data-seed]")?.value ?? "").trim();
-    const opts = { prompt, payloadHex: hex(bytes), profile: this.profile, temperature, copies };
+    const opts = { prompt, payloadHex: hex(bytes), profile: this.profile, temperature, copies, passphrase: this.q("[data-key]")?.value || "" };
     if (seedRaw) opts.seed = Number(seedRaw) >>> 0;
 
     this.setBusy(true);
@@ -178,7 +244,7 @@ export class WritePanel {
       if (this.echo ? res.framesPlanted < 1 : planted < frameBits) {
         // the model settled into text it could predict and the free choices ran
         // out before the frame closed: say so, and offer another go
-        head.textContent = `${tokens} words, ${planted} of ${frameBits} bits planted: the frame did not close`;
+        head.textContent = `${tokens} tokens, ${planted} of ${frameBits} bits planted: the frame did not close`;
         if (copyBtn) copyBtn.hidden = true;
         if (notice) {
           notice.innerHTML = `The model drifted into text it could predict almost word for word, so it ran out of free choices to hide bits in after ${planted} of ${frameBits}. There is no finished mark in this text. The small model does this about one run in six; write it again, change the opening, or nudge the temperature up.<div class="btn-row" style="margin-top: 10px"><button type="button" class="btn primary" data-again>Write it again</button></div>`;
@@ -188,8 +254,8 @@ export class WritePanel {
         this.onDone?.({ card: null, text: res.text, tag: tagText, mode: "stalled", tokens: this.tokensOut, result: res, planted, frameBits });
         return;
       }
-      head.textContent = `${tokens} words, ${carriers} carry bits, ${res.framesPlanted.toFixed(1)} copies of the frame`;
-      const card = markCard(res.text, res.lens, res.fingerprint, res.textHash);
+      head.textContent = `${tokens} tokens, ${carriers} carry bits, ${res.framesPlanted.toFixed(1)} copies of the frame`;
+      const card = markCard(res.text, res.lens, res.fingerprint, res.textHash, !!opts.passphrase);
       if (cardEl) {
         this.q("[data-card-text]").textContent = res.text;
         this.q("[data-card-foot]").textContent = card.slice(res.text.length + 2);

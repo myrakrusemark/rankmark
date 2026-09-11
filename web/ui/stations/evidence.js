@@ -1,15 +1,3 @@
-// Station: edit it and it still tells. The same reader, with the writer's
-// planted bits kept as the reference. The planted packet sits on the right as
-// one line of hollow cells in the section colors. As the reader pulls a bit
-// out of a word, the bit flies to the planted cell it lines up with (the same
-// alignment a keyed detector would use, here by matching the words; for the
-// echo, the cell is the slot that word voted on): the cell fills in its color
-// if the bit agrees, red if it flipped, and cells the alignment skips go
-// dashed as lost. Under the line, the report fills in as the bits arrive:
-// which model wrote this and why, how long the message is, the letters that
-// still read, and which parts of the packet broke. A partial pattern is
-// evidence even when the full message is gone.
-
 import { agreement } from "../../engine/compare.js";
 import { FrameStrip } from "../frame-strip.js";
 import { messageBits, decodePrefix, encodeMessage } from "../../engine/textcode.js";
@@ -49,6 +37,7 @@ function packetView(a, frame, reference, frontier) {
   return { n, pbits, status, slotOf, carriers };
 }
 
+// Compare an edited run with a known original; this is not authorship inference.
 export function attachEvidence(readPanel, meterEl) {
   readPanel.reference = null;       // [{id, carrier, bit, slot}] from the write station
   readPanel.frame = null;           // { layout, frameBits, message, rung, echo }
@@ -155,11 +144,11 @@ export function attachEvidence(readPanel, meterEl) {
 // the panel: model and reasons, length, letters, and the packet's parts. While
 // the read is still going, bits beyond the alignment's reach are pending
 // rather than lost.
-function report(a, res, frame, reference, frontier) {
+export function report(a, res, frame, reference, frontier) {
   const name = shortName(frame?.rung);
   const pct = a.agreementPct ?? 0;
   if (!frame?.layout) {
-    return `<div class="ev-row"><span>surviving bits that agree with what ${esc(name)} planted</span><b>${a.survived ? pct + "%" : "n/a"}</b><small>chance is 50%</small></div>`;
+    return `<div class="ev-row"><span>surviving bits that agree with what ${esc(name)} planted</span><b>${a.survived ? pct + "%" : "n/a"}</b><small>among aligned surviving carrier tokens</small></div>`;
   }
   const v = packetView(a, frame, reference, frontier);
   const status = k => v.status[k] ?? "lost";
@@ -203,12 +192,9 @@ function report(a, res, frame, reference, frontier) {
       why.push(tag === wantTag ? `the model tag (#${tag}) matches` : `the model tag reads #${tag}, not its own`);
     }
   }
-  if (a.survived) why.push(`${a.agree} of the ${a.survived} bits that have come back agree with what it planted, where chance would give about ${Math.round(a.survived / 2)}`);
-  // the name is earned: a checksum that holds, or agreement well above chance;
-  // until then the panel only says what it is comparing against
-  const earned = res ? (res.valid || a.z >= 3) : (a.survived >= 20 && a.z >= 3);
-  out.push(`<div class="ev-row top"><span>written by</span><b class="ev-name">${earned ? esc(name) : (res ? "cannot tell" : "reading")}</b></div>`);
-  out.push(`<p class="ev-why">Compared against what ${esc(name)} planted on this page. ${why.length ? why.join("; ") + "." : (res ? "No bit survived this edit, so nothing can be said." : "")}</p>`);
+  out.push(`<div class="ev-row top"><span>agreement with the original watermark</span><b class="ev-name">${a.survived ? pct + "%" : "n/a"}</b></div>`);
+  out.push(`<p class="ev-why">Reference: the run made with ${esc(name)} on this page. ${a.agree} matching, ${a.survived - a.agree} flipped, ${a.planted - a.survived} lost or not yet aligned, out of ${a.planted} planted bits. The percentage counts only the ${a.survived} aligned surviving carriers. ${why.length ? why.join("; ") + "." : ""}</p>`);
+  out.push(`<p class="note">This comparison uses the original recording. It is not an authorship probability. The letters below show which parts of the known original message survived.</p>`);
 
   const payload = sec("payload");
   if (payload) {
@@ -243,13 +229,10 @@ function report(a, res, frame, reference, frontier) {
     out.push(`<div class="ev-row"><span>${label}</span><b>${t.ok} of ${t.len}</b><small>${bits.join(", ")}${note ? (bits.length ? " · " : "") + note : ""}</small></div>`);
   }
   if (res) {
-    // the verdict rests on how far agreement sits above chance: z of 3 is one in a thousand by luck
     out.push(`<p class="ev-verdict">${res.valid
-      ? (frame.echo ? "The echo validates: every packet bit's votes agree and the checksum holds." : "The frame validates: every bit agrees and the checksum holds.")
-      : a.survived === 0 ? "No planted bit survived this edit."
-      : a.z >= 3 ? `The checksum fails, so the full message is not vouched for; the bits that survived still say ${esc(name)} wrote this (${pct}% agree; luck gives that less than one time in a thousand).`
-      : a.z >= 2 ? `Weak evidence: ${pct}% agree, which luck gives about one time in twenty.`
-      : "What survived agrees no better than chance: after this edit the reader is scoring different words than the writer did."}</p>`);
+      ? "The reader recovered a packet that passes its checksum and format checks. Repair can succeed even when individual bits or copies are damaged."
+      : a.survived === 0 ? "No aligned carrier bit survived this edit; no packet validated."
+      : "No packet validated. Some bits may still match the known original, but that does not establish authorship or recover a verified message."}</p>`);
   }
   return out.join("");
 }

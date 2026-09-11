@@ -35,3 +35,7 @@ jobs:
         run: node web/test/verify.mjs && node web/test/framing_copies.mjs && node web/test/echo.mjs
       - name: Encoder to decoder round trip through a fake lens
         run: node web/test/engine_roundtrip.mjs
+      - name: Educational evidence and candidate display
+        run: node web/test/educational_evidence.mjs
+      - name: Reader selection and cancellation
+        run: node web/test/read_selection.mjs

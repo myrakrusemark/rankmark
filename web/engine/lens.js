@@ -288,7 +288,7 @@ export class Lens {
     let logits = await this.step([seedId], true);
     let sentence = [seedId];
     for (let i = 0; i < maxNew; i++) {
-      const id = decide(logits);
+      const id = await decide(logits);
       stepped.push(id);
       if (stopOn && stopOn.has(id)) break;
       if (stopWhen && stopWhen(id)) break;
